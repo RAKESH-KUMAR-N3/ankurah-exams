@@ -1,24 +1,17 @@
 import React, { useState } from 'react';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
-  signOut 
-} from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { auth, db, googleProvider } from '../lib/firebase';
 import { User, EntranceExam, CompetitiveExam } from '../types';
-import { Sparkles, Shield, User as UserIcon, LogIn, Key, Mail, Check, AlertCircle } from 'lucide-react';
+import { Sparkles, Shield, User as UserIcon, LogIn, Key, Mail, Check, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AuthProps {
   entranceExams: EntranceExam[];
   competitiveExams: CompetitiveExam[];
   onAuthSuccess: (user: User) => void;
+  initialMode?: 'login' | 'register';
 }
 
-export default function Auth({ entranceExams, competitiveExams, onAuthSuccess }: AuthProps) {
-  const [isRegistering, setIsRegistering] = useState(false);
+export default function Auth({ entranceExams, competitiveExams, onAuthSuccess, initialMode = 'login' }: AuthProps) {
+  const [isRegistering, setIsRegistering] = useState(initialMode === 'register');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -31,37 +24,7 @@ export default function Auth({ entranceExams, competitiveExams, onAuthSuccess }:
   
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [authInstructions, setAuthInstructions] = useState(false);
-
-  const handleFetchUserProfile = async (uid: string, fallbackEmail: string, fallbackName: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data() as User;
-        onAuthSuccess(userData);
-      } else {
-        // Create student profile if not exists
-        const newUser: User = {
-          uid,
-          name: fallbackName || 'Student Account',
-          email: fallbackEmail,
-          role: 'student',
-          selectedEntranceExams: selectedEntrances,
-          selectedCompetitiveExams: selectedCompetitives,
-          studentType: studentType || 'long_term',
-          studyPlan: studyPlan || 'yearly',
-          streak: 1,
-          lastActiveDate: new Date().toISOString(),
-          createdAt: new Date().toISOString()
-        };
-        await setDoc(doc(db, 'users', uid), newUser);
-        onAuthSuccess(newUser);
-      }
-    } catch (err: any) {
-      console.error("Error reading or writing user profile:", err);
-      setError(err.message || "Failed to set up user profile.");
-    }
-  };
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,129 +32,85 @@ export default function Auth({ entranceExams, competitiveExams, onAuthSuccess }:
     setLoading(true);
 
     if (!email || !password) {
-      setError("Please fill in all fields.");
+      setError('Please fill in all fields.');
       setLoading(false);
       return;
     }
 
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
     try {
       if (isRegistering) {
         if (!name) {
-          setError("Name is required during registration.");
+          setError('Name is required during registration.');
           setLoading(false);
           return;
         }
         if (selectedEntrances.length === 0 && selectedCompetitives.length === 0) {
-          setError("Please select at least one Entrance or Competitive Exam.");
+          setError('Please select at least one Entrance or Competitive Exam.');
           setLoading(false);
           return;
         }
-        
-        const credential = await createUserWithEmailAndPassword(auth, email, password);
-        const newUser: User = {
-          uid: credential.user.uid,
-          name,
-          email,
-          role: 'student',
+
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, role: 'student' }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Registration failed');
+
+        localStorage.setItem('token', data.token);
+        const mappedUser: User = {
+          uid: data._id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
           selectedEntranceExams: selectedEntrances,
           selectedCompetitiveExams: selectedCompetitives,
           studentType: selectedEntrances.length > 0 ? (studentType || 'long_term') : '',
           studyPlan: studyPlan || 'yearly',
           streak: 1,
           lastActiveDate: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
-        await setDoc(doc(db, 'users', credential.user.uid), newUser);
-        onAuthSuccess(newUser);
+        onAuthSuccess(mappedUser);
       } else {
-        const credential = await signInWithEmailAndPassword(auth, email, password);
-        await handleFetchUserProfile(credential.user.uid, credential.user.email || email, '');
-      }
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === 'auth/operation-not-allowed') {
-        setError("Email/Password Auth is not enabled yet in your Firebase console. Go to Auth > Sign-in method and enable it. Or use the Instant Developer Bypass login below!");
-        setAuthInstructions(true);
-      } else {
-        setError(err.message || "An authentication error occurred.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Login flow — call backend API
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Login failed');
 
-  const handleGoogleAuth = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await handleFetchUserProfile(
-        result.user.uid, 
-        result.user.email || '', 
-        result.user.displayName || 'Google User'
-      );
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Google Sign-In failed.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Developer Fast Access Bypass for testing / evaluation
-  const handleFastBypass = async (role: 'student' | 'admin') => {
-    setError(null);
-    setLoading(true);
-    // Use a deterministic UID for developer bypass, or a unique ID based on role
-    const mockUid = role === 'admin' ? 'bypass-admin-id' : 'bypass-student-id';
-    const mockEmail = role === 'admin' ? 'nrakeshkumar36@gmail.com' : 'student.demo@ankurah.com';
-    const mockName = role === 'admin' ? 'Admin Developer' : 'Ankurah Student';
-
-    try {
-      // Look up if user exists in Firestore
-      const userRef = doc(db, 'users', mockUid);
-      const userDoc = await getDoc(userRef);
-      
-      if (userDoc.exists()) {
-        onAuthSuccess(userDoc.data() as User);
-      } else {
-        // Create full user object
-        const bypassUser: User = {
-          uid: mockUid,
-          name: mockName,
-          email: mockEmail,
-          role,
-          selectedEntranceExams: role === 'student' ? ['jee-main', 'neet'] : [],
-          selectedCompetitiveExams: role === 'student' ? ['upsc-civils'] : [],
-          studentType: role === 'student' ? 'long_term' : '',
-          studyPlan: role === 'student' ? 'yearly' : '',
-          streak: 5,
+        localStorage.setItem('token', data.token);
+        const mappedUser: User = {
+          uid: data._id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          selectedEntranceExams: data.exams || [],
+          selectedCompetitiveExams: [],
+          studentType: data.studentType || '',
+          studyPlan: 'yearly',
+          streak: 1,
           lastActiveDate: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
-        await setDoc(userRef, bypassUser);
-        onAuthSuccess(bypassUser);
+        onAuthSuccess(mappedUser);
       }
     } catch (err: any) {
-      console.error("Bypass login failed, falling back to local simulation:", err);
-      // Fallback local memory login if connection or security rules are offline
-      onAuthSuccess({
-        uid: mockUid,
-        name: mockName,
-        email: mockEmail,
-        role,
-        selectedEntranceExams: role === 'student' ? ['jee-main', 'neet'] : [],
-        selectedCompetitiveExams: role === 'student' ? ['upsc-civils'] : [],
-        studentType: role === 'student' ? 'long_term' : '',
-        studyPlan: role === 'student' ? 'yearly' : '',
-        streak: 5,
-        lastActiveDate: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      });
+      console.error(err);
+      setError(err.message || 'An authentication error occurred.');
+
     } finally {
       setLoading(false);
     }
   };
+
+
 
   const toggleExamSelection = (examId: string, isEntrance: boolean) => {
     if (isEntrance) {
@@ -230,15 +149,6 @@ export default function Auth({ entranceExams, competitiveExams, onAuthSuccess }:
           </div>
         )}
 
-        {authInstructions && (
-          <div className="p-4 rounded-md bg-zinc-50 border border-geom-border text-zinc-800 text-[11px] leading-relaxed space-y-2 font-medium">
-            <p className="font-bold text-zinc-900 uppercase tracking-wider text-[10px]">Firebase Setup Helper:</p>
-            <p>1. Open your Firebase Console at <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="underline font-bold">console.firebase.google.com</a>.</p>
-            <p>2. Navigate to <strong>Authentication</strong> &gt; <strong>Sign-in method</strong>.</p>
-            <p>3. Enable <strong>Email/Password</strong> provider.</p>
-            <p>4. Or use Google Sign-in or the <strong>Instant Developer Access</strong> buttons below for direct testing.</p>
-          </div>
-        )}
 
         {/* Auth form toggle */}
         <div className="flex bg-zinc-100 p-1 rounded-md border border-geom-border">
@@ -259,52 +169,50 @@ export default function Auth({ entranceExams, competitiveExams, onAuthSuccess }:
         </div>
 
         {/* Primary Email Form */}
-        <form onSubmit={handleEmailAuth} className="space-y-4">
+        <form onSubmit={handleEmailAuth} className="space-y-5">
           {isRegistering && (
-            <div>
-              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Full Name</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="John Doe" 
-                  className="w-full px-3 py-2.5 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 focus:outline-none focus:border-zinc-900 focus:bg-white transition-all text-xs font-semibold"
-                  required
-                />
-                <UserIcon className="absolute right-3 top-3 w-4 h-4 text-zinc-400" />
-              </div>
+            <div className="relative">
+              <UserIcon className="absolute left-3 top-3 w-5 h-5 text-emerald-600" />
+              <input 
+                type="text" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full Name" 
+                className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-100 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium placeholder-slate-400"
+                required
+              />
             </div>
           )}
 
-          <div>
-            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Email Address</label>
-            <div className="relative">
-              <input 
-                type="email" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="developer@ankurah.com" 
-                className="w-full px-3 py-2.5 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 focus:outline-none focus:border-zinc-900 focus:bg-white transition-all text-xs font-semibold"
-                required
-              />
-              <Mail className="absolute right-3 top-3 w-4 h-4 text-zinc-400" />
-            </div>
+          <div className="relative">
+            <Mail className="absolute left-3 top-3 w-5 h-5 text-emerald-600" />
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email Address" 
+              className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-100 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium placeholder-slate-400"
+              required
+            />
           </div>
 
-          <div>
-            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Password</label>
-            <div className="relative">
-              <input 
-                type="password" 
-                value={password} 
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••" 
-                className="w-full px-3 py-2.5 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 focus:outline-none focus:border-zinc-900 focus:bg-white transition-all text-xs font-semibold"
-                required
-              />
-              <Key className="absolute right-3 top-3 w-4 h-4 text-zinc-400" />
-            </div>
+          <div className="relative">
+            <Key className="absolute left-3 top-3 w-5 h-5 text-emerald-600" />
+            <input 
+              type={showPassword ? "text" : "password"}
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password" 
+              className="w-full pl-10 pr-12 py-3 bg-white border-2 border-slate-100 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium placeholder-slate-400"
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
           </div>
 
           {/* Student preferences (ONLY on Registration) */}
@@ -426,85 +334,25 @@ export default function Auth({ entranceExams, competitiveExams, onAuthSuccess }:
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-sm text-xs font-bold uppercase tracking-wider text-white bg-zinc-900 hover:bg-zinc-850 transition-all disabled:opacity-50 cursor-pointer shadow-geom border border-zinc-900"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold tracking-wide text-white bg-emerald-600 hover:bg-emerald-700 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-500/30"
           >
             {loading ? (
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
             ) : isRegistering ? (
               <>
-                <UserIcon className="w-4 h-4" />
+                <UserIcon className="w-5 h-5" />
                 Complete Registration
               </>
             ) : (
               <>
-                <LogIn className="w-4 h-4" />
-                Sign In with Password
+                <LogIn className="w-5 h-5" />
+                Sign In
               </>
             )}
           </button>
         </form>
 
-        <div className="relative flex py-2 items-center">
-          <div className="flex-grow border-t border-geom-border"></div>
-          <span className="flex-shrink mx-4 text-zinc-400 text-[9px] font-bold uppercase tracking-wider">Or Continue With</span>
-          <div className="flex-grow border-t border-geom-border"></div>
-        </div>
 
-        {/* Google sign-in */}
-        <button
-          type="button"
-          onClick={handleGoogleAuth}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-sm border border-geom-border bg-white hover:bg-zinc-50 font-bold text-zinc-700 text-xs uppercase tracking-wider transition-all cursor-pointer shadow-geom-sm"
-        >
-          <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.61c-.29 1.5-.14 3.01-.84 4.02l3.41 2.64c2-1.84 3.56-4.55 3.56-8.51z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-3.41-2.64c-.9.6-2.11.95-3.55.95-3.08 0-5.7-2.08-6.63-4.88L2.87 18.06c2 3.97 6.11 6.64 10.13 6.64z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.37 14.52a7.17 7.17 0 0 1 0-4.52l-3.5-2.72c-1.15 2.29-1.87 4.96-1.87 7.74s.72 5.45 1.87 7.74l3.5-2.74z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.96 1.19 15.24 0 12 0 7.97 0 3.86 2.67 1.87 6.64l3.5 2.72c.93-2.8 3.55-4.88 6.63-4.88z"
-            />
-          </svg>
-          Google Cloud Identity
-        </button>
-
-        {/* Developer Bypass Area (Highly styled and helpful) */}
-        <div className="pt-4 border-t border-geom-border mt-6">
-          <div className="flex items-center gap-1.5 justify-center text-zinc-400 text-[10px] mb-3 font-bold uppercase tracking-wider">
-            <Shield className="w-3.5 h-3.5 text-zinc-800" />
-            Instant Developer Bypass Access
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => handleFastBypass('admin')}
-              className="py-2.5 px-3 rounded-md border border-geom-border bg-zinc-50 hover:bg-zinc-100 text-zinc-800 font-bold text-xs transition-all flex flex-col items-center justify-center gap-1 cursor-pointer shadow-geom-sm"
-            >
-              <Shield className="w-4 h-4 text-zinc-850" />
-              <span>Login as Admin</span>
-              <span className="text-[9px] font-normal text-zinc-500 block">nrakeshkumar36@gmail.com</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFastBypass('student')}
-              className="py-2.5 px-3 rounded-md border border-geom-border bg-zinc-50 hover:bg-zinc-100 text-zinc-800 font-bold text-xs transition-all flex flex-col items-center justify-center gap-1 cursor-pointer shadow-geom-sm"
-            >
-              <UserIcon className="w-4 h-4 text-zinc-800" />
-              <span>Login as Student</span>
-              <span className="text-[9px] font-normal text-zinc-500 block">student.demo@ankurah.com</span>
-            </button>
-          </div>
-        </div>
 
       </div>
     </div>
