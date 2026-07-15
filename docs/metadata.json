@@ -1,0 +1,6 @@
+{
+  "name": "Ankurah Exams",
+  "description": "An advanced, high-performance Exam Preparation Platform for Entrance and Competitive Exams, featuring personalized timetables, study material access, mock tests, and deep, automated performance analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,241 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profiles for both Students and Admins.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique Firebase Authentication UID." },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100, "description": "Full name of the user." },
+        "email": { "type": "string", "description": "Verified email address." },
+        "role": { "type": "string", "enum": ["student", "admin"], "description": "User role." },
+        "selectedEntranceExams": { "type": "array", "description": "IDs of selected Entrance Exams." },
+        "selectedCompetitiveExams": { "type": "array", "description": "IDs of selected Competitive Exams." },
+        "studentType": { "type": "string", "enum": ["first_year", "second_year", "long_term", ""], "description": "Entrance exam student type." },
+        "studyPlan": { "type": "string", "enum": ["quarterly", "half_yearly", "academic_year", "yearly", ""], "description": "Selected study plan duration." },
+        "streak": { "type": "number", "description": "Consecutive days logged in." },
+        "lastActiveDate": { "type": "string", "description": "Last active timestamp." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when account was created." }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "EntranceExam": {
+      "title": "EntranceExam",
+      "description": "Entrance exam definition (e.g., JEE Main, NEET).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "name"]
+    },
+    "CompetitiveExam": {
+      "title": "CompetitiveExam",
+      "description": "Competitive exam definition (e.g., UPSC, SSC).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "name"]
+    },
+    "Subject": {
+      "title": "Subject",
+      "description": "Subject mapping to entrance or competitive exams.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "examIds": { "type": "array", "description": "Exam IDs this subject is taught in." },
+        "description": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "name", "examIds"]
+    },
+    "Chapter": {
+      "title": "Chapter",
+      "description": "Chapter belonging to a specific Subject.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "description": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "subjectId", "name"]
+    },
+    "Timetable": {
+      "title": "Timetable",
+      "description": "Daily schedule mapped by exam, student type, and study plan.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "examId": { "type": "string" },
+        "studentType": { "type": "string" },
+        "studyPlan": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "date": { "type": "string", "description": "Date string in YYYY-MM-DD format." },
+        "title": { "type": "string", "maxLength": 200 },
+        "studyTopic": { "type": "string", "maxLength": 5000 },
+        "practiceMCQsCount": { "type": "number" },
+        "revisionTopic": { "type": "string", "maxLength": 500 },
+        "assignment": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "examId", "subjectId", "chapterId", "date", "title"]
+    },
+    "StudyMaterial": {
+      "title": "StudyMaterial",
+      "description": "Study reference materials (PDF, Notes, video or external links).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "examId": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "type": { "type": "string", "enum": ["pdf", "notes", "link", "video"] },
+        "title": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "url": { "type": "string" },
+        "description": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "examId", "subjectId", "chapterId", "type", "title", "url"]
+    },
+    "Question": {
+      "title": "Question",
+      "description": "A single question inside the Question Bank.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subjectId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "questionText": { "type": "string", "maxLength": 10000 },
+        "options": { "type": "array", "description": "Exactly 4 options." },
+        "correctAnswerIndex": { "type": "number" },
+        "explanation": { "type": "string", "maxLength": 10000 },
+        "difficulty": { "type": "string", "enum": ["easy", "medium", "hard"] },
+        "marks": { "type": "number" },
+        "negativeMarks": { "type": "number" },
+        "tags": { "type": "array" }
+      },
+      "required": ["id", "subjectId", "chapterId", "questionText", "options", "correctAnswerIndex", "difficulty", "marks", "negativeMarks"]
+    },
+    "Test": {
+      "title": "Test",
+      "description": "Evaluations comprising multiple questions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "type": { "type": "string", "enum": ["weekly", "monthly", "practice"] },
+        "duration": { "type": "number", "description": "Duration in minutes." },
+        "totalMarks": { "type": "number" },
+        "negativeMarking": { "type": "boolean" },
+        "isFullSyllabus": { "type": "boolean" },
+        "subjectId": { "type": "string", "description": "Optional, if subject-wise." },
+        "chapterId": { "type": "string", "description": "Optional, if chapter-wise." },
+        "questionIds": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "duration", "totalMarks", "negativeMarking", "isFullSyllabus", "questionIds"]
+    },
+    "TestAttempt": {
+      "title": "TestAttempt",
+      "description": "Student's attempt details for a test.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "testId": { "type": "string" },
+        "answers": { "type": "object", "description": "Map of questionId to selectedIndex." },
+        "score": { "type": "number" },
+        "percentage": { "type": "number" },
+        "accuracy": { "type": "number" },
+        "correctCount": { "type": "number" },
+        "wrongCount": { "type": "number" },
+        "unattemptedCount": { "type": "number" },
+        "timeTakenSeconds": { "type": "number" },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "testId", "answers", "score", "percentage", "accuracy", "correctCount", "wrongCount", "unattemptedCount", "timeTakenSeconds", "submittedAt"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "General announcement broadcasted to students.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "content": { "type": "string", "maxLength": 5000 },
+        "targetExams": { "type": "array" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User-specific notifications.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 1000 },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "isRead", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Primary user registry for both admin and students."
+    },
+    "/entranceExams/{examId}": {
+      "schema": "EntranceExam",
+      "description": "Manageable list of entrance exams."
+    },
+    "/competitiveExams/{examId}": {
+      "schema": "CompetitiveExam",
+      "description": "Manageable list of competitive exams."
+    },
+    "/subjects/{subjectId}": {
+      "schema": "Subject",
+      "description": "Subject registry mapped to exams."
+    },
+    "/chapters/{chapterId}": {
+      "schema": "Chapter",
+      "description": "Chapter details mapping back to subjects."
+    },
+    "/timetables/{timetableId}": {
+      "schema": "Timetable",
+      "description": "Personalized study timetable daily events."
+    },
+    "/studyMaterials/{materialId}": {
+      "schema": "StudyMaterial",
+      "description": "Academic study materials catalog."
+    },
+    "/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Academic question items database."
+    },
+    "/tests/{testId}": {
+      "schema": "Test",
+      "description": "Evaluations metadata and configuration."
+    },
+    "/testAttempts/{attemptId}": {
+      "schema": "TestAttempt",
+      "description": "Attempts details containing user responses and raw scores."
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Announcements made by admins."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Contextual push alerts for students."
+    }
+  }
+}
