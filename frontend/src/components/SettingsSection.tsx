@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { User, EntranceExam, CompetitiveExam } from '../types';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { Settings, Save, CheckCircle2, User as UserIcon, BookOpen, Sparkles } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getToken = () => localStorage.getItem('token');
+const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
 interface SettingsSectionProps {
   user: User;
@@ -46,31 +48,21 @@ export default function SettingsSection({
     setErrorMsg('');
 
     try {
-      const userRef = doc(db, 'users', user.uid);
-      const updatedFields = {
-        name,
-        studentType,
-        studyPlan,
-        selectedEntranceExams: selectedEntrances,
-        selectedCompetitiveExams: selectedCompetitives,
-        lastActiveDate: new Date().toISOString()
-      };
+      const res = await fetch(`${API_URL}/api/students/profile`, {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ name, studentType, studyPlan }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update profile');
 
-      await updateDoc(userRef, updatedFields);
-      
       setSuccessMsg('Academic profile updated successfully!');
-      
       if (onProfileUpdated) {
-        onProfileUpdated({
-          ...user,
-          ...updatedFields
-        });
+        onProfileUpdated({ ...user, name, studentType, studyPlan });
       }
-
       setTimeout(() => setSuccessMsg(''), 4000);
-    } catch (err) {
-      console.error('Error updating user settings:', err);
-      setErrorMsg('Failed to update settings. Please check your internet connection.');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to update settings. Please check your connection.');
     } finally {
       setLoading(false);
     }

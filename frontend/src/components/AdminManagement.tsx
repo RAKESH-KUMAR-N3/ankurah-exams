@@ -7,8 +7,10 @@ import {
   Shield, Plus, Trash, Database, FileText, Calendar, BookOpen, 
   Check, AlertCircle, Trash2, Mail, Bell, RefreshCw, Volume2
 } from 'lucide-react';
-import { doc, setDoc, deleteDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getToken = () => localStorage.getItem('token');
+const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
 interface AdminManagementProps {
   user: User;
@@ -23,6 +25,7 @@ interface AdminManagementProps {
   materials: StudyMaterial[];
   announcements: Announcement[];
   onRefresh: () => void;
+  activeTab: string;
 }
 
 export default function AdminManagement({
@@ -37,9 +40,9 @@ export default function AdminManagement({
   timetables,
   materials,
   announcements,
-  onRefresh
+  onRefresh,
+  activeTab
 }: AdminManagementProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'students' | 'exams' | 'subjects' | 'questions' | 'materials' | 'timetables' | 'tests' | 'announcements'>('students');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -53,7 +56,7 @@ export default function AdminManagement({
   const [chapterForm, setChapterForm] = useState({ id: '', subjectId: '', name: '', description: '' });
   const [materialForm, setMaterialForm] = useState({ id: '', examId: '', subjectId: '', chapterId: '', type: 'pdf' as any, title: '', url: '', description: '' });
   const [timetableForm, setTimetableForm] = useState({ id: '', examId: '', studentType: 'long_term', studyPlan: 'yearly', subjectId: '', chapterId: '', date: '', title: '', studyTopic: '', practiceMCQsCount: 10, revisionTopic: '', assignment: '' });
-  const [questionForm, setQuestionForm] = useState({ id: '', subjectId: '', chapterId: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium' as any, marks: 4, negativeMarks: 1, tags: '' });
+  const [questionForm, setQuestionForm] = useState({ id: '', subjectId: '', chapterId: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium' as any, marks: 4, negativeMarks: 1, tags: '', explanation: '' });
   const [testForm, setTestForm] = useState({ id: '', title: '', description: '', type: 'weekly' as any, duration: 15, totalMarks: 12, negativeMarking: true, isFullSyllabus: false, subjectId: '', chapterId: '', selectedQIds: [] as string[] });
 
   const showSuccess = (msg: string) => {
@@ -66,19 +69,24 @@ export default function AdminManagement({
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const collectionName = examForm.type === 'entrance' ? 'entranceExams' : 'competitiveExams';
     const cleanId = examForm.id.toLowerCase().replace(/\s+/g, '-');
     
     try {
-      await setDoc(doc(db, collectionName, cleanId), {
-        id: cleanId,
-        name: examForm.name,
-        description: examForm.description
+      const res = await fetch(`${API_URL}/api/exams`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          id: cleanId,
+          name: examForm.name,
+          description: examForm.description,
+          type: examForm.type
+        })
       });
+      if (!res.ok) throw new Error('Failed to create exam');
       setExamForm({ id: '', name: '', description: '', type: 'entrance' });
       showSuccess(`Successfully created ${examForm.type} exam!`);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, collectionName);
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -86,12 +94,15 @@ export default function AdminManagement({
 
   const handleDeleteExam = async (id: string, type: 'entrance' | 'competitive') => {
     if (!window.confirm("Are you sure you want to delete this exam?")) return;
-    const collectionName = type === 'entrance' ? 'entranceExams' : 'competitiveExams';
     try {
-      await deleteDoc(doc(db, collectionName, id));
+      const res = await fetch(`${API_URL}/api/exams/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete exam');
       showSuccess("Exam deleted successfully.");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, collectionName);
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -101,18 +112,37 @@ export default function AdminManagement({
     setLoading(true);
     const cleanId = subjectForm.id.toLowerCase().replace(/\s+/g, '-');
     try {
-      await setDoc(doc(db, 'subjects', cleanId), {
-        id: cleanId,
-        name: subjectForm.name,
-        examIds: [subjectForm.examId],
-        description: subjectForm.description
+      const res = await fetch(`${API_URL}/api/subjects`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          id: cleanId,
+          name: subjectForm.name,
+          examId: subjectForm.examId,
+          description: subjectForm.description
+        })
       });
+      if (!res.ok) throw new Error('Failed to create subject');
       setSubjectForm({ id: '', name: '', examId: '', description: '' });
-      showSuccess("Subject registered successfully.");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'subjects');
+      showSuccess("Subject created and mapped successfully!");
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteSubject = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this subject?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/subjects/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete subject');
+      showSuccess("Subject deleted successfully.");
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -121,18 +151,37 @@ export default function AdminManagement({
     setLoading(true);
     const cleanId = chapterForm.id.toLowerCase().replace(/\s+/g, '-');
     try {
-      await setDoc(doc(db, 'chapters', cleanId), {
-        id: cleanId,
-        subjectId: chapterForm.subjectId,
-        name: chapterForm.name,
-        description: chapterForm.description
+      const res = await fetch(`${API_URL}/api/chapters`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          id: cleanId,
+          subjectId: chapterForm.subjectId,
+          title: chapterForm.name,
+          description: chapterForm.description
+        })
       });
+      if (!res.ok) throw new Error('Failed to create chapter');
       setChapterForm({ id: '', subjectId: '', name: '', description: '' });
-      showSuccess("Chapter linked successfully.");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'chapters');
+      showSuccess("Chapter created successfully!");
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteChapter = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this chapter?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/chapters/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete chapter');
+      showSuccess("Chapter deleted successfully.");
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
@@ -140,1231 +189,911 @@ export default function AdminManagement({
   const handleCreateMaterial = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const mId = materialForm.id || `mat-${Date.now()}`;
+    const cleanId = materialForm.id.toLowerCase().replace(/\s+/g, '-');
     try {
-      await setDoc(doc(db, 'studyMaterials', mId), {
-        id: mId,
-        examId: materialForm.examId,
-        subjectId: materialForm.subjectId,
-        chapterId: materialForm.chapterId,
-        type: materialForm.type,
-        title: materialForm.title,
-        url: materialForm.url,
-        description: materialForm.description
+      const res = await fetch(`${API_URL}/api/study-materials`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          id: cleanId,
+          examId: materialForm.examId,
+          subjectId: materialForm.subjectId,
+          chapterId: materialForm.chapterId,
+          type: materialForm.type === 'pdf' ? 'PDF' : materialForm.type === 'notes' ? 'Notes' : 'Video URL',
+          title: materialForm.title,
+          url: materialForm.url
+        })
       });
+      if (!res.ok) throw new Error('Failed to create study material');
       setMaterialForm({ id: '', examId: '', subjectId: '', chapterId: '', type: 'pdf', title: '', url: '', description: '' });
-      showSuccess("Study material posted!");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'studyMaterials');
+      showSuccess("Study resource linked to academic vault!");
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // 4. Manage Timetable Daily Slots
+  const handleDeleteMaterial = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this study material?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/study-materials/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete study material');
+      showSuccess("Study material deleted successfully.");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  // 4. Manage Timetable Slots
   const handleCreateTimetable = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const tId = timetableForm.id || `tt-${Date.now()}`;
+    const cleanId = timetableForm.id.toLowerCase().replace(/\s+/g, '-');
     try {
-      await setDoc(doc(db, 'timetables', tId), {
-        ...timetableForm,
-        id: tId,
-        practiceMCQsCount: Number(timetableForm.practiceMCQsCount)
+      const res = await fetch(`${API_URL}/api/timetables`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          id: cleanId,
+          examId: timetableForm.examId,
+          studentTypeId: timetableForm.studentType,
+          subjectId: timetableForm.subjectId,
+          chapterId: timetableForm.chapterId,
+          date: timetableForm.date,
+          studyTopic: timetableForm.title,
+          practiceMCQs: timetableForm.practiceMCQsCount.toString(),
+          revision: timetableForm.revisionTopic,
+          assignment: timetableForm.assignment
+        })
       });
+      if (!res.ok) throw new Error('Failed to create timetable');
       setTimetableForm({ id: '', examId: '', studentType: 'long_term', studyPlan: 'yearly', subjectId: '', chapterId: '', date: '', title: '', studyTopic: '', practiceMCQsCount: 10, revisionTopic: '', assignment: '' });
-      showSuccess("Daily schedule timetabled successfully!");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'timetables');
+      showSuccess("Timetable schedule published successfully!");
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // 5. Manage Questions Bank
+  const handleDeleteTimetable = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this timetable entry?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/timetables/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete timetable entry');
+      showSuccess("Timetable slot deleted successfully.");
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
+  // 5. Manage Questions Central Bank
   const handleCreateQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const qId = questionForm.id || `q-${Date.now()}`;
     const options = [questionForm.oA, questionForm.oB, questionForm.oC, questionForm.oD].filter(Boolean);
+    const correctAnswer = options[questionForm.correctAnswerIndex] || '';
     
-    if (options.length < 4) {
-      alert("Please specify exactly 4 multiple choice option fields (A, B, C, D).");
-      setLoading(false);
-      return;
-    }
-
     try {
-      await setDoc(doc(db, 'questions', qId), {
-        id: qId,
-        subjectId: questionForm.subjectId,
-        chapterId: questionForm.chapterId,
-        questionText: questionForm.questionText,
-        options,
-        correctAnswerIndex: Number(questionForm.correctAnswerIndex),
-        explanation: questionForm.explanation,
-        difficulty: questionForm.difficulty,
-        marks: Number(questionForm.marks),
-        negativeMarks: Number(questionForm.negativeMarks),
-        tags: questionForm.tags ? questionForm.tags.split(',').map(t => t.trim()) : []
+      const res = await fetch(`${API_URL}/api/questions`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          content: questionForm.questionText,
+          options,
+          correctAnswer,
+          explanation: questionForm.explanation,
+          difficulty: questionForm.difficulty.toUpperCase(),
+          marks: questionForm.marks,
+          negativeMarks: questionForm.negativeMarks,
+          subjectId: questionForm.subjectId,
+          chapterId: questionForm.chapterId
+        })
       });
-      setQuestionForm({ id: '', subjectId: '', chapterId: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium', marks: 4, negativeMarks: 1, tags: '' });
-      showSuccess("Question item linked in Central Bank!");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'questions');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create question');
+      setQuestionForm({ id: '', subjectId: '', chapterId: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium', marks: 4, negativeMarks: 1, tags: '', explanation: '' });
+      showSuccess('Question item linked in Central Bank!');
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // 6. Manage Mock Exams / Tests
+  // 6. Manage Tests
   const handleCreateTest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const tId = testForm.id || `test-${Date.now()}`;
-    
-    if (testForm.selectedQIds.length === 0) {
-      alert("Please tick at least one question from the Question Bank below to include in this test.");
-      setLoading(false);
-      return;
-    }
-
+    const cleanId = testForm.id.toLowerCase().replace(/\s+/g, '-');
     try {
-      await setDoc(doc(db, 'tests', tId), {
-        id: tId,
-        title: testForm.title,
-        description: testForm.description,
-        type: testForm.type,
-        duration: Number(testForm.duration),
-        totalMarks: Number(testForm.totalMarks),
-        negativeMarking: testForm.negativeMarking,
-        isFullSyllabus: testForm.isFullSyllabus,
-        subjectId: testForm.subjectId || null,
-        chapterId: testForm.chapterId || null,
-        questionIds: testForm.selectedQIds,
-        createdAt: new Date().toISOString()
+      const res = await fetch(`${API_URL}/api/tests`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          id: cleanId,
+          title: testForm.title,
+          instructions: testForm.description,
+          testType: testForm.type.toUpperCase(),
+          duration: testForm.duration,
+          totalMarks: testForm.totalMarks,
+          negativeMarking: testForm.negativeMarking,
+          subjectId: testForm.isFullSyllabus ? undefined : testForm.subjectId,
+          chapterId: testForm.isFullSyllabus ? undefined : testForm.chapterId,
+          questions: testForm.selectedQIds
+        })
       });
+      if (!res.ok) throw new Error('Failed to create test');
       setTestForm({ id: '', title: '', description: '', type: 'weekly', duration: 15, totalMarks: 12, negativeMarking: true, isFullSyllabus: false, subjectId: '', chapterId: '', selectedQIds: [] });
-      showSuccess("Mock exam posted!");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'tests');
+      showSuccess("Academic Evaluation Test published!");
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleFormQSelection = (qId: string) => {
-    setTestForm(prev => {
-      const active = prev.selectedQIds.includes(qId);
-      const updated = active 
-        ? prev.selectedQIds.filter(id => id !== qId) 
-        : [...prev.selectedQIds, qId];
-      return {
-        ...prev,
-        selectedQIds: updated
-      };
-    });
-  };
-
-  const handleDeleteItem = async (collectionName: string, id: string) => {
-    if (!window.confirm(`Are you sure you want to delete this item from ${collectionName}?`)) return;
+  const handleDeleteTest = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this test?")) return;
     try {
-      await deleteDoc(doc(db, collectionName, id));
-      showSuccess("Item removed successfully.");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, collectionName);
+      const res = await fetch(`${API_URL}/api/tests/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete test');
+      showSuccess("Evaluation test deleted successfully.");
+    } catch (err: any) {
+      alert(err.message);
     }
   };
 
-  const handleCreateAnnouncement = async (e: React.FormEvent) => {
+  const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const annId = announcementForm.id || `ann-${Date.now()}`;
     try {
-      await setDoc(doc(db, 'announcements', annId), {
-        id: annId,
-        title: announcementForm.title,
-        content: announcementForm.content,
-        targetExams: announcementForm.targetExams,
-        createdAt: new Date().toISOString()
+      const res = await fetch(`${API_URL}/api/notifications`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          userId: notificationForm.studentId || 'all',
+          title: notificationForm.title,
+          message: notificationForm.message
+        })
       });
-      setAnnouncementForm({ id: '', title: '', content: '', targetExams: [] });
-      showSuccess("Bulletin broadcasted successfully.");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'announcements');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteAnnouncement = async (id: string) => {
-    if (!window.confirm("Are you sure you want to remove this bulletin?")) return;
-    setLoading(true);
-    try {
-      await deleteDoc(doc(db, 'announcements', id));
-      showSuccess("Bulletin removed.");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, `announcements/${id}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateNotification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const notifId = `notif-${Date.now()}`;
-    try {
-      await setDoc(doc(db, 'notifications', notifId), {
-        id: notifId,
-        userId: notificationForm.studentId,
-        title: notificationForm.title,
-        message: notificationForm.message,
-        isRead: false,
-        createdAt: new Date().toISOString()
-      });
+      if (!res.ok) throw new Error('Failed to send notification');
       setNotificationForm({ id: '', studentId: '', title: '', message: '' });
-      showSuccess("Targeted student alert dispatched successfully.");
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'notifications');
+      showSuccess("Broadcast Notification dispatched to device channels!");
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div id="admin_management" className="space-y-6 font-sans">
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8 space-y-8">
       
-      {/* Top Banner */}
-      <div className="bg-zinc-950 rounded-lg p-6 text-white border border-zinc-900 shadow-geom flex flex-col md:flex-row md:items-center justify-between gap-6 geom-grid-pattern-dark">
-        <div className="space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-zinc-900 text-zinc-300 border border-zinc-800 rounded-sm text-[9px] uppercase font-extrabold tracking-wider">
-            <Shield className="w-3 h-3 text-emerald-400" /> Security Level: System Admin
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Header Info */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-6 gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <Shield className="w-6 h-6 text-emerald-600" />
+                Academic Management Console
+              </h2>
+              <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-1">Configure curriculum structure, question bank, timetables, and assessments.</p>
+            </div>
+            
+            {successMsg && (
+              <div className="flex items-center gap-2 py-2 px-4 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-100 animate-pulse">
+                <Check className="w-4 h-4 text-emerald-600" />
+                {successMsg}
+              </div>
+            )}
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight uppercase text-white">Academic Control Tower</h1>
-          <p className="text-zinc-450 text-xs font-semibold leading-relaxed">
-            Dynamically schedule lessons, append questions, post reference materials, and configure tests.
-          </p>
-        </div>
-        <button 
-          onClick={onRefresh}
-          className="py-1.5 px-3.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 rounded-sm flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-white transition-all cursor-pointer shadow-geom-sm"
-        >
-          <RefreshCw className="w-4 h-4 text-emerald-400" /> Refresh Data
-        </button>
-      </div>
 
-      {successMsg && (
-        <div className="p-4 rounded-md bg-zinc-50 border border-geom-border text-zinc-850 text-xs font-bold flex items-center gap-2.5 shadow-geom-sm">
-          <Check className="w-4.5 h-4.5 text-emerald-600" />
-          <span>{successMsg}</span>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Students Registered</span>
+              <span className="text-4xl font-black text-slate-800">{students.length}</span>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Question Bank</span>
+              <span className="text-4xl font-black text-slate-800">{questions.length} <span className="text-xs font-semibold text-slate-400">items</span></span>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Study Catalog</span>
+              <span className="text-4xl font-black text-slate-800">{materials.length} <span className="text-xs font-semibold text-slate-400">PDFs</span></span>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Schedules Mapped</span>
+              <span className="text-4xl font-black text-slate-800">{timetables.length} <span className="text-xs font-semibold text-slate-400">Days</span></span>
+            </div>
+          </div>
+        </>
       )}
-
-      {/* Aggregate Administrative Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-lg border border-geom-border shadow-geom text-center">
-          <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider block mb-1.5">Students Registered</span>
-          <span className="text-2xl font-bold text-zinc-900 font-mono tracking-tight">{students.length}</span>
-        </div>
-        <div className="bg-white p-5 rounded-lg border border-geom-border shadow-geom text-center">
-          <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider block mb-1.5">Question Bank</span>
-          <span className="text-2xl font-bold text-zinc-900 font-mono tracking-tight">{questions.length} items</span>
-        </div>
-        <div className="bg-white p-5 rounded-lg border border-geom-border shadow-geom text-center">
-          <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider block mb-1.5">Study Catalog</span>
-          <span className="text-2xl font-bold text-zinc-900 font-mono tracking-tight">{materials.length} PDFs</span>
-        </div>
-        <div className="bg-white p-5 rounded-lg border border-geom-border shadow-geom text-center">
-          <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-wider block mb-1.5">Schedules mapped</span>
-          <span className="text-2xl font-bold text-zinc-900 font-mono tracking-tight">{timetables.length} Days</span>
-        </div>
-      </div>
-
-      {/* Internal Subtabs switcher */}
-      <div className="bg-white p-1 rounded-md border border-geom-border shadow-geom flex flex-wrap gap-1">
-        {[
-          { id: 'students', label: 'Students' },
-          { id: 'exams', label: 'Exams' },
-          { id: 'subjects', label: 'Subjects & Chapters' },
-          { id: 'questions', label: 'Question Bank' },
-          { id: 'materials', label: 'Study Material' },
-          { id: 'timetables', label: 'Timetable Scheduling' },
-          { id: 'tests', label: 'Test Configurator' },
-          { id: 'announcements', label: 'Broadcasts & Alerts' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveSubTab(tab.id as any)}
-            className={`py-2 px-4 rounded-sm text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-              activeSubTab === tab.id 
-                ? 'bg-zinc-900 text-white shadow-geom-sm border border-zinc-900' 
-                : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-50'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {/* --- SUBTAB PANELS --- */}
-
-      {/* Tab: Student Registry */}
-      {activeSubTab === 'students' && (
-        <div className="bg-white rounded-lg border border-geom-border p-6 shadow-geom space-y-4">
-          <h3 className="font-extrabold text-zinc-900 text-sm uppercase tracking-wider">Registered Student Roster</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-geom-border bg-zinc-50 text-zinc-500 font-bold uppercase text-[10px] tracking-wider">
-                  <th className="py-3 px-4">Full Name</th>
-                  <th className="py-3 px-4">Email</th>
-                  <th className="py-3 px-4">Student Year Type</th>
-                  <th className="py-3 px-4">Study Plan Option</th>
-                  <th className="py-3 px-4">Active Streak</th>
-                  <th className="py-3 px-4 text-right">Registered</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-geom-border">
-                {students.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-zinc-400 font-medium">
-                      No student accounts registered yet.
-                    </td>
+      <div className="grid grid-cols-1 gap-8 pt-4">
+        {activeTab === 'students' && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-bold text-slate-800">Enrolled Students Database</h3>
+            <div className="overflow-x-auto rounded-xl border border-slate-100">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase">
+                    <th className="p-4">Name</th>
+                    <th className="p-4">Email</th>
+                    <th className="p-4">Track Type</th>
+                    <th className="p-4">Registered On</th>
                   </tr>
-                ) : (
-                  students.map(st => (
-                    <tr key={st.uid} className="hover:bg-zinc-50/30 transition-all">
-                      <td className="py-3 px-4 font-bold text-zinc-900">{st.name}</td>
-                      <td className="py-3 px-4 text-zinc-500 font-medium">{st.email}</td>
-                      <td className="py-3 px-4 font-semibold">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[9px] uppercase font-bold tracking-wider bg-zinc-50 border border-geom-border text-zinc-600">
-                          {st.studentType ? st.studentType.replace('_', ' ') : 'N/A'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-semibold">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-sm text-[9px] uppercase font-bold tracking-wider bg-zinc-50 border border-geom-border text-zinc-600">
-                          {st.studyPlan || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono font-bold text-emerald-600">
-                        {st.streak || 1} Days
-                      </td>
-                      <td className="py-3 px-4 text-right text-zinc-400 font-medium">
-                        {st.createdAt ? new Date(st.createdAt).toLocaleDateString() : 'N/A'}
-                      </td>
+                </thead>
+                <tbody>
+                  {students.map((student) => (
+                    <tr key={student.uid} className="border-b border-slate-100 hover:bg-slate-50 font-semibold text-slate-700">
+                      <td className="p-4 font-bold text-slate-900">{student.name}</td>
+                      <td className="p-4">{student.email}</td>
+                      <td className="p-4 capitalize">{student.studentType || 'N/A'}</td>
+                      <td className="p-4">{new Date(student.createdAt).toLocaleDateString()}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Dynamic Exams */}
-      {activeSubTab === 'exams' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4 h-fit">
-            <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider">Add New Exam Tracker</h3>
-            <form onSubmit={handleCreateExam} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Exam Type</label>
-                <select
-                  value={examForm.type}
-                  onChange={(e) => setExamForm(prev => ({ ...prev, type: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                >
-                  <option value="entrance">Entrance Exam</option>
-                  <option value="competitive">Competitive Exam</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Exam Code / ID</label>
-                <input
-                  type="text"
-                  placeholder="e.g. jee-main"
-                  value={examForm.id}
-                  onChange={(e) => setExamForm(prev => ({ ...prev, id: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Display Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. JEE Main"
-                  value={examForm.name}
-                  onChange={(e) => setExamForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Description</label>
-                <textarea
-                  placeholder="Short brief of this examination syllabus..."
-                  value={examForm.description}
-                  onChange={(e) => setExamForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950 h-20"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs"
-              >
-                {loading ? 'Creating...' : 'Register Exam'}
-              </button>
-            </form>
-          </div>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-5">
-            <h3 className="font-extrabold text-zinc-900 text-sm uppercase tracking-wider">Active Exam Trackers</h3>
-            
-            <div className="space-y-5">
-              <div>
-                <h4 className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 mb-2.5">Entrance Exams</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {entranceExams.map(exam => (
-                    <div key={exam.id} className="p-3.5 bg-zinc-50 border border-geom-border rounded-md flex justify-between items-start hover:border-zinc-350 transition-all">
-                      <div>
-                        <h5 className="font-bold text-zinc-900 text-xs">{exam.name}</h5>
-                        <p className="text-[10px] text-zinc-500 mt-1 font-medium">{exam.description}</p>
-                      </div>
-                      <button 
-                        onClick={() => handleDeleteExam(exam.id, 'entrance')}
-                        className="text-zinc-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
                   ))}
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-geom-border">
-                <h4 className="text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 mb-2.5">Competitive Exams</h4>
-                {competitiveExams.length === 0 ? (
-                  <p className="text-xs text-zinc-400 font-medium">No dynamic competitive exams mapped.</p>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {competitiveExams.map(exam => (
-                      <div key={exam.id} className="p-3.5 bg-zinc-50 border border-geom-border rounded-md flex justify-between items-start hover:border-zinc-350 transition-all">
-                        <div>
-                          <h5 className="font-bold text-zinc-900 text-xs">{exam.name}</h5>
-                          <p className="text-[10px] text-zinc-500 mt-1 font-medium">{exam.description}</p>
-                        </div>
-                        <button 
-                          onClick={() => handleDeleteExam(exam.id, 'competitive')}
-                          className="text-zinc-400 hover:text-red-600 p-1 cursor-pointer transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Tab: Subjects & Chapters */}
-      {activeSubTab === 'subjects' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Create Subject */}
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-            <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider">Add Subject</h3>
-            <form onSubmit={handleCreateSubject} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Subject ID Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. physics"
-                  value={subjectForm.id}
-                  onChange={(e) => setSubjectForm(prev => ({ ...prev, id: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Subject Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Physics"
-                  value={subjectForm.name}
-                  onChange={(e) => setSubjectForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Map to Exam</label>
-                <select
-                  value={subjectForm.examId}
-                  onChange={(e) => setSubjectForm(prev => ({ ...prev, examId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Exam --</option>
-                  {[...entranceExams, ...competitiveExams].map(ex => (
-                    <option key={ex.id} value={ex.id}>{ex.name}</option>
-                  ))}
-                </select>
-              </div>
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs"
-              >
-                Register Subject
-              </button>
-            </form>
-          </div>
-
-          {/* Create Chapter */}
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-            <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider">Add Chapter under Subject</h3>
-            <form onSubmit={handleCreateChapter} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Parent Subject</label>
-                <select
-                  value={chapterForm.subjectId}
-                  onChange={(e) => setChapterForm(prev => ({ ...prev, subjectId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Subject --</option>
-                  {subjects.map(sub => (
-                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Chapter ID Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. kinematics"
-                  value={chapterForm.id}
-                  onChange={(e) => setChapterForm(prev => ({ ...prev, id: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Chapter Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Kinematics"
-                  value={chapterForm.name}
-                  onChange={(e) => setChapterForm(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs"
-              >
-                Register Chapter
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Study Material */}
-      {activeSubTab === 'materials' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4 h-fit">
-            <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider">Post Study Reference</h3>
-            <form onSubmit={handleCreateMaterial} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Exam Track</label>
-                <select
-                  value={materialForm.examId}
-                  onChange={(e) => setMaterialForm(prev => ({ ...prev, examId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Exam --</option>
-                  {[...entranceExams, ...competitiveExams].map(ex => (
-                    <option key={ex.id} value={ex.id}>{ex.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Subject</label>
-                <select
-                  value={materialForm.subjectId}
-                  onChange={(e) => setMaterialForm(prev => ({ ...prev, subjectId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Subject --</option>
-                  {subjects.map(sub => (
-                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Chapter</label>
-                <select
-                  value={materialForm.chapterId}
-                  onChange={(e) => setMaterialForm(prev => ({ ...prev, chapterId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Chapter --</option>
-                  {chapters.filter(c => !materialForm.subjectId || c.subjectId === materialForm.subjectId).map(ch => (
-                    <option key={ch.id} value={ch.id}>{ch.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Format</label>
-                <select
-                  value={materialForm.type}
-                  onChange={(e) => setMaterialForm(prev => ({ ...prev, type: e.target.value as any }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                >
-                  <option value="pdf">PDF Download</option>
-                  <option value="notes">Quick Revision Notes</option>
-                  <option value="link">Reference Web Link</option>
-                  <option value="video">Video Lecture</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Kinematics Revision Sheet"
-                  value={materialForm.title}
-                  onChange={(e) => setMaterialForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">File or Reference URL</label>
-                <input
-                  type="text"
-                  placeholder="https://example.com/material.pdf"
-                  value={materialForm.url}
-                  onChange={(e) => setMaterialForm(prev => ({ ...prev, url: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Description</label>
-                <textarea
-                  placeholder="Short brief of topics compiled..."
-                  value={materialForm.description}
-                  onChange={(e) => setMaterialForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950 h-20"
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs"
-              >
-                Publish Material
-              </button>
-            </form>
-          </div>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-            <h3 className="font-extrabold text-zinc-900 text-sm uppercase tracking-wider">Study Catalog Lists</h3>
-            <div className="space-y-3">
-              {materials.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400 font-semibold">No materials posted yet.</div>
-              ) : (
-                materials.map(mat => (
-                  <div key={mat.id} className="p-3.5 bg-zinc-50 border border-geom-border rounded-md flex justify-between items-center text-xs hover:border-zinc-350 transition-all">
-                    <div>
-                      <h5 className="font-bold text-zinc-900">{mat.title}</h5>
-                      <span className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider block mt-1">
-                        Type: {mat.type.toUpperCase()} • Subject: {mat.subjectId}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => handleDeleteItem('studyMaterials', mat.id)}
-                      className="text-zinc-400 hover:text-red-650 cursor-pointer p-1 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Question Bank */}
-      {activeSubTab === 'questions' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4 h-fit">
-            <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider">Add MCQ Item</h3>
-            <form onSubmit={handleCreateQuestion} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Parent Subject</label>
-                <select
-                  value={questionForm.subjectId}
-                  onChange={(e) => setQuestionForm(prev => ({ ...prev, subjectId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Subject --</option>
-                  {subjects.map(sub => (
-                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Parent Chapter</label>
-                <select
-                  value={questionForm.chapterId}
-                  onChange={(e) => setQuestionForm(prev => ({ ...prev, chapterId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Chapter --</option>
-                  {chapters.filter(c => !questionForm.subjectId || c.subjectId === questionForm.subjectId).map(ch => (
-                    <option key={ch.id} value={ch.id}>{ch.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Question Body</label>
-                <textarea
-                  placeholder="Enter standard question text..."
-                  value={questionForm.questionText}
-                  onChange={(e) => setQuestionForm(prev => ({ ...prev, questionText: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950 h-20"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+        {activeTab === 'exams' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Register New Academic Target</h3>
+              <form onSubmit={handleCreateExam} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Option A</label>
-                  <input type="text" placeholder="Option A" value={questionForm.oA} onChange={(e) => setQuestionForm(prev => ({ ...prev, oA: e.target.value }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" required />
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Target ID (e.g. jee-main)</label>
+                  <input
+                    type="text"
+                    value={examForm.id}
+                    onChange={(e) => setExamForm({ ...examForm, id: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Option B</label>
-                  <input type="text" placeholder="Option B" value={questionForm.oB} onChange={(e) => setQuestionForm(prev => ({ ...prev, oB: e.target.value }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" required />
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={examForm.name}
+                    onChange={(e) => setExamForm({ ...examForm, name: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Option C</label>
-                  <input type="text" placeholder="Option C" value={questionForm.oC} onChange={(e) => setQuestionForm(prev => ({ ...prev, oC: e.target.value }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" required />
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Description</label>
+                  <textarea
+                    value={examForm.description}
+                    onChange={(e) => setExamForm({ ...examForm, description: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none h-20"
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Option D</label>
-                  <input type="text" placeholder="Option D" value={questionForm.oD} onChange={(e) => setQuestionForm(prev => ({ ...prev, oD: e.target.value }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" required />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Correct Answer Index</label>
-                <select
-                  value={questionForm.correctAnswerIndex}
-                  onChange={(e) => setQuestionForm(prev => ({ ...prev, correctAnswerIndex: Number(e.target.value) }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                >
-                  <option value={0}>Option A</option>
-                  <option value={1}>Option B</option>
-                  <option value={2}>Option C</option>
-                  <option value={3}>Option D</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Detailed Explanation</label>
-                <textarea
-                  placeholder="Write the formal derivation/solution justification..."
-                  value={questionForm.explanation}
-                  onChange={(e) => setQuestionForm(prev => ({ ...prev, explanation: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950 h-20"
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs"
-              >
-                Commit Question
-              </button>
-            </form>
-          </div>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-            <h3 className="font-extrabold text-zinc-900 text-sm uppercase tracking-wider">Question Bank Matrix</h3>
-            <div className="space-y-3">
-              {questions.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400 font-semibold">No questions in the central bank yet.</div>
-              ) : (
-                questions.map(q => (
-                  <div key={q.id} className="p-3.5 bg-zinc-50 border border-geom-border rounded-md flex justify-between items-start text-xs hover:border-zinc-350 transition-all">
-                    <div className="space-y-1.5">
-                      <span className="inline-flex items-center px-2 py-0.5 bg-zinc-900 text-zinc-100 font-bold text-[8px] rounded-sm uppercase tracking-wider">
-                        {q.subjectId}
-                      </span>
-                      <p className="font-bold text-zinc-900 line-clamp-2 leading-relaxed">{q.questionText}</p>
-                    </div>
-                    <button 
-                      onClick={() => handleDeleteItem('questions', q.id)}
-                      className="text-zinc-400 hover:text-red-655 p-1 cursor-pointer transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Timetable Scheduling */}
-      {activeSubTab === 'timetables' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4 h-fit">
-            <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider">Create Daily Study Slot</h3>
-            <form onSubmit={handleCreateTimetable} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Target Exam</label>
-                <select
-                  value={timetableForm.examId}
-                  onChange={(e) => setTimetableForm(prev => ({ ...prev, examId: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                >
-                  <option value="">-- Choose Exam --</option>
-                  {[...entranceExams, ...competitiveExams].map(ex => (
-                    <option key={ex.id} value={ex.id}>{ex.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Student Year Track</label>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Exam Type</label>
                   <select
-                    value={timetableForm.studentType}
-                    onChange={(e) => setTimetableForm(prev => ({ ...prev, studentType: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
+                    value={examForm.type}
+                    onChange={(e) => setExamForm({ ...examForm, type: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
                   >
-                    <option value="first_year">1st Year</option>
-                    <option value="second_year">2nd Year</option>
-                    <option value="long_term">Long Term</option>
+                    <option value="entrance">Entrance Test</option>
+                    <option value="competitive">Competitive Exam</option>
                   </select>
                 </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="py-2 px-6 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Create Target
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Active Target Profiles</h3>
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Study Plan Duration</label>
-                  <select
-                    value={timetableForm.studyPlan}
-                    onChange={(e) => setTimetableForm(prev => ({ ...prev, studyPlan: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  >
-                    <option value="quarterly">Quarterly</option>
-                    <option value="half_yearly">Half Yearly</option>
-                    <option value="academic_year">Academic Year</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
+                  <h4 className="font-bold text-xs uppercase text-slate-400 mb-2">Entrance Exams</h4>
+                  {entranceExams.map(ex => (
+                    <div key={ex.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-2xl mb-2 text-xs">
+                      <span className="font-bold text-slate-800">{ex.name}</span>
+                      <button onClick={() => handleDeleteExam(ex.id, 'entrance')} className="text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <h4 className="font-bold text-xs uppercase text-slate-400 mb-2">Competitive Exams</h4>
+                  {competitiveExams.map(ex => (
+                    <div key={ex.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-2xl mb-2 text-xs">
+                      <span className="font-bold text-slate-800">{ex.name}</span>
+                      <button onClick={() => handleDeleteExam(ex.id, 'competitive')} className="text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'subjects' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Create Academic Subject</h3>
+              <form onSubmit={handleCreateSubject} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Subject</label>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Subject ID (e.g. organic-chemistry)</label>
+                  <input
+                    type="text"
+                    value={subjectForm.id}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, id: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={subjectForm.name}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, name: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Map to Target Exam</label>
                   <select
-                    value={timetableForm.subjectId}
-                    onChange={(e) => setTimetableForm(prev => ({ ...prev, subjectId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
+                    value={subjectForm.examId}
+                    onChange={(e) => setSubjectForm({ ...subjectForm, examId: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
                     required
                   >
-                    <option value="">-- Subject --</option>
-                    {subjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
+                    <option value="">Select Target Exam</option>
+                    {[...entranceExams, ...competitiveExams].map(ex => (
+                      <option key={ex.id} value={ex.id}>{ex.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="py-2 px-6 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Create Subject
+                </button>
+              </form>
+
+              <hr className="border-slate-100 my-6" />
+
+              <h3 className="text-lg font-bold text-slate-800">Create Chapter Mapping</h3>
+              <form onSubmit={handleCreateChapter} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Chapter ID (e.g. chemical-bonding)</label>
+                  <input
+                    type="text"
+                    value={chapterForm.id}
+                    onChange={(e) => setChapterForm({ ...chapterForm, id: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Name / Title</label>
+                  <input
+                    type="text"
+                    value={chapterForm.name}
+                    onChange={(e) => setChapterForm({ ...chapterForm, name: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Belongs to Subject</label>
+                  <select
+                    value={chapterForm.subjectId}
+                    onChange={(e) => setChapterForm({ ...chapterForm, subjectId: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  >
+                    <option value="">Select Subject</option>
+                    {subjects.map(sub => (
+                      <option key={sub.id} value={sub.id}>{sub.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="py-2 px-6 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Create Chapter
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Academic Structure</h3>
+              <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+                {subjects.map(sub => {
+                  const subChapters = chapters.filter(c => c.subjectId === sub.id);
+                  return (
+                    <div key={sub.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-xs space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-slate-950 text-sm">{sub.name}</span>
+                        <button onClick={() => handleDeleteSubject(sub.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                      <div className="pl-4 border-l border-slate-200 space-y-2">
+                        {subChapters.map(ch => (
+                          <div key={ch.id} className="flex justify-between items-center py-1">
+                            <span className="font-semibold text-slate-700">{ch.name}</span>
+                            <button onClick={() => handleDeleteChapter(ch.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-3.5 h-3.5" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'questions' && (
+          <div className="space-y-6">
+            <h3 className="text-lg font-bold text-slate-800">Central Question Bank Management</h3>
+            <form onSubmit={handleCreateQuestion} className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Subject</label>
+                  <select
+                    value={questionForm.subjectId}
+                    onChange={(e) => setQuestionForm({ ...questionForm, subjectId: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    required
+                  >
+                    <option value="">Select Subject</option>
+                    {subjects.map(sub => (
+                      <option key={sub.id} value={sub.id}>{sub.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Chapter</label>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Chapter</label>
                   <select
-                    value={timetableForm.chapterId}
-                    onChange={(e) => setTimetableForm(prev => ({ ...prev, chapterId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
+                    value={questionForm.chapterId}
+                    onChange={(e) => setQuestionForm({ ...questionForm, chapterId: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
                     required
                   >
-                    <option value="">-- Chapter --</option>
-                    {chapters.filter(c => !timetableForm.subjectId || c.subjectId === timetableForm.subjectId).map(ch => (
+                    <option value="">Select Chapter</option>
+                    {chapters.filter(c => c.subjectId === questionForm.subjectId).map(ch => (
                       <option key={ch.id} value={ch.id}>{ch.name}</option>
                     ))}
                   </select>
                 </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Execution Date</label>
-                <input
-                  type="date"
-                  value={timetableForm.date}
-                  onChange={(e) => setTimetableForm(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Schedule Slot Title</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Morning Kinematics Practice"
-                  value={timetableForm.title}
-                  onChange={(e) => setTimetableForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Study Material instructions</label>
-                <textarea
-                  placeholder="What topics should they study?"
-                  value={timetableForm.studyTopic}
-                  onChange={(e) => setTimetableForm(prev => ({ ...prev, studyTopic: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950 h-20"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Practice MCQ Limit</label>
-                  <input type="number" value={timetableForm.practiceMCQsCount} onChange={(e) => setTimetableForm(prev => ({ ...prev, practiceMCQsCount: Number(e.target.value) }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" required />
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Question Content</label>
+                  <textarea
+                    value={questionForm.questionText}
+                    onChange={(e) => setQuestionForm({ ...questionForm, questionText: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none h-24"
+                    placeholder="Enter mathematical equations, chemical formulae or reasoning prompt..."
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Revision topic</label>
-                  <input type="text" placeholder="Formula revision" value={timetableForm.revisionTopic} onChange={(e) => setTimetableForm(prev => ({ ...prev, revisionTopic: e.target.value }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" />
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Answer Explanation</label>
+                  <textarea
+                    value={questionForm.explanation}
+                    onChange={(e) => setQuestionForm({ ...questionForm, explanation: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none h-20"
+                    placeholder="Explain why correct answer index is right..."
+                  />
                 </div>
               </div>
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs"
-              >
-                Commit Day Slot
-              </button>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Option A</label>
+                    <input type="text" value={questionForm.oA} onChange={(e) => setQuestionForm({ ...questionForm, oA: e.target.value })} className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Option B</label>
+                    <input type="text" value={questionForm.oB} onChange={(e) => setQuestionForm({ ...questionForm, oB: e.target.value })} className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Option C</label>
+                    <input type="text" value={questionForm.oC} onChange={(e) => setQuestionForm({ ...questionForm, oC: e.target.value })} className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Option D</label>
+                    <input type="text" value={questionForm.oD} onChange={(e) => setQuestionForm({ ...questionForm, oD: e.target.value })} className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Correct Index (0-3)</label>
+                    <select
+                      value={questionForm.correctAnswerIndex}
+                      onChange={(e) => setQuestionForm({ ...questionForm, correctAnswerIndex: parseInt(e.target.value, 10) })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    >
+                      <option value={0}>Option A (0)</option>
+                      <option value={1}>Option B (1)</option>
+                      <option value={2}>Option C (2)</option>
+                      <option value={3}>Option D (3)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Difficulty</label>
+                    <select
+                      value={questionForm.difficulty}
+                      onChange={(e) => setQuestionForm({ ...questionForm, difficulty: e.target.value as any })}
+                      className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Allot Marks</label>
+                    <input type="number" value={questionForm.marks} onChange={(e) => setQuestionForm({ ...questionForm, marks: parseInt(e.target.value, 10) })} className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer"
+                >
+                  Link to Question Bank
+                </button>
+              </div>
             </form>
           </div>
+        )}
 
-          <div className="md:col-span-2 bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-            <h3 className="font-extrabold text-zinc-900 text-sm uppercase tracking-wider">Active Academic Schedules</h3>
-            <div className="space-y-3">
-              {timetables.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400 font-semibold">No daily schedules mapped yet.</div>
-              ) : (
-                timetables.map(tt => (
-                  <div key={tt.id} className="p-3.5 bg-zinc-50 border border-geom-border rounded-md flex justify-between items-center text-xs hover:border-zinc-350 transition-all">
-                    <div>
-                      <h5 className="font-bold text-zinc-900">{tt.title}</h5>
-                      <span className="text-[10px] text-zinc-450 font-bold uppercase tracking-wider block mt-1">
-                        Date: {tt.date} • Exam: {tt.examId} • Study plan: {tt.studyPlan}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={() => handleDeleteItem('timetables', tt.id)}
-                      className="text-zinc-400 hover:text-red-655 cursor-pointer p-1 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Test Configurator */}
-      {activeSubTab === 'tests' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4 h-fit">
-            <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider">Configure Mock Exam</h3>
-            <form onSubmit={handleCreateTest} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Exam Title</label>
-                <input
-                  type="text"
-                  placeholder="Weekly Test: Mechanics Mastery"
-                  value={testForm.title}
-                  onChange={(e) => setTestForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Brief Description</label>
-                <textarea
-                  placeholder="Testing guidelines and curriculum tested..."
-                  value={testForm.description}
-                  onChange={(e) => setTestForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950 h-16"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+        {activeTab === 'materials' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Publish Study Resource</h3>
+              <form onSubmit={handleCreateMaterial} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Format Type</label>
-                  <select
-                    value={testForm.type}
-                    onChange={(e) => setTestForm(prev => ({ ...prev, type: e.target.value as any }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                  >
-                    <option value="weekly">Weekly Test</option>
-                    <option value="monthly">Monthly Test</option>
-                    <option value="practice">Practice Quiz</option>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Resource ID</label>
+                  <input type="text" value={materialForm.id} onChange={(e) => setMaterialForm({ ...materialForm, id: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Title</label>
+                  <input type="text" value={materialForm.title} onChange={(e) => setMaterialForm({ ...materialForm, title: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Resource URL (e.g. PDF/Video URL)</label>
+                  <input type="text" value={materialForm.url} onChange={(e) => setMaterialForm({ ...materialForm, url: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Exam Type</label>
+                    <select value={materialForm.examId} onChange={(e) => setMaterialForm({ ...materialForm, examId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required>
+                      <option value="">Select Exam</option>
+                      {[...entranceExams, ...competitiveExams].map(ex => (
+                        <option key={ex.id} value={ex.id}>{ex.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Subject</label>
+                    <select value={materialForm.subjectId} onChange={(e) => setMaterialForm({ ...materialForm, subjectId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required>
+                      <option value="">Select Subject</option>
+                      {subjects.map(sub => (
+                        <option key={sub.id} value={sub.id}>{sub.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Chapter</label>
+                    <select value={materialForm.chapterId} onChange={(e) => setMaterialForm({ ...materialForm, chapterId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required>
+                      <option value="">Select Chapter</option>
+                      {chapters.filter(c => c.subjectId === materialForm.subjectId).map(ch => (
+                        <option key={ch.id} value={ch.id}>{ch.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Resource Type</label>
+                  <select value={materialForm.type} onChange={(e) => setMaterialForm({ ...materialForm, type: e.target.value as any })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none">
+                    <option value="pdf">PDF File</option>
+                    <option value="notes">Text Notes</option>
+                    <option value="video">Video Reference</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Duration (min)</label>
-                  <input type="number" value={testForm.duration} onChange={(e) => setTestForm(prev => ({ ...prev, duration: Number(e.target.value) }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" required />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Total Max Marks</label>
-                  <input type="number" value={testForm.totalMarks} onChange={(e) => setTestForm(prev => ({ ...prev, totalMarks: Number(e.target.value) }))} className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950" required />
-                </div>
-                <div className="flex items-center gap-2 pt-6">
-                  <input type="checkbox" checked={testForm.negativeMarking} onChange={(e) => setTestForm(prev => ({ ...prev, negativeMarking: e.target.checked }))} className="rounded accent-zinc-900 w-4 h-4 cursor-pointer" />
-                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider cursor-pointer">Apply Negatives</label>
-                </div>
-              </div>
-              <div className="p-3 bg-zinc-50 rounded-md border border-geom-border text-[11px] text-zinc-600 font-medium">
-                <span className="font-extrabold text-zinc-900 block mb-1 uppercase tracking-wider text-[10px]">Selected Questions ({testForm.selectedQIds.length}):</span>
-                {testForm.selectedQIds.length === 0 ? 'No questions linked. Tick questions in the panel beside.' : `Associated: ${testForm.selectedQIds.join(', ')}`}
-              </div>
-              <button 
-                type="submit" 
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs"
-              >
-                Publish Mock Exam
-              </button>
-            </form>
-          </div>
+                <button type="submit" disabled={loading} className="py-2 px-6 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer">Publish Resource</button>
+              </form>
+            </div>
 
-          <div className="md:col-span-2 bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-            <h3 className="font-extrabold text-zinc-900 text-sm uppercase tracking-wider">Select Question bank Items to Pack in Test</h3>
-            <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
-              {questions.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400 font-semibold">No questions available in the question bank yet.</div>
-              ) : (
-                questions.map(q => {
-                  const active = testForm.selectedQIds.includes(q.id);
-                  return (
-                    <div 
-                      key={q.id} 
-                      onClick={() => toggleFormQSelection(q.id)}
-                      className={`p-3.5 rounded-md border transition-all cursor-pointer flex items-center justify-between text-xs ${
-                        active 
-                          ? 'bg-zinc-900 border-zinc-950 text-white' 
-                          : 'bg-zinc-50 border-geom-border hover:bg-zinc-100 text-zinc-600'
-                      }`}
-                    >
-                      <div className="space-y-1">
-                        <span className={`font-bold text-[10px] uppercase tracking-wider ${active ? 'text-zinc-300' : 'text-zinc-800'}`}>
-                          ID: {q.id} ({q.subjectId})
-                        </span>
-                        <p className={`line-clamp-1 leading-relaxed ${active ? 'text-zinc-100' : 'text-zinc-650'}`}>{q.questionText}</p>
-                      </div>
-                      {active ? (
-                        <Check className="w-4.5 h-4.5 text-zinc-100" />
-                      ) : (
-                        <div className="w-4 h-4 rounded-sm border border-zinc-300 bg-white"></div>
-                      )}
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Linked Study Resources</h3>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                {materials.map(mat => (
+                  <div key={mat.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs">
+                    <div>
+                      <span className="font-bold block text-slate-950">{mat.title}</span>
+                      <span className="text-xs text-slate-400 uppercase font-semibold">{mat.type} - {mat.url.substring(0, 40)}...</span>
                     </div>
-                  );
-                })
-              )}
+                    <button onClick={() => handleDeleteMaterial(mat.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Tab: Announcements & Alerts */}
-      {activeSubTab === 'announcements' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Form: Broadcast Announcement */}
-            <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-              <div>
-                <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <Volume2 className="w-4.5 h-4.5 text-zinc-800" /> Broadcast Academic Bulletin
-                </h3>
-                <p className="text-zinc-500 text-[10px] mt-0.5">Post an announcement that appears on student dashboards.</p>
+        {activeTab === 'timetables' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Define Academic Daily Slot</h3>
+              <form onSubmit={handleCreateTimetable} className="space-y-4 text-xs">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Slot ID</label>
+                    <input type="text" value={timetableForm.id} onChange={(e) => setTimetableForm({ ...timetableForm, id: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Date</label>
+                    <input type="date" value={timetableForm.date} onChange={(e) => setTimetableForm({ ...timetableForm, date: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Target Exam</label>
+                    <select value={timetableForm.examId} onChange={(e) => setTimetableForm({ ...timetableForm, examId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required>
+                      <option value="">Select Exam</option>
+                      {[...entranceExams, ...competitiveExams].map(ex => (
+                        <option key={ex.id} value={ex.id}>{ex.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Student Track</label>
+                    <select value={timetableForm.studentType} onChange={(e) => setTimetableForm({ ...timetableForm, studentType: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required>
+                      <option value="long_term">Long Term</option>
+                      <option value="regular_11">Senior Intermediate</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Subject</label>
+                    <select value={timetableForm.subjectId} onChange={(e) => setTimetableForm({ ...timetableForm, subjectId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required>
+                      <option value="">Select Subject</option>
+                      {subjects.map(sub => (
+                        <option key={sub.id} value={sub.id}>{sub.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Study Topic Title</label>
+                  <input type="text" value={timetableForm.title} onChange={(e) => setTimetableForm({ ...timetableForm, title: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" placeholder="e.g. Friction and laws of motion practice" required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Practice MCQ Target</label>
+                    <input type="number" value={timetableForm.practiceMCQsCount} onChange={(e) => setTimetableForm({ ...timetableForm, practiceMCQsCount: parseInt(e.target.value, 10) })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Revision Topic</label>
+                    <input type="text" value={timetableForm.revisionTopic} onChange={(e) => setTimetableForm({ ...timetableForm, revisionTopic: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" placeholder="e.g. kinematics basics" />
+                  </div>
+                </div>
+                <button type="submit" disabled={loading} className="py-2 px-6 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer">Publish Daily Slot</button>
+              </form>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Published Schedule Entries</h3>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                {timetables.map(tb => (
+                  <div key={tb.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs">
+                    <div>
+                      <span className="font-bold text-slate-950 block">{tb.studyTopic}</span>
+                      <span className="text-xs text-slate-400 font-semibold uppercase">{tb.date} - MCQs: {tb.practiceMCQsCount}</span>
+                    </div>
+                    <button onClick={() => handleDeleteTimetable(tb.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                ))}
               </div>
+            </div>
+          </div>
+        )}
 
-              <form onSubmit={handleCreateAnnouncement} className="space-y-3.5 text-xs">
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Bulletin Title</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mechanics Homework Deadline Extended"
-                    value={announcementForm.title}
-                    onChange={(e) => setAnnouncementForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                    required
-                  />
+        {activeTab === 'tests' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Publish Evaluation Test</h3>
+              <form onSubmit={handleCreateTest} className="space-y-4 text-xs">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Test ID</label>
+                    <input type="text" value={testForm.id} onChange={(e) => setTestForm({ ...testForm, id: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Title</label>
+                    <input type="text" value={testForm.title} onChange={(e) => setTestForm({ ...testForm, title: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" required />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Content Body</label>
-                  <textarea
-                    rows={4}
-                    placeholder="Provide detailed instructions, updates, or hyperlinks..."
-                    value={announcementForm.content}
-                    onChange={(e) => setAnnouncementForm(prev => ({ ...prev, content: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                    required
-                  />
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Instructions / Description</label>
+                  <textarea value={testForm.description} onChange={(e) => setTestForm({ ...testForm, description: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none h-20" />
                 </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Duration (Mins)</label>
+                    <input type="number" value={testForm.duration} onChange={(e) => setTestForm({ ...testForm, duration: parseInt(e.target.value, 10) })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Total Marks</label>
+                    <input type="number" value={testForm.totalMarks} onChange={(e) => setTestForm({ ...testForm, totalMarks: parseInt(e.target.value, 10) })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Type</label>
+                    <select value={testForm.type} onChange={(e) => setTestForm({ ...testForm, type: e.target.value as any })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none">
+                      <option value="weekly">Weekly Mock</option>
+                      <option value="monthly">Monthly Mock</option>
+                      <option value="practice">Practice Quiz</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 py-2">
+                  <input type="checkbox" checked={testForm.isFullSyllabus} onChange={(e) => setTestForm({ ...testForm, isFullSyllabus: e.target.checked })} id="syllabus-mode" />
+                  <label htmlFor="syllabus-mode" className="font-bold text-slate-600">This is a Full-Syllabus Grand Mock Test</label>
+                </div>
+
+                {!testForm.isFullSyllabus && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Subject</label>
+                      <select value={testForm.subjectId} onChange={(e) => setTestForm({ ...testForm, subjectId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none">
+                        <option value="">Select Subject</option>
+                        {subjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Chapter</label>
+                      <select value={testForm.chapterId} onChange={(e) => setTestForm({ ...testForm, chapterId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none">
+                        <option value="">Select Chapter</option>
+                        {chapters.filter(c => c.subjectId === testForm.subjectId).map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Target Exams (Optional)</label>
-                  <p className="text-[10px] text-zinc-450 mb-1.5">Leave empty to broadcast to all students, or select specific targets:</p>
-                  <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto border border-geom-border p-2.5 rounded-md bg-zinc-50/50">
-                    {[...entranceExams, ...competitiveExams].map(ex => {
-                      const selected = announcementForm.targetExams.includes(ex.id);
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-2">Select Questions from Central Bank</label>
+                  <div className="border border-slate-100 rounded-2xl max-h-[250px] overflow-y-auto p-3 space-y-2 bg-slate-50">
+                    {questions.map(q => {
+                      const isSelected = testForm.selectedQIds.includes(q.id);
                       return (
-                        <div 
-                          key={ex.id}
-                          onClick={() => {
-                            setAnnouncementForm(prev => {
-                              const updated = prev.targetExams.includes(ex.id)
-                                ? prev.targetExams.filter(id => id !== ex.id)
-                                : [...prev.targetExams, ex.id];
-                              return { ...prev, targetExams: updated };
-                            });
-                          }}
-                          className={`p-1.5 rounded border text-[10px] font-bold cursor-pointer transition-all flex items-center justify-between ${
-                            selected ? 'bg-zinc-900 text-white border-zinc-950' : 'bg-white border-geom-border hover:bg-zinc-100 text-zinc-600'
-                          }`}
-                        >
-                          <span className="truncate">{ex.name}</span>
-                          {selected && <Check className="w-3 h-3 text-white shrink-0" />}
+                        <div key={q.id} className="flex items-start gap-2 p-2 bg-white rounded border border-slate-100">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTestForm({ ...testForm, selectedQIds: [...testForm.selectedQIds, q.id] });
+                              } else {
+                                setTestForm({ ...testForm, selectedQIds: testForm.selectedQIds.filter(id => id !== q.id) });
+                              }
+                            }}
+                            className="mt-0.5"
+                          />
+                          <div>
+                            <span className="font-bold text-slate-900 line-clamp-1">{q.questionText}</span>
+                            <span className="text-[10px] uppercase font-bold text-emerald-600 block">Marks: {q.marks} | Difficulty: {q.difficulty}</span>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs flex items-center justify-center gap-1.5"
-                >
-                  <Volume2 className="w-4 h-4" /> Broadcast Bulletin
-                </button>
+
+                <button type="submit" disabled={loading} className="py-2 px-6 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer">Publish Mock Test</button>
               </form>
             </div>
 
-            {/* Form: Dispatch Personal Student Alert */}
-            <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-              <div>
-                <h3 className="font-extrabold text-zinc-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                  <Bell className="w-4.5 h-4.5 text-zinc-800" /> Dispatch Personal Student Alert
-                </h3>
-                <p className="text-zinc-500 text-[10px] mt-0.5">Send a target real-time notification alert directly to a specific student feed.</p>
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Active Academic Tests</h3>
+              <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                {tests.map(t => (
+                  <div key={t.id} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs">
+                    <div>
+                      <span className="font-bold text-slate-950 block">{t.title}</span>
+                      <span className="text-xs text-slate-400 font-semibold uppercase">{t.type} - Duration: {t.duration} Mins - Questions: {t.questionIds.length}</span>
+                    </div>
+                    <button onClick={() => handleDeleteTest(t.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                ))}
               </div>
+            </div>
+          </div>
+        )}
 
-              <form onSubmit={handleCreateNotification} className="space-y-3.5 text-xs">
+        {activeTab === 'announcements' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-xs">
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Broadcast Device Notification</h3>
+              <form onSubmit={handleSendNotification} className="space-y-4 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Select Target Student</label>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Target Student</label>
                   <select
                     value={notificationForm.studentId}
-                    onChange={(e) => setNotificationForm(prev => ({ ...prev, studentId: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
-                    required
+                    onChange={(e) => setNotificationForm({ ...notificationForm, studentId: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
                   >
-                    <option value="">-- Choose Student --</option>
-                    <option value="all">Broadcast Alert to All Registered Students</option>
-                    {students.map(std => (
-                      <option key={std.uid} value={std.uid}>{std.name} ({std.email})</option>
+                    <option value="">Broadcast to All Students</option>
+                    {students.map(s => (
+                      <option key={s.uid} value={s.uid}>{s.name} ({s.email})</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Alert Subject Title</label>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Alert Title</label>
                   <input
                     type="text"
-                    placeholder="e.g. Schedule Change: Maths Lesson"
                     value={notificationForm.title}
-                    onChange={(e) => setNotificationForm(prev => ({ ...prev, title: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
+                    onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none"
+                    placeholder="e.g. Schedule Maintenance or Timetable Changed"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Alert Message Body</label>
+                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Alert Message</label>
                   <textarea
-                    rows={4}
-                    placeholder="Write a clear, concise alert instruction..."
                     value={notificationForm.message}
-                    onChange={(e) => setNotificationForm(prev => ({ ...prev, message: e.target.value }))}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 font-semibold focus:outline-none focus:border-zinc-950"
+                    onChange={(e) => setNotificationForm({ ...notificationForm, message: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-900 font-semibold focus:outline-none h-24"
+                    placeholder="Detail text to show in notification center..."
                     required
                   />
                 </div>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-sm font-bold uppercase tracking-wider cursor-pointer border border-zinc-900 shadow-geom-sm text-xs flex items-center justify-center gap-1.5"
+                  className="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-wider cursor-pointer"
                 >
-                  <Bell className="w-4 h-4" /> Dispatch targeted Alert
+                  Send Push Notification
                 </button>
               </form>
             </div>
 
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-slate-800">Academic Board Broadcasting</h3>
+              <p className="text-slate-500">Coordinate notification feeds linked to system devices.</p>
+            </div>
           </div>
-
-          {/* Active Broadcasts Bulletin List */}
-          <div className="bg-white p-6 rounded-lg border border-geom-border shadow-geom space-y-4">
-            <h3 className="font-extrabold text-zinc-900 text-sm uppercase tracking-wider">Active Broadcasted Bulletins ({announcements.length})</h3>
-            
-            {announcements.length === 0 ? (
-              <div className="text-center py-10 bg-zinc-50 border border-geom-border rounded-md text-xs font-semibold text-zinc-400">
-                No bulletins published yet. Click above to broadcast.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {announcements.map((ann) => (
-                  <div key={ann.id} className="p-4 rounded-md border border-geom-border bg-zinc-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-1 text-xs">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-mono font-bold text-zinc-400">
-                          ID: {ann.id}
-                        </span>
-                        <span className="text-[9px] text-zinc-400 font-semibold">• Published: {new Date(ann.createdAt).toLocaleString()}</span>
-                        {ann.targetExams && ann.targetExams.length > 0 && (
-                          <div className="flex gap-1 text-[8px] font-bold uppercase">
-                            {ann.targetExams.map(exId => (
-                              <span key={exId} className="px-1.5 py-0.5 bg-zinc-200 text-zinc-750 rounded-xs border border-zinc-300">
-                                {exId}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <h4 className="font-bold text-zinc-900 text-sm">{ann.title}</h4>
-                      <p className="text-zinc-650 leading-relaxed max-w-4xl">{ann.content}</p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteAnnouncement(ann.id)}
-                      className="shrink-0 p-1.5 rounded-sm border border-geom-border bg-white hover:bg-rose-50 text-zinc-400 hover:text-red-600 transition-all cursor-pointer shadow-geom-sm"
-                      title="Remove Bulletin"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
+        )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,3 @@
-import { doc, setDoc, writeBatch, collection, getDocs, limit, query } from 'firebase/firestore';
-import { db } from './firebase';
 import { EntranceExam, CompetitiveExam, Subject, Chapter, Question, Test, Timetable, StudyMaterial, Announcement, Notification } from '../types';
 
 // Default Entrance Exams
@@ -314,68 +312,4 @@ export const defaultNotifications: Notification[] = [
   }
 ];
 
-// Automated Seeding Function
-export async function seedDatabaseIfEmpty() {
-  try {
-    // Check if entranceExams collection is empty as a quick indicator
-    const examCheck = await getDocs(query(collection(db, 'entranceExams'), limit(1)));
-    if (!examCheck.empty) {
-      console.log('Database already populated, skipping auto-seed.');
-      return;
-    }
 
-    console.log('Starting Firestore database seeding with default values...');
-    const batch = writeBatch(db);
-
-    // 1. Seed Entrance Exams
-    for (const exam of defaultEntranceExams) {
-      batch.set(doc(db, 'entranceExams', exam.id), exam);
-    }
-
-    // 2. Seed Competitive Exams
-    for (const exam of defaultCompetitiveExams) {
-      batch.set(doc(db, 'competitiveExams', exam.id), exam);
-    }
-
-    // 3. Seed Subjects
-    for (const subj of defaultSubjects) {
-      batch.set(doc(db, 'subjects', subj.id), subj);
-    }
-
-    // 4. Seed Chapters
-    for (const ch of defaultChapters) {
-      batch.set(doc(db, 'chapters', ch.id), ch);
-    }
-
-    // 5. Seed Questions
-    for (const q of defaultQuestions) {
-      batch.set(doc(db, 'questions', q.id), q);
-    }
-
-    // 6. Seed Tests
-    for (const t of defaultTests) {
-      batch.set(doc(db, 'tests', t.id), t);
-    }
-
-    // 7. Seed Timetables
-    for (const tb of defaultTimetables) {
-      batch.set(doc(db, 'timetables', tb.id), tb);
-    }
-
-    // 8. Seed Study Materials
-    for (const sm of defaultStudyMaterials) {
-      batch.set(doc(db, 'studyMaterials', sm.id), sm);
-    }
-
-    // 9. Seed Announcements
-    for (const ann of defaultAnnouncements) {
-      batch.set(doc(db, 'announcements', ann.id), ann);
-    }
-
-    // Commit batch
-    await batch.commit();
-    console.log('Database seeded successfully with default academic content!');
-  } catch (error) {
-    console.error('Error during database seeding:', error);
-  }
-}

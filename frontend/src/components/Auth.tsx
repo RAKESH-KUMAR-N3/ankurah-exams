@@ -1,360 +1,321 @@
-import React, { useState } from 'react';
-import { User, EntranceExam, CompetitiveExam } from '../types';
-import { Sparkles, Shield, User as UserIcon, LogIn, Key, Mail, Check, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { motion } from 'motion/react';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { User } from '../types';
+import { Mail, Key, Eye, EyeOff, AlertCircle, ArrowRight, UserPlus, CheckCircle2, ArrowLeft, Phone } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import logo from '../assets/logo.png';
 
 interface AuthProps {
-  entranceExams: EntranceExam[];
-  competitiveExams: CompetitiveExam[];
   onAuthSuccess: (user: User) => void;
   initialMode?: 'login' | 'register';
 }
 
-export default function Auth({ entranceExams, competitiveExams, onAuthSuccess, initialMode = 'login' }: AuthProps) {
-  const [isRegistering, setIsRegistering] = useState(initialMode === 'register');
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+// Animated background blobs
+const AnimatedBackground = () => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-950">
+    <motion.div
+      animate={{
+        scale: [1, 1.2, 1],
+        x: [0, 100, 0],
+        y: [0, 50, 0],
+      }}
+      transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+      className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-emerald-600/30 rounded-full blur-[120px]"
+    />
+    <motion.div
+      animate={{
+        scale: [1, 1.5, 1],
+        x: [0, -100, 0],
+        y: [0, -50, 0],
+      }}
+      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+      className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-teal-600/20 rounded-full blur-[120px]"
+    />
+    <motion.div
+      animate={{
+        scale: [1, 1.3, 1],
+        x: [0, 50, 0],
+        y: [0, 100, 0],
+      }}
+      transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
+      className="absolute top-[20%] right-[10%] w-[40vw] h-[40vw] bg-indigo-500/20 rounded-full blur-[100px]"
+    />
+  </div>
+);
+
+export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps) {
+  const navigate = useNavigate();
+  const [view, setView] = useState<'login' | 'register' | 'forgot-password'>(initialMode === 'register' ? 'register' : 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  
-  // Registration custom preferences
-  const [selectedEntrances, setSelectedEntrances] = useState<string[]>([]);
-  const [selectedCompetitives, setSelectedCompetitives] = useState<string[]>([]);
-  const [studentType, setStudentType] = useState<'first_year' | 'second_year' | 'long_term' | ''>('');
-  const [studyPlan, setStudyPlan] = useState<'quarterly' | 'half_yearly' | 'academic_year' | 'yearly' | ''>('');
-  
+  const [mobile, setMobile] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  // Sync mode with URL
+  useEffect(() => {
+    setView(initialMode === 'register' ? 'register' : 'login');
+    setError(null);
+  }, [initialMode]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    if (!email || !password) {
-      setError('Please fill in all fields.');
-      setLoading(false);
-      return;
-    }
-
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
     try {
-      if (isRegistering) {
-        if (!name) {
-          setError('Name is required during registration.');
+      if (view === 'forgot-password') {
+        if (!email.trim()) {
+          setError('Please enter your email address.');
           setLoading(false);
           return;
         }
-        if (selectedEntrances.length === 0 && selectedCompetitives.length === 0) {
-          setError('Please select at least one Entrance or Competitive Exam.');
-          setLoading(false);
-          return;
-        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setResetSent(true);
+        setLoading(false);
+        return;
+      }
+
+      if (view === 'register') {
+        if (!name.trim()) { setError('Please enter your full name.'); setLoading(false); return; }
+        if (!mobile.trim() || mobile.length < 10) { setError('Please enter a valid mobile number.'); setLoading(false); return; }
+        if (password.length < 6) { setError('Password must be at least 6 characters.'); setLoading(false); return; }
 
         const res = await fetch(`${API_URL}/api/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, password, role: 'student' }),
+          body: JSON.stringify({ name: name.trim(), email: email.trim(), password, phone: mobile.trim(), role: 'student' }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Registration failed');
+        if (!res.ok) throw new Error(data.message || 'Registration failed.');
 
         localStorage.setItem('token', data.token);
-        const mappedUser: User = {
-          uid: data._id,
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          selectedEntranceExams: selectedEntrances,
-          selectedCompetitiveExams: selectedCompetitives,
-          studentType: selectedEntrances.length > 0 ? (studentType || 'long_term') : '',
-          studyPlan: studyPlan || 'yearly',
-          streak: 1,
-          lastActiveDate: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        };
-        onAuthSuccess(mappedUser);
+        const user: User = { uid: data._id, name: data.name, email: data.email, role: data.role, selectedEntranceExams: [], selectedCompetitiveExams: [], studentType: '', studyPlan: 'yearly', streak: 1, lastActiveDate: new Date().toISOString(), createdAt: new Date().toISOString() };
+        onAuthSuccess(user);
       } else {
-        // Login flow — call backend API
         const res = await fetch(`${API_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: email.trim(), password }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Login failed');
+        if (!res.ok) throw new Error(data.message || 'Invalid email or password.');
 
         localStorage.setItem('token', data.token);
-        const mappedUser: User = {
-          uid: data._id,
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          selectedEntranceExams: data.exams || [],
-          selectedCompetitiveExams: [],
-          studentType: data.studentType || '',
-          studyPlan: 'yearly',
-          streak: 1,
-          lastActiveDate: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        };
-        onAuthSuccess(mappedUser);
+        const user: User = { uid: data._id, name: data.name, email: data.email, role: data.role, selectedEntranceExams: data.exams || [], selectedCompetitiveExams: [], studentType: data.studentType || '', studyPlan: 'yearly', streak: 1, lastActiveDate: new Date().toISOString(), createdAt: new Date().toISOString() };
+        onAuthSuccess(user);
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'An authentication error occurred.');
-
+      setError(err.message || 'An error occurred.');
     } finally {
       setLoading(false);
     }
   };
 
-
-
-  const toggleExamSelection = (examId: string, isEntrance: boolean) => {
-    if (isEntrance) {
-      setSelectedEntrances(prev => 
-        prev.includes(examId) ? prev.filter(id => id !== examId) : [...prev, examId]
-      );
-    } else {
-      setSelectedCompetitives(prev => 
-        prev.includes(examId) ? prev.filter(id => id !== examId) : [...prev, examId]
-      );
-    }
+  const switchMode = (mode: 'login' | 'register' | 'forgot-password') => {
+    setView(mode);
+    setError(null);
+    setResetSent(false);
+    setEmail('');
+    setPassword('');
+    setName('');
+    setMobile('');
+    if (mode === 'register') navigate('/register', { replace: true });
+    else if (mode === 'login') navigate('/login', { replace: true });
   };
 
+  const inputClasses = "w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium transition-all focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none placeholder:text-slate-400";
+  const iconClasses = "absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200";
+
   return (
-    <div id="auth_container" className="min-h-screen flex items-center justify-center bg-zinc-50 py-12 px-4 sm:px-6 lg:px-8 geom-bg">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-geom border border-geom-border">
-        
-        {/* Brand Logo & Title */}
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-md bg-zinc-900 text-white mb-4 border border-zinc-850 shadow-geom-sm">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          <h2 className="text-xl font-extrabold tracking-tight text-zinc-900 uppercase">Ankurah Exams</h2>
-          <p className="mt-1 text-xs text-zinc-500 font-medium">
-            Professional Entrance & Competitive Exam Preparation
-          </p>
-        </div>
+    <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden font-sans selection:bg-emerald-500/30">
+      <AnimatedBackground />
 
-        {error && (
-          <div className="p-4 rounded-md bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-3">
-            <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5 text-red-500" />
-            <div>
-              <p className="font-bold uppercase tracking-wider text-[10px]">Authentication Alert</p>
-              <p className="mt-1 text-red-650 leading-relaxed font-semibold">{error}</p>
-            </div>
-          </div>
-        )}
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        className={`relative z-10 w-full transition-all duration-500 ${view === 'register' ? 'max-w-[650px]' : 'max-w-[440px]'}`}
+      >
+        <div className="bg-white/95 backdrop-blur-2xl rounded-xl p-6 sm:p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-white/60">
+          
+          <div className="flex flex-col items-center mb-8">
+            <Link to="/" className="mb-6 block cursor-pointer transition-transform hover:scale-105">
+              <img src={logo} alt="Ankurah Exams" className="w-44 sm:w-48 object-contain drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            </Link>
 
-
-        {/* Auth form toggle */}
-        <div className="flex bg-zinc-100 p-1 rounded-md border border-geom-border">
-          <button 
-            type="button"
-            onClick={() => { setIsRegistering(false); setError(null); }}
-            className={`flex-1 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-sm transition-all cursor-pointer ${!isRegistering ? 'bg-white text-zinc-900 shadow-geom-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
-          >
-            Sign In
-          </button>
-          <button 
-            type="button"
-            onClick={() => { setIsRegistering(true); setError(null); }}
-            className={`flex-1 py-1.5 text-[10px] font-extrabold uppercase tracking-wider rounded-sm transition-all cursor-pointer ${isRegistering ? 'bg-white text-zinc-900 shadow-geom-sm' : 'text-zinc-500 hover:text-zinc-900'}`}
-          >
-            Register Student
-          </button>
-        </div>
-
-        {/* Primary Email Form */}
-        <form onSubmit={handleEmailAuth} className="space-y-5">
-          {isRegistering && (
-            <div className="relative">
-              <UserIcon className="absolute left-3 top-3 w-5 h-5 text-emerald-600" />
-              <input 
-                type="text" 
-                value={name} 
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Full Name" 
-                className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-100 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium placeholder-slate-400"
-                required
-              />
-            </div>
-          )}
-
-          <div className="relative">
-            <Mail className="absolute left-3 top-3 w-5 h-5 text-emerald-600" />
-            <input 
-              type="email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email Address" 
-              className="w-full pl-10 pr-4 py-3 bg-white border-2 border-slate-100 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium placeholder-slate-400"
-              required
-            />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={view}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="text-center"
+              >
+                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                  {view === 'register' ? 'Create an Account' : view === 'forgot-password' ? 'Reset Password' : 'Welcome Back'}
+                </h2>
+                <p className="text-slate-500 text-sm mt-2 font-medium">
+                  {view === 'register'
+                    ? 'Start your exam preparation journey today'
+                    : view === 'forgot-password'
+                    ? 'Enter your email to receive a secure reset link'
+                    : 'Sign in to continue your preparation'}
+                </p>
+              </motion.div>
+            </AnimatePresence>
           </div>
 
-          <div className="relative">
-            <Key className="absolute left-3 top-3 w-5 h-5 text-emerald-600" />
-            <input 
-              type={showPassword ? "text" : "password"}
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password" 
-              className="w-full pl-10 pr-12 py-3 bg-white border-2 border-slate-100 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all font-medium placeholder-slate-400"
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-
-          {/* Student preferences (ONLY on Registration) */}
-          {isRegistering && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }} 
-              animate={{ opacity: 1, height: 'auto' }} 
-              className="space-y-4 pt-4 border-t border-geom-border"
-            >
-              {/* Select Entrance Exams */}
-              <div>
-                <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Select Entrance Exams</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {entranceExams.map((exam) => {
-                    const active = selectedEntrances.includes(exam.id);
-                    return (
-                      <button
-                        type="button"
-                        key={exam.id}
-                        onClick={() => toggleExamSelection(exam.id, true)}
-                        className={`flex items-center justify-between p-2.5 rounded-md border text-xs text-left font-bold transition-all cursor-pointer ${
-                          active 
-                            ? 'bg-zinc-900 border-zinc-950 text-white shadow-geom-sm' 
-                            : 'bg-zinc-50 border-geom-border text-zinc-600 hover:bg-zinc-100'
-                        }`}
-                      >
-                        {exam.name}
-                        {active && <Check className="w-3.5 h-3.5 text-white" />}
-                      </button>
-                    );
-                  })}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 20 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="p-3.5 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-red-700 text-sm font-semibold leading-relaxed">{error}</p>
                 </div>
-              </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-              {/* Select Competitive Exams */}
-              <div>
-                <span className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Select Competitive Exams</span>
-                <div className="grid grid-cols-2 gap-2">
-                  {competitiveExams.map((exam) => {
-                    const active = selectedCompetitives.includes(exam.id);
-                    return (
-                      <button
-                        type="button"
-                        key={exam.id}
-                        onClick={() => toggleExamSelection(exam.id, false)}
-                        className={`flex items-center justify-between p-2.5 rounded-md border text-xs text-left font-bold transition-all cursor-pointer ${
-                          active 
-                            ? 'bg-zinc-900 border-zinc-950 text-white shadow-geom-sm' 
-                            : 'bg-zinc-50 border-geom-border text-zinc-600 hover:bg-zinc-100'
-                        }`}
-                      >
-                        {exam.name}
-                        {active && <Check className="w-3.5 h-3.5 text-white" />}
-                      </button>
-                    );
-                  })}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            {view === 'forgot-password' && resetSent ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+                className="p-6 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col items-center justify-center gap-4 text-center mb-4"
+              >
+                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
                 </div>
-              </div>
+                <p className="text-emerald-800 text-sm font-semibold leading-relaxed">
+                  Reset link sent to <span className="text-emerald-900 font-bold">{email}</span>. <br/>Please check your inbox.
+                </p>
+                <button type="button" onClick={() => switchMode('login')} className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-full text-sm font-bold shadow-md hover:bg-emerald-700 transition-colors">
+                  Return to Sign In
+                </button>
+              </motion.div>
+            ) : (
+              <>
+                <div className={`grid grid-cols-1 ${view === 'register' ? 'sm:grid-cols-2' : ''} gap-4`}>
+                  <AnimatePresence initial={false}>
+                    {view === 'register' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}
+                        className="overflow-hidden relative"
+                      >
+                        <div className="relative">
+                          <UserPlus className={`${iconClasses} ${focusedField === 'name' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                          <input id="auth_name" type="text" value={name} onChange={(e) => setName(e.target.value)} onFocus={() => setFocusedField('name')} onBlur={() => setFocusedField(null)} placeholder="Full Name" className={inputClasses} required autoComplete="name" />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-              {/* Only show student-type if entrance exams are selected */}
-              {selectedEntrances.length > 0 && (
-                <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Student Type</label>
-                  <select
-                    value={studentType}
-                    onChange={(e) => setStudentType(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 focus:outline-none focus:border-zinc-900 text-xs font-semibold"
-                    required
+                  <motion.div layout className="relative">
+                    <Mail className={`${iconClasses} ${focusedField === 'email' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                    <input id="auth_email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)} placeholder="Email Address" className={inputClasses} required autoComplete="email" />
+                  </motion.div>
+
+                  <AnimatePresence initial={false}>
+                    {view === 'register' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}
+                        className="overflow-hidden relative"
+                      >
+                        <div className="relative">
+                          <Phone className={`${iconClasses} ${focusedField === 'mobile' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                          <input id="auth_mobile" type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} onFocus={() => setFocusedField('mobile')} onBlur={() => setFocusedField(null)} placeholder="Mobile Number" className={inputClasses} required minLength={10} maxLength={15} />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <AnimatePresence initial={false}>
+                    {view !== 'forgot-password' && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}
+                        className="overflow-hidden relative"
+                      >
+                        <div className="relative">
+                          <Key className={`${iconClasses} ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                          <input id="auth_password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} onFocus={() => setFocusedField('password')} onBlur={() => setFocusedField(null)} placeholder={view === 'register' ? 'Password (min 6 chars)' : 'Password'} style={{ paddingRight: '44px' }} className={inputClasses} required autoComplete={view === 'register' ? 'new-password' : 'current-password'} />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <AnimatePresence>
+                  {view === 'login' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-end pt-1">
+                      <button type="button" onClick={() => switchMode('forgot-password')} className="text-[13px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer">
+                        Forgot Password?
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <motion.div layout className="pt-4 flex justify-center">
+                  <button
+                    id="auth_submit"
+                    type="submit"
+                    disabled={loading}
+                    className="w-full sm:w-[280px] flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
                   >
-                    <option value="">-- Select Student Type --</option>
-                    <option value="first_year">Intermediate First Year</option>
-                    <option value="second_year">Intermediate Second Year</option>
-                    <option value="long_term">Long Term</option>
-                  </select>
-                </div>
-              )}
+                    {loading ? (
+                      <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : view === 'register' ? (
+                      <>Create Account <ArrowRight className="w-4.5 h-4.5" /></>
+                    ) : view === 'forgot-password' ? (
+                      <>Send Reset Link <ArrowRight className="w-4.5 h-4.5" /></>
+                    ) : (
+                      <>Sign In <ArrowRight className="w-4.5 h-4.5" /></>
+                    )}
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </form>
 
-              {/* Study Plan Selection */}
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Study Plan Option</label>
-                <select
-                  value={studyPlan}
-                  onChange={(e) => setStudyPlan(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-zinc-50 border border-geom-border rounded-md text-zinc-900 focus:outline-none focus:border-zinc-900 text-xs font-semibold"
-                  required
-                >
-                  <option value="">-- Select Study Plan --</option>
-                  {selectedEntrances.length > 0 && studentType === 'first_year' && (
-                    <>
-                      <option value="quarterly">Quarterly</option>
-                      <option value="half_yearly">Half-Yearly</option>
-                      <option value="academic_year">Academic Year</option>
-                    </>
-                  )}
-                  {selectedEntrances.length > 0 && studentType === 'second_year' && (
-                    <>
-                      <option value="quarterly">Quarterly</option>
-                      <option value="half_yearly">Half-Yearly</option>
-                      <option value="academic_year">Academic Year</option>
-                    </>
-                  )}
-                  {studentType === 'long_term' && (
-                    <option value="yearly">Yearly (Long Term)</option>
-                  )}
-                  {/* General defaults if none selected */}
-                  {selectedEntrances.length === 0 && (
-                    <>
-                      <option value="quarterly">Quarterly</option>
-                      <option value="half_yearly">Half-Yearly</option>
-                      <option value="academic_year">Academic Year</option>
-                      <option value="yearly">Yearly</option>
-                    </>
-                  )}
-                </select>
-              </div>
+          {!resetSent && (
+            <motion.div layout className="text-center mt-8 pt-6 border-t border-slate-100">
+              <p className="text-sm font-medium text-slate-500">
+                {view === 'register' ? (
+                  <>
+                    Already have an account?{' '}
+                    <button type="button" onClick={() => switchMode('login')} className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors">Sign In</button>
+                  </>
+                ) : view === 'login' ? (
+                  <>
+                    Don't have an account?{' '}
+                    <button type="button" onClick={() => switchMode('register')} className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors">Register Free</button>
+                  </>
+                ) : (
+                  <button type="button" onClick={() => switchMode('login')} className="text-slate-500 font-bold hover:text-emerald-600 transition-colors flex items-center justify-center gap-1.5 mx-auto">
+                    <ArrowLeft className="w-4 h-4" /> Back to Sign In
+                  </button>
+                )}
+              </p>
             </motion.div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold tracking-wide text-white bg-emerald-600 hover:bg-emerald-700 transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-emerald-500/30"
-          >
-            {loading ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            ) : isRegistering ? (
-              <>
-                <UserIcon className="w-5 h-5" />
-                Complete Registration
-              </>
-            ) : (
-              <>
-                <LogIn className="w-5 h-5" />
-                Sign In
-              </>
-            )}
-          </button>
-        </form>
-
-
-
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

@@ -4,8 +4,10 @@ import {
   FileText, Clock, Award, ShieldAlert, CheckCircle, AlertCircle, 
   HelpCircle, ChevronLeft, ChevronRight, Play, Check, Send, X 
 } from 'lucide-react';
-import { doc, setDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getToken = () => localStorage.getItem('token');
+const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
 interface TestSectionProps {
   user: User;
@@ -128,23 +130,29 @@ export default function TestSection({
     };
 
     try {
-      await setDoc(doc(db, 'testAttempts', attemptId), newAttempt);
-      
-      // Update streak
-      const updatedUser: User = {
-        ...user,
-        streak: (user.streak || 1) + 1,
-        lastActiveDate: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'users', user.uid), updatedUser);
+      const res = await fetch(`${API_URL}/api/test-attempts/submit/${activeTest.id}`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          responses: Object.entries(answers).map(([questionId, selectedIndex]) => ({
+            questionId,
+            selectedOption: testQuestions.find(q => q.id === questionId)?.options[selectedIndex] || ''
+          }))
+        }),
+      });
 
-      // Successfully submitted
+      // Successfully submitted — use local computed attempt for immediate UI
       onTestSubmitted(newAttempt);
       setViewingAttempt(newAttempt);
       setViewingTest(activeTest);
       setActiveTest(null);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, 'testAttempts');
+    } catch (err: any) {
+      console.error('Test submit error:', err);
+      // Still show result locally even if API fails
+      onTestSubmitted(newAttempt);
+      setViewingAttempt(newAttempt);
+      setViewingTest(activeTest);
+      setActiveTest(null);
     } finally {
       setSubmitting(false);
       setShowConfirmSubmit(false);

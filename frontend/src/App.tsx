@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   fetchAdminDashboard, fetchStudentDashboard,
   fetchExams, fetchSubjects, fetchChapters, fetchQuestions,
@@ -15,9 +15,14 @@ import TimetableSection from './components/TimetableSection';
 import StudyMaterialSection from './components/StudyMaterialSection';
 import TestSection from './components/TestSection';
 import AdminManagement from './components/AdminManagement';
+import AboutPage from './components/AboutPage';
+import EntranceExamsPage from './components/EntranceExamsPage';
+import CompetitiveExamsPage from './components/CompetitiveExamsPage';
+import ContactPage from './components/ContactPage';
+import logo from './assets/logo.png';
 import {
   Sparkles, Award, Calendar, BookOpen, FileText, Shield,
-  LogOut, Menu, X, Flame, TrendingUp, HelpCircle
+  LogOut, Menu, X, Flame, TrendingUp, HelpCircle, Users, LayoutDashboard, Layers, Database, Bell, Layout
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -146,7 +151,6 @@ export default function App() {
   const [studentsList, setStudentsList] = useState<User[]>([]);
 
   // Layout UI states
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ─── Check JWT on mount ──────────────────────────────────────────────────────
@@ -161,8 +165,8 @@ export default function App() {
       .then((data: any) => {
         setCurrentUser(mapBackendUser(data));
         setAuthState('authenticated');
-        if (data.role === 'admin') setActiveTab('admin_panel');
-        else setActiveTab('dashboard');
+        if (data.role === 'admin') navigate('/dashboard/admin_dashboard');
+        else navigate('/dashboard/dashboard');
       })
       .catch(() => {
         localStorage.removeItem('token');
@@ -243,9 +247,8 @@ export default function App() {
   const handleAuthSuccess = (userData: User) => {
     setCurrentUser(userData);
     setAuthState('authenticated');
-    if (userData.role === 'admin') setActiveTab('admin_panel');
-    else setActiveTab('dashboard');
-    navigate('/dashboard');
+    if (userData.role === 'admin') navigate('/dashboard/admin_dashboard');
+    else navigate('/dashboard/dashboard');
   };
 
   const handleSignOut = () => {
@@ -270,6 +273,17 @@ export default function App() {
     if (currentUser) loadAllData(currentUser);
   };
 
+  const location = useLocation();
+  const pathParts = location.pathname.split('/');
+  const activeTab = pathParts.length > 2 && pathParts[1] === 'dashboard' 
+    ? pathParts[2] 
+    : (currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard');
+
+  const handleTabChange = (tab: string) => {
+    navigate(`/dashboard/${tab}`);
+    setSidebarOpen(false);
+  };
+
   // ─── Render active view ──────────────────────────────────────────────────────
   const renderActiveView = () => {
     if (!currentUser) return null;
@@ -285,8 +299,8 @@ export default function App() {
             subjects={subjects}
             announcements={announcements}
             notifications={notifications}
-            onNavigate={(tab) => setActiveTab(tab)}
-            onAttemptTest={() => setActiveTab('tests')}
+            onNavigate={(tab) => handleTabChange(tab)}
+            onAttemptTest={() => handleTabChange('tests')}
           />
         );
       case 'timetable':
@@ -327,10 +341,17 @@ export default function App() {
             subjects={subjects}
             chapters={chapters}
             questions={questions}
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={(tab) => handleTabChange(tab)}
           />
         );
-      case 'admin_panel':
+      case 'admin_dashboard':
+      case 'admin_students':
+      case 'admin_exams':
+      case 'admin_subjects':
+      case 'admin_questions':
+      case 'admin_materials':
+      case 'admin_timetables':
+      case 'admin_tests':
         if (currentUser.role !== 'admin') {
           return <div className="text-red-600 font-bold">Unauthorized. Access Restricted to Admin.</div>;
         }
@@ -348,6 +369,7 @@ export default function App() {
             materials={materials}
             announcements={announcements}
             onRefresh={handleForceAdminReload}
+            activeTab={activeTab.startsWith('admin_') ? activeTab.replace('admin_', '') : 'dashboard'}
           />
         );
       default:
@@ -366,17 +388,6 @@ export default function App() {
   }
 
   const authProps = {
-    entranceExams: entranceExams.length > 0 ? entranceExams : [
-      { id: 'tg-eapcet', name: 'TG EAPCET', description: '' },
-      { id: 'ap-eapcet', name: 'AP EAPCET', description: '' },
-      { id: 'neet', name: 'NEET', description: '' },
-      { id: 'jee-main', name: 'JEE Main', description: '' },
-      { id: 'jee-advanced', name: 'JEE Advanced', description: '' },
-    ],
-    competitiveExams: competitiveExams.length > 0 ? competitiveExams : [
-      { id: 'upsc-civils', name: 'Civil Services (UPSC)', description: '' },
-      { id: 'ssc-cgl', name: 'SSC CGL', description: '' },
-    ],
     onAuthSuccess: handleAuthSuccess,
   };
 
@@ -393,108 +404,122 @@ export default function App() {
         ></div>
       )}
 
-      <aside className={`fixed lg:static top-0 bottom-0 left-0 w-64 bg-geom-dark text-white z-40 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-x lg:translate-x-0'} transition-transform duration-200 ease-in-out border-r border-zinc-800 flex flex-col justify-between shrink-0 geom-grid-pattern-dark`}>
-        <div className="p-6 space-y-6">
-          <div className="flex items-center gap-3 pb-4 border-b border-zinc-800">
-            <div className="w-9 h-9 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-bold text-sm tracking-tight block">Ankurah Exams</span>
-              <span className="text-[10px] text-zinc-500 font-semibold block uppercase tracking-wider">Academic Core</span>
-            </div>
+      <aside className={`fixed lg:static top-0 bottom-0 left-0 w-64 bg-gradient-to-b from-emerald-900 via-emerald-950 to-slate-950 text-white z-40 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-transform duration-200 ease-in-out border-r border-emerald-800/40 flex flex-col justify-between shrink-0`}>
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+          <div className="flex items-center justify-center pb-6 border-b border-emerald-800/30 mt-2 mb-2 bg-white/95 shadow-[0_10px_25px_-5px_rgba(16,185,129,0.15)] rounded-2xl p-4 border border-emerald-500/20">
+            <img src={logo} alt="Ankurah Exams" className="w-48 object-contain drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           </div>
 
           <nav className="space-y-1 pt-2">
             {isStudent && (
               <>
                 <button
-                  onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                  onClick={() => handleTabChange('dashboard')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <Flame className="w-4 h-4 text-emerald-500" /> Dashboard
+                  <Flame className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Dashboard
                 </button>
                 <button
-                  onClick={() => { setActiveTab('timetable'); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === 'timetable' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                  onClick={() => handleTabChange('timetable')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'timetable' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <Calendar className="w-4 h-4 text-blue-500" /> Study Timetable
+                  <Calendar className={`w-4 h-4 ${activeTab === 'timetable' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Study Timetable
                 </button>
                 <button
-                  onClick={() => { setActiveTab('study_materials'); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === 'study_materials' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                  onClick={() => handleTabChange('study_materials')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'study_materials' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <BookOpen className="w-4 h-4 text-purple-500" /> Study Materials
+                  <BookOpen className={`w-4 h-4 ${activeTab === 'study_materials' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Study Materials
                 </button>
                 <button
-                  onClick={() => { setActiveTab('tests'); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === 'tests' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                  onClick={() => handleTabChange('tests')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'tests' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <FileText className="w-4 h-4 text-amber-500" /> Practice & Tests
+                  <FileText className={`w-4 h-4 ${activeTab === 'tests' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Practice & Tests
                 </button>
                 <button
-                  onClick={() => { setActiveTab('analytics'); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === 'analytics' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
+                  onClick={() => handleTabChange('analytics')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'analytics' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <TrendingUp className="w-4 h-4 text-indigo-500" /> Deep Analytics
+                  <TrendingUp className={`w-4 h-4 ${activeTab === 'analytics' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Deep Analytics
                 </button>
               </>
             )}
 
             {isUserAdmin && (
-              <button
-                onClick={() => { setActiveTab('admin_panel'); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === 'admin_panel' ? 'bg-zinc-800 text-white shadow-xs' : 'text-zinc-400 hover:text-white hover:bg-zinc-900'}`}
-              >
-                <Shield className="w-4 h-4 text-rose-500" /> Admin Control
-              </button>
+              <div className="space-y-1">
+                <div className="px-4 py-2 text-xs font-bold text-emerald-200/50 uppercase tracking-wider mb-2">Admin Menu</div>
+                {[
+                  { id: 'admin_dashboard', label: 'Dashboard Overview', icon: Flame, color: 'text-emerald-300' },
+                  { id: 'admin_students', label: 'Students', icon: Users, color: 'text-emerald-350' },
+                  { id: 'admin_exams', label: 'Exams', icon: Award, color: 'text-emerald-300' },
+                  { id: 'admin_subjects', label: 'Subjects & Chapters', icon: Layers, color: 'text-emerald-300' },
+                  { id: 'admin_questions', label: 'Question Bank', icon: Database, color: 'text-emerald-300' },
+                  { id: 'admin_materials', label: 'Study Material', icon: BookOpen, color: 'text-emerald-300' },
+                  { id: 'admin_timetables', label: 'Timetable', icon: Calendar, color: 'text-emerald-300' },
+                  { id: 'admin_tests', label: 'Test Configurator', icon: LayoutDashboard, color: 'text-emerald-300' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleTabChange(item.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === item.id ? 'bg-white text-emerald-900 shadow-xs' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                  >
+                    <item.icon className={`w-4 h-4 ${activeTab === item.id ? 'text-emerald-600' : 'text-emerald-300'}`} /> {item.label}
+                  </button>
+                ))}
+              </div>
             )}
           </nav>
         </div>
 
-        <div className="p-6 border-t border-zinc-800 shrink-0 space-y-4">
+        <div className="p-6 border-t border-emerald-800/30 shrink-0 space-y-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center font-bold text-xs uppercase shrink-0">
-              {currentUser?.name.substring(0, 2)}
+            <div className="w-8 h-8 rounded-md bg-emerald-800 border border-emerald-700/50 text-emerald-100 flex items-center justify-center font-bold text-xs uppercase shrink-0">
+              {currentUser?.name?.substring(0, 2)}
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-xs text-zinc-200 block truncate leading-tight">{currentUser?.name}</span>
-              <span className="text-[10px] text-zinc-500 block capitalize">{currentUser?.role} Account</span>
+              <span className="font-bold text-xs text-emerald-50 block truncate leading-tight">{currentUser?.name}</span>
+              <span className="text-[10px] text-emerald-300/60 block capitalize">{currentUser?.role} Account</span>
             </div>
           </div>
 
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md border border-zinc-800 hover:border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-emerald-800/30 hover:border-emerald-700/60 bg-emerald-950/40 text-emerald-250 hover:text-white text-xs font-bold transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" /> Sign Out
           </button>
         </div>
       </aside>
 
-      <div className="flex-grow flex flex-col min-w-0 min-h-screen">
-        <header className="h-16 px-6 bg-white border-b border-geom-border flex items-center justify-between shrink-0">
+      <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden">
+        <header className="bg-white border-b border-slate-200/80 px-6 py-4 flex items-center justify-between shrink-0 relative z-20 shadow-xs">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
               className="lg:hidden p-2 text-slate-500 hover:text-slate-900 cursor-pointer"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-5 h-5 text-slate-600" />
             </button>
-            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider hidden sm:inline">
-              Preparation Track: {isStudent ? 'Entrance & Competitive Focus' : 'System Administration'}
-            </span>
+            <div>
+              <h1 className="text-sm font-black text-slate-900 tracking-tight ml-2 lg:ml-0">
+                {isStudent ? 'Academic Preparation Track' : 'Administrative Operations Panel'}
+              </h1>
+              <p className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase ml-2 lg:ml-0 mt-0.5">
+                {isStudent ? `Plan: ${currentUser?.studentType?.replace('_', ' ')}` : 'Full System Control'}
+              </p>
+            </div>
           </div>
-
           <div className="flex items-center gap-4">
+            {isUserAdmin && <span className="px-3.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-full hidden sm:block">SYSTEM ADMIN</span>}
             {isStudent && (
-              <div className="flex items-center gap-1.5 py-1 px-3 bg-white text-emerald-800 text-xs font-semibold rounded-md border border-geom-border shadow-geom-sm">
+              <div className="flex items-center gap-1.5 py-1.5 px-3.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200 shadow-xs">
                 <Flame className="w-4 h-4 text-emerald-600 fill-emerald-50" />
                 Streak: {currentUser?.streak || 1} Days
               </div>
             )}
-            <div className="w-8 h-8 rounded-md bg-zinc-100 border border-geom-border flex items-center justify-center text-xs font-bold text-zinc-700 uppercase shrink-0">
-              {currentUser?.name.substring(0, 2)}
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs">
+              {currentUser?.name?.substring(0, 2)}
             </div>
           </div>
         </header>
@@ -508,28 +533,54 @@ export default function App() {
   );
 
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       <Route
         path="/"
         element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <LandingPage />}
       />
       <Route
+        path="/about"
+        element={<AboutPage />}
+      />
+      <Route
+        path="/entrance-exams"
+        element={<EntranceExamsPage />}
+      />
+      <Route
+        path="/competitive-exams"
+        element={<CompetitiveExamsPage />}
+      />
+      <Route
+        path="/contact"
+        element={<ContactPage />}
+      />
+      <Route
         path="/login"
-        element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth {...authProps} initialMode="login" />}
+        element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth onAuthSuccess={handleAuthSuccess} initialMode="login" />}
       />
       <Route
         path="/register"
-        element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth {...authProps} initialMode="register" />}
+        element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth onAuthSuccess={handleAuthSuccess} initialMode="register" />}
       />
       <Route
-        path="/dashboard"
+        path="/dashboard/*"
         element={(authState === 'unauthenticated' || !currentUser) ? <Navigate to="/login" replace /> : <DashboardShell />}
       />
-      <Route path="/about" element={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-2xl font-bold text-slate-700">About Page (Under Construction)</div>} />
-      <Route path="/exams" element={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-2xl font-bold text-slate-700">Exams Page (Under Construction)</div>} />
-      <Route path="/features" element={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-2xl font-bold text-slate-700">Features Page (Under Construction)</div>} />
-      <Route path="/contact" element={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-2xl font-bold text-slate-700">Contact Page (Under Construction)</div>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </>
   );
+}
+
+// scroll reset helper
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
 }
