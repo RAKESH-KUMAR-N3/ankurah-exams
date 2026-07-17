@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Award, TrendingUp, CheckCircle2, ShieldCheck, Image as ImageIcon } from 'lucide-react';
+import { BookOpen, Award, TrendingUp, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 import logo from '../assets/logo.png';
 import cardsBg from '../assets/cards-bg.jpg';
+import aboutImg from '../assets/about-img.png';
+import cardsBgImg from '../assets/cards-bg-img.png';
 
 const BackgroundAnimations = () => {
   return (
@@ -86,7 +88,7 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] font-sans flex flex-col justify-between">
+    <div className="min-h-screen font-sans selection:bg-emerald-500/30 bg-slate-50 flex flex-col justify-between">
       <style>{`
         @keyframes scan-down {
           0% { transform: translateY(-100%); }
@@ -96,24 +98,41 @@ export default function AboutPage() {
           0% { transform: translateY(0); }
           100% { transform: translateY(-120vh); }
         }
+        @keyframes float-bob {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes pulse-glow {
+          0%, 100% { opacity: 0.4; transform: scaleY(0.8); }
+          50% { opacity: 1; transform: scaleY(1); }
+        }
+        .heading-float {
+          animation: float-bob 3.5s ease-in-out infinite;
+        }
       `}</style>
       {/* Navigation Header */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-305 ease-in-out ${
-          scrolled ? 'bg-white shadow-md py-2' : 'bg-white/95 backdrop-blur-md border-b border-slate-100 py-4'
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${scrolled
+            ? 'bg-white shadow-md py-1.5 border-b border-slate-100/50'
+            : 'bg-transparent py-5'
+          }`}
       >
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between relative z-10">
           <Link to="/" className="flex items-center gap-3 cursor-pointer">
-            <img src={logo} alt="Ankurah Exams Logo" className="w-36 md:w-40 object-contain" />
+            <img
+              src={logo}
+              alt="Ankurah Exams Logo"
+              className={`object-contain transition-all duration-300 ${scrolled ? 'w-32 md:w-36' : 'w-40 md:w-48'}`}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-650">
+          <nav className={`hidden lg:flex items-center gap-8 text-sm font-semibold transition-colors duration-300 ${scrolled ? 'text-slate-650 hover:text-emerald-600' : 'text-white hover:text-emerald-300'}`}>
             {navLinks.map((link) => (
               <Link
                 key={link.label}
                 to={link.path}
-                className="hover:text-emerald-600 transition-colors duration-200 cursor-pointer font-bold text-[15px]"
+                className={`hover:text-emerald-400 transition-colors duration-200 cursor-pointer font-semibold text-sm ${scrolled ? 'text-slate-600 hover:text-emerald-600' : 'text-white/90 hover:text-white'}`}
               >
                 {link.label}
               </Link>
@@ -121,15 +140,27 @@ export default function AboutPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-slate-700 hover:bg-slate-100 text-[15px] font-extrabold transition-all px-4 py-2.5 rounded-full">
+            <Link
+              to="/login"
+              className={`text-[15px] font-bold transition-all px-4 py-2.5 rounded-full ${scrolled
+                  ? 'text-slate-700 hover:bg-slate-100'
+                  : 'text-white hover:bg-white/20'
+                }`}
+            >
               Login
             </Link>
-            <Link to="/register" className="bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-extrabold py-2.5 px-7 rounded-full shadow-sm hover:shadow-md transition-all">
+            <Link
+              to="/register"
+              className={`text-[15px] font-bold py-2.5 px-7 rounded-full shadow-sm hover:shadow-md transition-all ${scrolled
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-white text-emerald-900 hover:bg-emerald-50'
+                }`}
+            >
               Register
             </Link>
             {/* Mobile menu button */}
             <button
-              className="lg:hidden p-2 rounded-lg transition-colors text-slate-700 hover:bg-slate-100"
+              className={`lg:hidden p-2 rounded-lg transition-colors ${scrolled ? 'text-slate-700 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,21 +174,21 @@ export default function AboutPage() {
 
         {/* Mobile Nav Dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t bg-white border-slate-105">
+          <div className={`lg:hidden border-t ${scrolled ? 'bg-white border-slate-100' : 'bg-emerald-950/95 backdrop-blur-md border-white/10'}`}>
             <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-left py-3 px-4 rounded-lg text-[15px] font-semibold transition-colors cursor-pointer text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                  className={`text-left py-3 px-4 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${scrolled ? 'text-slate-700 hover:bg-slate-50 hover:text-emerald-600' : 'text-white/90 hover:bg-white/10'}`}
                 >
                   {link.label}
                 </Link>
               ))}
               <div className="mt-2 pt-3 border-t border-slate-100/20 flex gap-3">
-                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors">Login</Link>
-                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">Register</Link>
+                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors">Login</Link>
+                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold bg-white text-emerald-900 hover:bg-emerald-50 transition-colors">Register</Link>
               </div>
             </div>
           </div>
@@ -165,48 +196,194 @@ export default function AboutPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-grow pt-24">
+      <main className="flex-grow">
         {/* Hero Banner */}
-        <section className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white py-20 px-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-emerald-400/10 blur-[80px] rounded-full translate-y-10"></div>
-          <div className="max-w-4xl mx-auto text-center relative z-10 space-y-4">
-            <motion.h1 
-              initial={{ opacity: 0, y: -20 }}
+        <section className="relative flex flex-col items-center pt-32 md:pt-36 pb-12 overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 text-white text-center">
+          <BackgroundAnimations />
+
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center text-center space-y-4">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-2 text-white flex flex-wrap justify-center items-center gap-3">
+              {"About Ankurah Exams".split(" ").map((word, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.5, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  transition={{
+                    duration: 0.6,
+                    delay: index * 0.12,
+                    ease: "easeOut"
+                  }}
+                  className="inline-block hover:text-emerald-300 transition-colors duration-300 cursor-default"
+                >
+                  {word}
+                </motion.span>
+              ))}
+            </h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-black tracking-tight"
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-medium"
             >
-              About Ankurah Exams
-            </motion.h1>
-            <p className="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
               Delivering a specialized prep engine designed to systematically scale conceptual clarity, rigorous evaluation, and predictive analytics.
-            </p>
+            </motion.p>
           </div>
         </section>
 
-        {/* Detailed Info */}
-        <section className="py-20 max-w-7xl mx-auto px-6 space-y-20">
-          
-          {/* Mission Block with Image Slot */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">Our Academic Mission</h2>
-              <p className="text-slate-650 text-sm md:text-base leading-relaxed font-semibold">
-                Ankurah Exams was created to eliminate the chaos of unorganized study files and scattered question papers. We provide a clean, state-of-the-art testing platform tailored specifically for intermediate students and aspirants targeting elite engineering, medical, and banking colleges.
-              </p>
-              <p className="text-slate-650 text-sm md:text-base leading-relaxed font-semibold">
-                Our core strategy centers on continuous feedback: giving students a personalized daily schedule, matching reference sheets, and immediately grading simulated mock tests with instant accuracy metrics.
-              </p>
-            </div>
-            
-            {/* Image Placeholder */}
-            <div className="relative group overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 aspect-video flex flex-col items-center justify-center text-slate-400 p-6">
-              <ImageIcon className="w-12 h-12 mb-3 text-slate-350" />
-              <p className="text-sm font-bold uppercase tracking-wider">[ Academic Image Slot ]</p>
-              <p className="text-xs mt-1 text-slate-400">Resolution: 800 x 450 pixels</p>
+        {/* Academic Mission Section */}
+        <section className="py-12 bg-white relative overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute top-1/2 left-1/2 w-[600px] h-[600px] bg-emerald-50/40 rounded-full blur-[100px] -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+
+          <div className="max-w-7xl mx-auto px-6 relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+              
+              {/* Left Column: Clean Blended Infographic Image (about-img.png) */}
+              <motion.div
+                initial={{ opacity: 0, x: -40, scale: 0.98 }}
+                whileInView={{ opacity: 1, x: 0, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="lg:col-span-6 flex justify-center items-center overflow-hidden"
+              >
+                <img
+                  src={aboutImg}
+                  alt="Our Academic Mission Infographic"
+                  className="w-full max-h-[400px] object-contain object-center select-none pointer-events-none"
+                />
+              </motion.div>
+
+              {/* Center: Animated Vertical Divider */}
+              <motion.div
+                initial={{ opacity: 0, scaleY: 0 }}
+                whileInView={{ opacity: 1, scaleY: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
+                className="hidden lg:flex lg:col-span-1 flex-col items-center justify-center gap-3 self-stretch py-4"
+              >
+                <div className="w-px flex-1 bg-gradient-to-b from-transparent via-emerald-300 to-transparent"
+                  style={{ animation: 'pulse-glow 2.5s ease-in-out infinite' }}
+                ></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]"
+                  style={{ animation: 'pulse-glow 2s ease-in-out infinite' }}
+                ></div>
+                <div className="w-px flex-1 bg-gradient-to-b from-transparent via-emerald-300 to-transparent"
+                  style={{ animation: 'pulse-glow 2.5s ease-in-out infinite 0.5s' }}
+                ></div>
+              </motion.div>
+
+              {/* Right Column: Glassmorphic Mission Text Card */}
+              <motion.div
+                initial={{ opacity: 0, x: 40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="lg:col-span-5 bg-gradient-to-br from-slate-50 to-white p-8 md:p-10 rounded-3xl border border-slate-100 shadow-[0_15px_40px_rgba(0,0,0,0.015)] space-y-6 relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
+                
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="inline-flex items-center gap-3 px-4 py-2 bg-emerald-50 rounded-full text-emerald-700 font-bold text-xs border border-emerald-100 uppercase tracking-wider"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Our Core Philosophy
+                </motion.div>
+
+                {/* Animated Float Heading */}
+                <h2 className="text-3xl font-black text-slate-900 uppercase tracking-wide leading-tight heading-float">
+                  {"Our Academic Mission".split(" ").map((word, index) => (
+                    <motion.span
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.5,
+                        delay: 0.3 + index * 0.1,
+                        ease: "easeOut"
+                      }}
+                      className="inline-block mr-2"
+                    >
+                      {word}
+                    </motion.span>
+                  ))}
+                </h2>
+
+                <p className="text-slate-605 text-sm md:text-[15px] leading-relaxed font-semibold">
+                  Ankurah Exams was created to eliminate the chaos of unorganized study files and scattered question papers. We provide a clean, state-of-the-art testing platform tailored specifically for intermediate students and aspirants targeting elite engineering, medical, and banking colleges.
+                </p>
+                <p className="text-slate-500 text-sm md:text-[15px] leading-relaxed font-medium">
+                  Our core strategy centers on continuous feedback: giving students a personalized daily schedule, matching reference sheets, and immediately grading simulated mock tests with instant accuracy metrics.
+                </p>
+              </motion.div>
+
             </div>
           </div>
+        </section>
 
-          {/* Dynamic Cards Grid */}
+        {/* Key Metrics Stats Counter Section (Green/Teal Gradient with cards-bg-img.png) */}
+        <section className="py-10 bg-slate-50 border-y border-slate-100/80">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[
+                { value: "10,000+", label: "Practice MCQs", desc: "Chapter-wise curated bank", icon: <BookOpen className="w-6 h-6 text-white" /> },
+                { value: "99.8%", label: "Accuracy Target", desc: "In-depth speed analytics", icon: <TrendingUp className="w-6 h-6 text-white" /> },
+                { value: "24/7", label: "Mentor Support", desc: "For doubt resolutions", icon: <ShieldCheck className="w-6 h-6 text-white" /> },
+                { value: "5+", label: "Elite Exam Tracks", desc: "JEE, NEET, and Banking", icon: <Award className="w-6 h-6 text-white" /> }
+              ].map((stat, idx) => (
+                <motion.div
+                  key={idx}
+                  whileHover={{ y: -6, scale: 1.02 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  className="relative p-6 rounded-2xl overflow-hidden border border-emerald-500/20 text-white shadow-md flex flex-col justify-between min-h-[160px] group transition-all duration-300"
+                  style={{
+                    backgroundImage: `linear-gradient(to bottom right, rgba(4, 120, 87, 0.95), rgba(13, 148, 136, 0.95)), url(${cardsBgImg})`,
+                    backgroundSize: '100px auto',
+                    backgroundRepeat: 'repeat',
+                    backgroundPosition: 'center'
+                  }}
+                >
+                  {/* Subtle hover overlay to intensify the color */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                  
+                  <div className="space-y-4 relative z-10">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 text-white flex items-center justify-center border border-white/20 group-hover:bg-white group-hover:text-emerald-700 transition-all duration-300 shadow-inner">
+                      {stat.icon}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-3xl font-black text-white group-hover:text-emerald-50 transition-colors duration-300">
+                        {stat.value}
+                      </div>
+                      <div className="font-extrabold text-emerald-100 text-[15px] tracking-tight">
+                        {stat.label}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-emerald-200/70 text-xs font-semibold mt-4 relative z-10">
+                    {stat.desc}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Pillars / Dynamic Cards Grid Section */}
+        <section className="py-12 max-w-7xl mx-auto px-6 space-y-10">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 rounded-full text-emerald-700 font-bold text-xs border border-emerald-100 uppercase tracking-wider">
+              Features
+            </div>
+            <h3 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Our Core Platform Pillars
+            </h3>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
@@ -230,57 +407,112 @@ export default function AboutPage() {
             ].map((card, idx) => (
               <motion.div
                 key={idx}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: idx * 0.15, ease: "easeOut" }}
                 whileHover={{ y: -8, scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className={`bg-white p-10 border border-slate-100 rounded-2xl shadow-sm relative group overflow-hidden cursor-pointer transition-all duration-300 ${card.gradient}`}
+                className={`bg-white p-7 border border-slate-100 rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.02)] relative group overflow-hidden cursor-pointer transition-all duration-300 ${card.gradient}`}
               >
-                <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0">
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0">
                   <img src={cardsBg} alt="Bg" className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-emerald-700/90 mix-blend-multiply"></div>
+                  <div className="absolute inset-0 bg-emerald-800/90 mix-blend-multiply"></div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-emerald-700/80 to-emerald-900/95"></div>
                 </div>
 
                 <div className="relative z-10 space-y-5">
-                  <div className="text-emerald-700 group-hover:text-white transition-colors duration-300">
+                  <div className="relative z-10 text-emerald-700 group-hover:text-white transition-colors duration-500 transform group-hover:scale-110 origin-left">
                     {card.icon}
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900 group-hover:text-white transition-colors duration-300">
+                  <h3 className="text-2xl font-extrabold text-slate-900 group-hover:text-white transition-colors duration-500">
                     {card.title}
                   </h3>
-                  <p className="text-slate-650 group-hover:text-emerald-50 text-sm leading-relaxed font-semibold transition-colors duration-300">
+                  <p className="text-slate-600 group-hover:text-emerald-50 text-sm leading-relaxed font-semibold transition-colors duration-500">
                     {card.desc}
                   </p>
                 </div>
               </motion.div>
             ))}
           </div>
+        </section>
 
-          {/* Interactive stats */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-8 md:p-12 shadow-sm space-y-8">
-            <h3 className="text-2xl font-black text-slate-900 text-center uppercase tracking-wider">The Ankurah Learning Flywheel</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="space-y-3 text-center">
-                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">1</div>
-                <h4 className="font-extrabold text-slate-800 text-base">Personalized Scheduling</h4>
-                <p className="text-slate-500 text-sm leading-normal font-semibold">
-                  Daily slots aligned with your year (Junior, Senior, or Long-Term Repeater) generated by our system coordinators.
+        {/* Banner-Style Methodology (Learning Flywheel) Section */}
+        <section className="py-10 max-w-7xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-800 to-emerald-950 text-white p-8 md:p-10 shadow-xl border border-emerald-500/10"
+          >
+            <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-40">
+              <div className="absolute top-[-50%] left-[-20%] w-[600px] h-[600px] bg-emerald-400/20 rounded-full blur-[100px]"></div>
+              <div className="absolute bottom-[-50%] right-[-20%] w-[600px] h-[600px] bg-teal-400/20 rounded-full blur-[100px]"></div>
+            </div>
+
+            <div className="relative z-10 space-y-8">
+              {/* Banner Header */}
+              <div className="text-center space-y-3">
+                <span className="px-3 py-1 bg-emerald-500/20 rounded-full text-emerald-300 font-bold text-xs uppercase tracking-wider border border-emerald-500/30">
+                  Methodology
+                </span>
+                <h3 className="text-2xl md:text-3xl font-black tracking-wide text-white uppercase">
+                  The Ankurah Learning Flywheel
+                </h3>
+                <p className="text-emerald-100/80 text-sm max-w-xl mx-auto font-medium">
+                  Our systematic, circular preparation approach ensures continuous progress and measurable results.
                 </p>
               </div>
-              <div className="space-y-3 text-center">
-                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">2</div>
-                <h4 className="font-extrabold text-slate-800 text-base">Targeted Practice</h4>
-                <p className="text-slate-500 text-sm leading-normal font-semibold">
-                  Solve customized daily MCQ goals mapped directly to chapter-specific sub-topics in Physics, Chemistry, Mathematics, and Biology.
-                </p>
-              </div>
-              <div className="space-y-3 text-center">
-                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">3</div>
-                <h4 className="font-extrabold text-slate-800 text-base">Actionable Insights</h4>
-                <p className="text-slate-500 text-sm leading-normal font-semibold">
-                  Analyze accuracy metrics, time-taken curves, and detailed chapter-wise mastery progress to systematically eliminate weak zones.
-                </p>
+
+              {/* Horizontal Timeline Steps */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 lg:gap-4 items-center">
+                
+                {/* Step 1 */}
+                <div className="lg:col-span-1 space-y-3 text-center lg:text-left group">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-bold text-lg shadow-md mx-auto lg:mx-0 transition-transform group-hover:-translate-y-1 duration-300 border border-emerald-400/30">
+                    1
+                  </div>
+                  <h4 className="font-extrabold text-white text-base transition-colors group-hover:text-emerald-300">Personalized Scheduling</h4>
+                  <p className="text-emerald-100/70 text-xs leading-relaxed font-semibold">
+                    Daily slots aligned with your academic year generated by our system coordinators to maintain consistency.
+                  </p>
+                </div>
+
+                {/* Arrow 1 */}
+                <div className="hidden lg:flex lg:col-span-1 justify-center">
+                  <div className="h-0.5 w-16 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full opacity-60"></div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="lg:col-span-1 space-y-3 text-center lg:text-left group">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-500 text-white flex items-center justify-center font-bold text-lg shadow-md mx-auto lg:mx-0 transition-transform group-hover:-translate-y-1 duration-300 border border-teal-400/30">
+                    2
+                  </div>
+                  <h4 className="font-extrabold text-white text-base transition-colors group-hover:text-teal-300">Targeted Practice</h4>
+                  <p className="text-emerald-100/70 text-xs leading-relaxed font-semibold">
+                    Solve customized daily MCQ goals mapped directly to chapter-specific sub-topics in Physics, Chemistry, Math, and Biology.
+                  </p>
+                </div>
+
+                {/* Arrow 2 */}
+                <div className="hidden lg:flex lg:col-span-1 justify-center">
+                  <div className="h-0.5 w-16 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full opacity-60"></div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="lg:col-span-1 space-y-3 text-center lg:text-left group">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center font-bold text-lg shadow-md mx-auto lg:mx-0 transition-transform group-hover:-translate-y-1 duration-300 border border-emerald-400/30">
+                    3
+                  </div>
+                  <h4 className="font-extrabold text-white text-base transition-colors group-hover:text-emerald-300">Actionable Insights</h4>
+                  <p className="text-emerald-100/70 text-xs leading-relaxed font-semibold">
+                    Analyze accuracy metrics, time-taken curves, and detailed chapter-wise mastery progress to systematically eliminate weak zones.
+                  </p>
+                </div>
+
               </div>
             </div>
-          </div>
+          </motion.div>
         </section>
       </main>
 

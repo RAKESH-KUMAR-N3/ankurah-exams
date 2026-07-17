@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plan, EntranceExam, CompetitiveExam } from '../types';
 import { Sparkles, CheckCircle2 } from 'lucide-react';
-import axios from 'axios';
+// import axios from 'axios';
 
 // Since we are mocking API for now or using real API, we need to adapt to what's available
 // Assuming we fetch plans from API
