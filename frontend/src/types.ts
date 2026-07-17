@@ -9,19 +9,52 @@ export interface User {
   selectedCompetitiveExams?: string[];
   studentType?: 'first_year' | 'second_year' | 'long_term' | '';
   studyPlan?: 'quarterly' | 'half_yearly' | 'academic_year' | 'yearly' | '';
+  purchasedPlans?: {
+    planId: string;
+    examId: string;
+    purchasedAt: string;
+    isActive: boolean;
+  }[];
   streak?: number;
   lastActiveDate?: string;
   createdAt: string;
 }
 
+export interface Plan {
+  _id: string;
+  examId: string | any;
+  name: string;
+  price: number;
+  description: string;
+  isActive: boolean;
+}
+
+export interface Doubt {
+  _id: string;
+  studentId: string;
+  examId?: string;
+  chapterId?: string;
+  questionId?: string;
+  content: string;
+  status: 'open' | 'answered' | 'closed';
+  answer?: string;
+  answeredBy?: string;
+  answeredAt?: string;
+  createdAt: string;
+}
+
 export interface EntranceExam {
   id: string;
+  _id?: string;
+  categoryId?: string;
   name: string;
   description: string;
 }
 
 export interface CompetitiveExam {
   id: string;
+  _id?: string;
+  categoryId?: string;
   name: string;
   description: string;
 }
@@ -91,6 +124,7 @@ export interface Test {
   isFullSyllabus: boolean;
   subjectId?: string; // Optional if full syllabus
   chapterId?: string; // Optional if subject-wise or full syllabus
+  examId?: any; // To link test with a specific exam
   questionIds: string[];
   createdAt: string;
 }
