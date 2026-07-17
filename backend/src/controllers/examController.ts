@@ -2,12 +2,37 @@ import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import Exam from '../models/Exam';
 
-// @desc    Create an Exam
+import Category from '../models/Category';
+import Plan from '../models/Plan';
+
+// @desc    Create an Exam and its default Plan
 // @route   POST /api/exams
 // @access  Admin
 export const createExam = asyncHandler(async (req: Request, res: Response) => {
-  const { name, categoryId } = req.body;
-  const exam = await Exam.create({ name, categoryId });
+  const { id, name, description, type, price } = req.body;
+
+  let categoryName = type === 'competitive' ? 'Competitive Exams' : 'Entrance Exams';
+  let category = await Category.findOne({ name: categoryName });
+  if (!category) {
+    category = await Category.create({ name: categoryName });
+  }
+
+  const exam = await Exam.create({ 
+    name, 
+    categoryId: category._id,
+    description,
+    examId: id
+  });
+
+  if (price) {
+     await Plan.create({
+       examId: exam._id,
+       name: type === 'entrance' ? 'Yearly Plan' : `${name} Plan`,
+       price: Number(price),
+       description: `Full access plan for ${name}`
+     });
+  }
+
   res.status(201).json(exam);
 });
 

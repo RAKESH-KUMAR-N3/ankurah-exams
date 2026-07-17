@@ -14,6 +14,8 @@ import AnalyticsSection from './components/AnalyticsSection';
 import TimetableSection from './components/TimetableSection';
 import StudyMaterialSection from './components/StudyMaterialSection';
 import TestSection from './components/TestSection';
+import PlanStore from './components/PlanStore';
+import StudentDoubts from './components/StudentDoubts';
 import AdminManagement from './components/AdminManagement';
 import AboutPage from './components/AboutPage';
 import EntranceExamsPage from './components/EntranceExamsPage';
@@ -22,7 +24,7 @@ import ContactPage from './components/ContactPage';
 import logo from './assets/logo.png';
 import {
   Sparkles, Award, Calendar, BookOpen, FileText, Shield,
-  LogOut, Menu, X, Flame, TrendingUp, HelpCircle, Users, LayoutDashboard, Layers, Database, Bell, Layout
+  LogOut, Menu, X, Flame, TrendingUp, HelpCircle, Users, LayoutDashboard, Layers, Database, Bell, Layout, MessageCircle
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -275,8 +277,8 @@ export default function App() {
 
   const location = useLocation();
   const pathParts = location.pathname.split('/');
-  const activeTab = pathParts.length > 2 && pathParts[1] === 'dashboard' 
-    ? pathParts[2] 
+  const activeTab = pathParts.length > 2 && pathParts[1] === 'dashboard'
+    ? pathParts[2]
     : (currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard');
 
   const handleTabChange = (tab: string) => {
@@ -293,9 +295,9 @@ export default function App() {
         return (
           <StudentDashboard
             user={currentUser}
+            attempts={attempts}
             timetables={timetables}
             availableTests={tests}
-            attempts={attempts}
             subjects={subjects}
             announcements={announcements}
             notifications={notifications}
@@ -303,6 +305,8 @@ export default function App() {
             onAttemptTest={() => handleTabChange('tests')}
           />
         );
+      case 'store':
+        return <PlanStore user={currentUser} onPurchaseSuccess={() => loadAllData(currentUser)} />;
       case 'timetable':
         return (
           <TimetableSection
@@ -312,6 +316,7 @@ export default function App() {
             chapters={chapters}
           />
         );
+      case 'subjects':
       case 'study_materials':
         return (
           <StudyMaterialSection
@@ -321,6 +326,8 @@ export default function App() {
             chapters={chapters}
           />
         );
+      case 'doubts':
+        return <StudentDoubts user={currentUser} />;
       case 'tests':
         return (
           <TestSection
@@ -406,8 +413,9 @@ export default function App() {
 
       <aside className={`fixed lg:static top-0 bottom-0 left-0 w-64 bg-gradient-to-b from-emerald-900 via-emerald-950 to-slate-950 text-white z-40 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-transform duration-200 ease-in-out border-r border-emerald-800/40 flex flex-col justify-between shrink-0`}>
         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-          <div className="flex items-center justify-center pb-6 border-b border-emerald-800/30 mt-2 mb-2 bg-white/95 shadow-[0_10px_25px_-5px_rgba(16,185,129,0.15)] rounded-2xl p-4 border border-emerald-500/20">
-            <img src={logo} alt="Ankurah Exams" className="w-48 object-contain drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <div className="relative flex items-center justify-center pb-6 border-b border-emerald-800/30 mt-2 mb-2">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-3/4 h-16 bg-white/60 blur-[30px] rounded-full pointer-events-none"></div>
+            <img src={logo} alt="Ankurah Exams" className="w-48 object-contain relative z-10 drop-shadow-[0_2px_10px_rgba(255,255,255,0.2)]" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           </div>
 
           <nav className="space-y-1 pt-2">
@@ -420,28 +428,46 @@ export default function App() {
                   <Flame className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Dashboard
                 </button>
                 <button
+                  onClick={() => handleTabChange('store')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'store' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                >
+                  <Sparkles className={`w-4 h-4 ${activeTab === 'store' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Plans
+                </button>
+                <button
                   onClick={() => handleTabChange('timetable')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'timetable' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <Calendar className={`w-4 h-4 ${activeTab === 'timetable' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Study Timetable
+                  <Calendar className={`w-4 h-4 ${activeTab === 'timetable' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Time Table
                 </button>
                 <button
-                  onClick={() => handleTabChange('study_materials')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'study_materials' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                  onClick={() => handleTabChange('subjects')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'subjects' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <BookOpen className={`w-4 h-4 ${activeTab === 'study_materials' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Study Materials
+                  <Layers className={`w-4 h-4 ${activeTab === 'subjects' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Subject / Chapters
                 </button>
                 <button
                   onClick={() => handleTabChange('tests')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'tests' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <FileText className={`w-4 h-4 ${activeTab === 'tests' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Practice & Tests
+                  <FileText className={`w-4 h-4 ${activeTab === 'tests' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Exams
+                </button>
+                <button
+                  onClick={() => handleTabChange('doubts')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'doubts' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                >
+                  <MessageCircle className={`w-4 h-4 ${activeTab === 'doubts' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Doubts
+                </button>
+                <button
+                  onClick={() => handleTabChange('study_materials')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'study_materials' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                >
+                  <BookOpen className={`w-4 h-4 ${activeTab === 'study_materials' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Study Material
                 </button>
                 <button
                   onClick={() => handleTabChange('analytics')}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'analytics' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <TrendingUp className={`w-4 h-4 ${activeTab === 'analytics' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Deep Analytics
+                  <TrendingUp className={`w-4 h-4 ${activeTab === 'analytics' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Performance
                 </button>
               </>
             )}
@@ -451,13 +477,13 @@ export default function App() {
                 <div className="px-4 py-2 text-xs font-bold text-emerald-200/50 uppercase tracking-wider mb-2">Admin Menu</div>
                 {[
                   { id: 'admin_dashboard', label: 'Dashboard Overview', icon: Flame, color: 'text-emerald-300' },
+                  { id: 'admin_payments', label: 'Payments', icon: Database, color: 'text-emerald-350' },
                   { id: 'admin_students', label: 'Students', icon: Users, color: 'text-emerald-350' },
-                  { id: 'admin_exams', label: 'Exams', icon: Award, color: 'text-emerald-300' },
+                  { id: 'admin_exams', label: 'Exams & Plans', icon: Award, color: 'text-emerald-300' },
                   { id: 'admin_subjects', label: 'Subjects & Chapters', icon: Layers, color: 'text-emerald-300' },
                   { id: 'admin_questions', label: 'Question Bank', icon: Database, color: 'text-emerald-300' },
                   { id: 'admin_materials', label: 'Study Material', icon: BookOpen, color: 'text-emerald-300' },
                   { id: 'admin_timetables', label: 'Timetable', icon: Calendar, color: 'text-emerald-300' },
-                  { id: 'admin_tests', label: 'Test Configurator', icon: LayoutDashboard, color: 'text-emerald-300' },
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -472,24 +498,6 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="p-6 border-t border-emerald-800/30 shrink-0 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md bg-emerald-800 border border-emerald-700/50 text-emerald-100 flex items-center justify-center font-bold text-xs uppercase shrink-0">
-              {currentUser?.name?.substring(0, 2)}
-            </div>
-            <div className="min-w-0">
-              <span className="font-bold text-xs text-emerald-50 block truncate leading-tight">{currentUser?.name}</span>
-              <span className="text-[10px] text-emerald-300/60 block capitalize">{currentUser?.role} Account</span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-emerald-800/30 hover:border-emerald-700/60 bg-emerald-950/40 text-emerald-250 hover:text-white text-xs font-bold transition-all cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" /> Sign Out
-          </button>
-        </div>
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden">
@@ -501,12 +509,17 @@ export default function App() {
             >
               <Menu className="w-5 h-5 text-slate-600" />
             </button>
-            <div>
-              <h1 className="text-sm font-black text-slate-900 tracking-tight ml-2 lg:ml-0">
-                {isStudent ? 'Academic Preparation Track' : 'Administrative Operations Panel'}
-              </h1>
-              <p className="text-[10px] font-bold text-emerald-600 tracking-wider uppercase ml-2 lg:ml-0 mt-0.5">
-                {isStudent ? `Plan: ${currentUser?.studentType?.replace('_', ' ')}` : 'Full System Control'}
+            <div className="flex flex-col ml-2 lg:ml-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                  <Shield className="w-4 h-4 text-white" />
+                </div>
+                <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-emerald-900 via-teal-800 to-emerald-700 tracking-tight">
+                  {isStudent ? 'Ankurah Portal' : 'Admin Panel'}
+                </h1>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-1.5 ml-11">
+                {isStudent ? 'Empowering Your Success' : 'Master Administration Suite'}
               </p>
             </div>
           </div>
@@ -518,8 +531,21 @@ export default function App() {
                 Streak: {currentUser?.streak || 1} Days
               </div>
             )}
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs">
-              {currentUser?.name?.substring(0, 2)}
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden md:block">
+                <span className="font-bold text-xs text-slate-900 block truncate leading-tight">{currentUser?.name}</span>
+                <span className="text-[10px] text-slate-500 block capitalize">{currentUser?.role} Account</span>
+              </div>
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs">
+                {currentUser?.name?.substring(0, 2)}
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="ml-2 p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </header>
@@ -536,40 +562,40 @@ export default function App() {
     <>
       <ScrollToTop />
       <Routes>
-      <Route
-        path="/"
-        element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <LandingPage />}
-      />
-      <Route
-        path="/about"
-        element={<AboutPage />}
-      />
-      <Route
-        path="/entrance-exams"
-        element={<EntranceExamsPage />}
-      />
-      <Route
-        path="/competitive-exams"
-        element={<CompetitiveExamsPage />}
-      />
-      <Route
-        path="/contact"
-        element={<ContactPage />}
-      />
-      <Route
-        path="/login"
-        element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth onAuthSuccess={handleAuthSuccess} initialMode="login" />}
-      />
-      <Route
-        path="/register"
-        element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth onAuthSuccess={handleAuthSuccess} initialMode="register" />}
-      />
-      <Route
-        path="/dashboard/*"
-        element={(authState === 'unauthenticated' || !currentUser) ? <Navigate to="/login" replace /> : <DashboardShell />}
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route
+          path="/"
+          element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <LandingPage />}
+        />
+        <Route
+          path="/about"
+          element={<AboutPage />}
+        />
+        <Route
+          path="/entrance-exams"
+          element={<EntranceExamsPage />}
+        />
+        <Route
+          path="/competitive-exams"
+          element={<CompetitiveExamsPage />}
+        />
+        <Route
+          path="/contact"
+          element={<ContactPage />}
+        />
+        <Route
+          path="/login"
+          element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth onAuthSuccess={handleAuthSuccess} initialMode="login" />}
+        />
+        <Route
+          path="/register"
+          element={(authState === 'authenticated' && currentUser) ? <Navigate to="/dashboard" replace /> : <Auth onAuthSuccess={handleAuthSuccess} initialMode="register" />}
+        />
+        <Route
+          path="/dashboard/*"
+          element={(authState === 'unauthenticated' || !currentUser) ? <Navigate to="/login" replace /> : <DashboardShell />}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </>
   );
 }

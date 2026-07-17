@@ -10,6 +10,7 @@ import TestAttempt from '../models/TestAttempt';
 import Notification from '../models/Notification';
 import PerformanceMetric from '../models/PerformanceMetric';
 import Timetable from '../models/Timetable';
+import Transaction from '../models/Transaction';
 
 export const getAdminDashboardSummary = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -22,7 +23,9 @@ export const getAdminDashboardSummary = async (req: Request, res: Response): Pro
       totalMaterials,
       totalTests,
       totalAttempts,
-      recentNotifications
+      recentNotifications,
+      transactions,
+      recentTransactions
     ] = await Promise.all([
       User.countDocuments({ role: 'student' }),
       User.countDocuments({ role: 'student', isActive: true }),
@@ -32,7 +35,9 @@ export const getAdminDashboardSummary = async (req: Request, res: Response): Pro
       StudyMaterial.countDocuments(),
       Test.countDocuments(),
       TestAttempt.countDocuments(),
-      Notification.find().sort({ createdAt: -1 }).limit(5).lean()
+      Notification.find().sort({ createdAt: -1 }).limit(5).lean(),
+      Transaction.find({ status: 'success' }).lean(),
+      Transaction.find().sort({ createdAt: -1 }).limit(5).populate('studentId', 'name email').populate('planId', 'name').lean()
     ]);
 
     // Average scores
@@ -40,6 +45,19 @@ export const getAdminDashboardSummary = async (req: Request, res: Response): Pro
       { $group: { _id: null, avgScore: { $avg: "$score" } } }
     ]);
     const avgScore = scoreAgg.length > 0 ? scoreAgg[0].avgScore : 0;
+
+    // Revenue calculation
+    const totalRevenue = transactions.reduce((sum, txn) => sum + (txn.amount || 0), 0);
+
+    // Mock progress data for Bar Chart (e.g., last 6 months enrollment/revenue)
+    const projectProgressData = [
+      { name: 'Jan', students: 10, revenue: 5000 },
+      { name: 'Feb', students: 15, revenue: 7500 },
+      { name: 'Mar', students: 20, revenue: 10000 },
+      { name: 'Apr', students: 28, revenue: 14000 },
+      { name: 'May', students: 35, revenue: 17500 },
+      { name: 'Jun', students: totalStudents || 45, revenue: totalRevenue || 22500 },
+    ];
 
     res.json({
       totalStudents,
@@ -51,7 +69,10 @@ export const getAdminDashboardSummary = async (req: Request, res: Response): Pro
       totalTests,
       totalAttempts,
       avgScore,
-      recentNotifications
+      recentNotifications,
+      totalRevenue,
+      last5Transactions: recentTransactions,
+      projectProgressData
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });

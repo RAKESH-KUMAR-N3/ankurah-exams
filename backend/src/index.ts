@@ -23,6 +23,10 @@ import importRoutes from './routes/importRoutes';
 import studentManagementRoutes from './routes/studentManagementRoutes';
 import reportRoutes from './routes/reportRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
+import planRoutes from './routes/planRoutes';
+import doubtRoutes from './routes/doubtRoutes';
+import transactionRoutes from './routes/transactionRoutes';
+
 
 dotenv.config();
 
@@ -54,6 +58,9 @@ app.use('/api/timetables', timetableRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/tests', testRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/plans', planRoutes);
+app.use('/api/doubts', doubtRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 // Student routes (protected for students)
 app.use('/api/students', studentRoutes);

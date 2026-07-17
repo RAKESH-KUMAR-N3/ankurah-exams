@@ -72,6 +72,8 @@ export const fetchStudyMaterials = (params?: Record<string, string>) => apiGet('
 export const fetchTimetables = (params?: Record<string, string>) => apiGet('/api/timetables', params);
 export const fetchNotifications = (params?: Record<string, string>) => apiGet('/api/notifications', params);
 export const fetchStudentList = (params?: Record<string, string>) => apiGet('/api/student-management', params);
+export const fetchPlans = (params?: Record<string, string>) => apiGet('/api/plans', params);
+export const fetchTransactions = (params?: Record<string, string>) => apiGet('/api/transactions', params);
 
 // ─── Student Data ─────────────────────────────────────────────────────────────
 export const fetchMyProfile = () => apiGet('/api/students/profile');

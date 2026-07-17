@@ -2,7 +2,7 @@ import React from 'react';
 import { User, Timetable, Test, TestAttempt, Subject, Announcement, Notification } from '../types';
 import { 
   Flame, Award, Calendar, BookOpen, Clock, FileText, CheckCircle2, 
-  TrendingUp, AlertCircle, ArrowRight, BookMarked, Brain, Bell, Volume2, Check
+  TrendingUp, AlertCircle, ArrowRight, BookMarked, Brain, Bell, Volume2, Check, Sparkles
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
@@ -89,30 +89,35 @@ export default function StudentDashboard({
   return (
     <div id="student_dashboard" className="space-y-6 font-sans">
       
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-br from-emerald-800 to-emerald-950 rounded-2xl p-8 text-white relative overflow-hidden border border-emerald-700/30 shadow-[0_15px_30px_-5px_rgba(16,185,129,0.25)]">
-        {/* Subtle decorative circles */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      {/* Purchased Plan Banner */}
+      <div className="bg-gradient-to-r from-emerald-900 to-teal-900 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden shadow-lg border border-emerald-700/50">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-750/40 text-emerald-300 rounded-lg text-xs font-bold mb-4 border border-emerald-500/30 uppercase tracking-wider">
-              <Flame className="w-4 h-4 fill-emerald-400" />
-              {user.streak || 1} Day Study Streak!
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-800/60 text-emerald-300 rounded-lg text-[10px] font-black mb-4 border border-emerald-500/30 uppercase tracking-widest">
+              <Award className="w-3.5 h-3.5" />
+              Active Subscription
             </div>
-            <h1 className="text-3xl md:text-5xl font-black tracking-tight text-white">Welcome back, {user.name}!</h1>
-            <p className="mt-3 text-emerald-100/90 text-sm md:text-base max-w-xl leading-relaxed font-semibold">
-              Your customized plan for <span className="text-white font-bold">{user.studentType === 'long_term' ? 'JEE/NEET Long Term' : user.studentType === 'first_year' ? 'Intermediate 1st Year' : 'Intermediate 2nd Year'}</span> (Academic Plan: <span className="capitalize text-emerald-300 font-bold">{user.studyPlan || 'yearly'}</span>) is fully active. Let's conquer today's schedule!
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-2">
+              {user.purchasedPlans && user.purchasedPlans.length > 0 
+                ? `Academic Plan Active` 
+                : 'Welcome, ' + user.name + '!'}
+            </h1>
+            <p className="text-emerald-100/90 text-sm max-w-xl leading-relaxed font-medium">
+              You are currently enrolled in the <span className="text-white font-bold tracking-wide">Yearly Plan</span>. 
+              Keep up the momentum to secure your top rank!
             </p>
           </div>
+          
           <div className="flex gap-4 shrink-0">
-            <div className="p-6 bg-white/10 rounded-2xl border border-white/20 text-center min-w-[140px] backdrop-blur-md shadow-inner">
-              <span className="block text-5xl md:text-6xl font-black font-mono text-white tracking-tight">{user.streak || 1}</span>
-              <span className="text-xs text-emerald-100 uppercase font-black tracking-wider block mt-1">Streak Days</span>
+            <div className="p-4 bg-white/10 rounded-2xl border border-white/20 text-center min-w-[120px] backdrop-blur-md shadow-inner flex flex-col justify-center">
+              <span className="block text-4xl font-black font-mono text-white tracking-tight">{user.streak || 1}</span>
+              <span className="text-[10px] text-emerald-200 uppercase font-bold tracking-widest block mt-1">Day Streak</span>
             </div>
-            <div className="p-6 bg-white/10 rounded-2xl border border-white/20 text-center min-w-[140px] backdrop-blur-md shadow-inner">
-              <span className="block text-5xl md:text-6xl font-black font-mono text-white tracking-tight">{averageScore}%</span>
-              <span className="text-xs text-emerald-100 uppercase font-black tracking-wider block mt-1">Avg. Score</span>
+            <div className="p-4 bg-white/10 rounded-2xl border border-white/20 text-center min-w-[120px] backdrop-blur-md shadow-inner flex flex-col justify-center">
+              <span className="block text-4xl font-black font-mono text-white tracking-tight">{averageScore}%</span>
+              <span className="text-[10px] text-emerald-200 uppercase font-bold tracking-widest block mt-1">Avg Score</span>
             </div>
           </div>
         </div>
@@ -259,6 +264,41 @@ export default function StudentDashboard({
             )}
           </div>
 
+          {/* Recommended Plans Preview */}
+          {(!user.purchasedPlans || user.purchasedPlans.length === 0) && (
+            <div className="bg-white rounded-2xl border border-emerald-500/30 p-6 md:p-8 shadow-sm">
+              <div className="flex items-center justify-between mb-6 pb-4 border-b border-geom-border">
+                <div className="flex items-center gap-2.5">
+                  <Sparkles className="w-6 h-6 text-emerald-600" />
+                  <h2 className="font-extrabold text-zinc-900 text-xl">Recommended Plans</h2>
+                </div>
+                <button 
+                  onClick={() => onNavigate('store')}
+                  className="px-4 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-sm font-extrabold flex items-center gap-1 cursor-pointer transition-all border border-emerald-200"
+                >
+                  View More <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 rounded-2xl border border-geom-border hover:border-emerald-500 hover:shadow-md bg-gradient-to-br from-white to-emerald-50/30 flex flex-col justify-between transition-all cursor-pointer" onClick={() => onNavigate('store')}>
+                  <div>
+                    <h3 className="font-black text-zinc-900 text-lg mb-1">EAMCET Full Year</h3>
+                    <p className="text-zinc-650 text-xs mb-3">Complete access to EAMCET study materials, chapter-wise tests, and mock exams.</p>
+                    <div className="text-2xl font-black text-emerald-700">₹999</div>
+                  </div>
+                </div>
+                <div className="p-5 rounded-2xl border border-geom-border hover:border-emerald-500 hover:shadow-md bg-gradient-to-br from-white to-emerald-50/30 flex flex-col justify-between transition-all cursor-pointer" onClick={() => onNavigate('store')}>
+                  <div>
+                    <h3 className="font-black text-zinc-900 text-lg mb-1">NEET Full Year</h3>
+                    <p className="text-zinc-650 text-xs mb-3">Comprehensive NEET preparation with deep analytics and doubt clearance.</p>
+                    <div className="text-2xl font-black text-emerald-700">₹1499</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Right 1 Col: Score chart, Streak, Quick Links */}
@@ -268,10 +308,10 @@ export default function StudentDashboard({
           <div className="bg-white rounded-2xl border border-geom-border p-6 md:p-8 shadow-sm flex flex-col justify-between min-h-[340px]">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-extrabold text-zinc-900 text-xl">Performance Trend</h3>
+                <Award className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-extrabold text-zinc-900 text-xl">Performance & Rank Growth</h3>
               </div>
-              <p className="text-zinc-500 text-sm font-semibold leading-normal">Score percentage across chronological test attempts</p>
+              <p className="text-zinc-500 text-sm font-semibold leading-normal">Your estimated rank percentile based on recent exams</p>
             </div>
 
             <div className="h-44 w-full mt-4">
@@ -331,18 +371,32 @@ export default function StudentDashboard({
 
             <div className="grid grid-cols-2 gap-3 pt-2">
               <div 
+                onClick={() => onNavigate('subjects')}
+                className="p-4 bg-zinc-50 hover:bg-emerald-50/50 border border-geom-border hover:border-emerald-500/30 rounded-xl text-center cursor-pointer transition-all"
+              >
+                <BookOpen className="w-5 h-5 text-emerald-600 mx-auto mb-1.5" />
+                <span className="text-[11px] font-black text-zinc-700 block uppercase tracking-wider">Subjects</span>
+              </div>
+              <div 
+                onClick={() => onNavigate('timetable')}
+                className="p-4 bg-zinc-50 hover:bg-emerald-50/50 border border-geom-border hover:border-emerald-500/30 rounded-xl text-center cursor-pointer transition-all"
+              >
+                <Calendar className="w-5 h-5 text-emerald-600 mx-auto mb-1.5" />
+                <span className="text-[11px] font-black text-zinc-700 block uppercase tracking-wider">Timetable</span>
+              </div>
+              <div 
                 onClick={() => onNavigate('study_materials')}
-                className="p-4 bg-zinc-50 hover:bg-zinc-100 border border-geom-border rounded-xl text-center cursor-pointer transition-all"
+                className="p-4 bg-zinc-50 hover:bg-emerald-50/50 border border-geom-border hover:border-emerald-500/30 rounded-xl text-center cursor-pointer transition-all"
               >
                 <BookMarked className="w-5 h-5 text-emerald-600 mx-auto mb-1.5" />
-                <span className="text-[11px] font-black text-zinc-700 block uppercase tracking-wider">Notes & PDF</span>
+                <span className="text-[11px] font-black text-zinc-700 block uppercase tracking-wider">Notes</span>
               </div>
               <div 
                 onClick={() => onNavigate('tests')}
-                className="p-4 bg-zinc-50 hover:bg-zinc-100 border border-geom-border rounded-xl text-center cursor-pointer transition-all"
+                className="p-4 bg-zinc-50 hover:bg-emerald-50/50 border border-geom-border hover:border-emerald-500/30 rounded-xl text-center cursor-pointer transition-all"
               >
                 <Award className="w-5 h-5 text-emerald-600 mx-auto mb-1.5" />
-                <span className="text-[11px] font-black text-zinc-700 block uppercase tracking-wider">Practice Exam</span>
+                <span className="text-[11px] font-black text-zinc-700 block uppercase tracking-wider">Exams</span>
               </div>
             </div>
           </div>

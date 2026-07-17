@@ -9,9 +9,16 @@ const userSchema = new mongoose.Schema(
     
     // Student specific fields
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
-    exams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Exam' }],
     studentType: { type: mongoose.Schema.Types.ObjectId, ref: 'StudentType' },
-    plan: { type: String, default: 'Yearly' },
+    exams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Exam' }],
+    purchasedPlans: [
+      {
+        planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
+        examId: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam' },
+        purchasedAt: { type: Date, default: Date.now },
+        isActive: { type: Boolean, default: true }
+      }
+    ],
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
