@@ -4,7 +4,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-     "build": "./node_modules/.bin/tsc --version && ./node_modules/.bin/tsc --showConfig && ./node_modules/.bin/tsc",
+    "build": "tsc", 
     "start": "node dist/index.js"
   },
   "dependencies": {
@@ -18,15 +18,15 @@
     "joi": "^18.2.3",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "typescript": "~5.8.2",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.25",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^22.14.0",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2"
+    "@types/node": "^22.14.0"
   }
 }
