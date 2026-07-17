@@ -36,7 +36,7 @@ app.use(cors());
 app.use(express.json());
 
 // Health check
-app.get('/', (req, res) => {
+app.get('/', (req: express.Request, res: express.Response) => {
   res.send('Ankurah Exams API is running...');
 });
 

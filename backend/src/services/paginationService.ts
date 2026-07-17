@@ -10,8 +10,8 @@ interface PaginationOptions {
   lean?: boolean;
 }
 
-export const getPaginatedData = async <T extends Document>(
-  model: Model<T>,
+export const getPaginatedData = async <T>(
+  model: Model<any>,
   baseQuery: any,
   reqQuery: any,
   options: PaginationOptions = {}

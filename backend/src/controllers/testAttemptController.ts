@@ -45,7 +45,7 @@ export const saveAttempt = async (req: Request, res: Response): Promise<void> =>
       return;
     }
     
-    attempt.responses = responses;
+    attempt.responses = responses as any;
     await attempt.save();
     
     res.json({ message: 'Progress saved successfully', attempt });

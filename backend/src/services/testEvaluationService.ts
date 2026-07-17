@@ -43,7 +43,7 @@ export const evaluateTestAttempt = async (attemptId: string) => {
     };
   });
 
-  attempt.responses = evaluatedResponses;
+  attempt.responses = evaluatedResponses as any;
   attempt.score = score;
   await attempt.save();
 

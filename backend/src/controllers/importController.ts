@@ -4,7 +4,13 @@ import csvParser from 'csv-parser';
 import Question from '../models/Question';
 import StudyMaterial from '../models/StudyMaterial';
 
-export const importQuestions = async (req: Request, res: Response): Promise<void> => {
+// Multer augments Express.Request with `file`, but the typed interface requires explicit extension
+interface MulterRequest extends Request {
+  file?: Express.Multer.File;
+}
+
+
+export const importQuestions = async (req: MulterRequest, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ message: 'No file uploaded' });
@@ -48,7 +54,7 @@ export const importQuestions = async (req: Request, res: Response): Promise<void
   }
 };
 
-export const importMaterials = async (req: Request, res: Response): Promise<void> => {
+export const importMaterials = async (req: MulterRequest, res: Response): Promise<void> => {
   try {
     if (!req.file) {
       res.status(400).json({ message: 'No file uploaded' });
