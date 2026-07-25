@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import User from '../models/User';
+import Exam from '../models/Exam';
+import StudentType from '../models/StudentType';
 import generateToken from '../utils/generateToken';
 import bcrypt from 'bcryptjs';
 
@@ -17,6 +19,7 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
       role: user.role,
       token: generateToken(user._id.toString()),
     });
@@ -30,7 +33,7 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
 // @route   POST /api/auth/register
 // @access  Public
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
-  const { name, email, password, role, category, exams, studentType, plan } = req.body;
+  const { name, email, password, phone, role, category, exams, studentType, plan } = req.body;
 
   const userExists = await User.findOne({ email });
 
@@ -46,11 +49,11 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
     name,
     email,
     password: hashedPassword,
+    phone,
     role: role || 'student',
-    category,
-    exams,
-    studentType,
-    plan,
+    category: category && category !== '' ? category : undefined,
+    studentType: studentType && studentType !== '' ? studentType : undefined,
+    exams: Array.isArray(exams) && exams.length > 0 ? exams : [],
   });
 
   if (user) {
@@ -58,6 +61,7 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
       _id: user._id,
       name: user.name,
       email: user.email,
+      phone: user.phone,
       role: user.role,
       token: generateToken(user._id.toString()),
     });
@@ -65,4 +69,17 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
     res.status(400);
     throw new Error('Invalid user data');
   }
+});
+
+// @desc    Get public metadata for registration (exams, studentTypes)
+// @route   GET /api/auth/metadata
+// @access  Public
+export const getAuthMetadata = asyncHandler(async (req: Request, res: Response) => {
+  const exams = await Exam.find({}).select('name description category');
+  const studentTypes = await StudentType.find({}).select('name description');
+  
+  res.json({
+    exams,
+    studentTypes
+  });
 });

@@ -57,17 +57,26 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 export const getMySubjects = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    if (!user || !user.exams || user.exams.length === 0) {
-      res.json([]);
-      return;
-    }
+    const purchasedExams = user?.purchasedPlans?.filter((p: any) => p.isActive).map((p: any) => p.examId?.toString()).filter(Boolean) || [];
+    
+    // Get subjects matching purchased exams OR subjects with no specific exam restriction
+    let query: any = {
+      $or: [
+        { examId: { $in: purchasedExams } },
+        { examId: { $exists: false } },
+        { examId: null }
+      ]
+    };
 
-    let query: any = { examId: { $in: user.exams } };
-    if (user.studentType) {
-      query.$or = [
-        { applicableFor: user.studentType },
-        { applicableFor: { $exists: false } },
-        { applicableFor: { $size: 0 } }
+    if (user?.studentType) {
+      query.$and = [
+        {
+          $or: [
+            { applicableFor: user.studentType },
+            { applicableFor: { $exists: false } },
+            { applicableFor: { $size: 0 } }
+          ]
+        }
       ];
     }
     
@@ -86,17 +95,24 @@ export const getMyChapters = async (req: Request, res: Response): Promise<void> 
       query.subjectId = subjectId;
     } else {
       const user = await User.findById(req.user?._id);
-      if (!user || !user.exams || user.exams.length === 0) {
-        res.json([]);
-        return;
-      }
+      const purchasedExams = user?.purchasedPlans?.filter((p: any) => p.isActive).map((p: any) => p.examId?.toString()).filter(Boolean) || [];
       
-      let subjectQuery: any = { examId: { $in: user.exams } };
-      if (user.studentType) {
-        subjectQuery.$or = [
-          { applicableFor: user.studentType },
-          { applicableFor: { $exists: false } },
-          { applicableFor: { $size: 0 } }
+      let subjectQuery: any = {
+        $or: [
+          { examId: { $in: purchasedExams } },
+          { examId: { $exists: false } },
+          { examId: null }
+        ]
+      };
+      if (user?.studentType) {
+        subjectQuery.$and = [
+          {
+            $or: [
+              { applicableFor: user.studentType },
+              { applicableFor: { $exists: false } },
+              { applicableFor: { $size: 0 } }
+            ]
+          }
         ];
       }
       const subjects = await Subject.find(subjectQuery).select('_id');
@@ -114,22 +130,25 @@ export const getMyChapters = async (req: Request, res: Response): Promise<void> 
 export const getMyMaterials = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    if (!user || !user.exams || user.exams.length === 0) {
-      res.json([]);
-      return;
-    }
+    const purchasedExams = user?.purchasedPlans?.filter((p: any) => p.isActive).map((p: any) => p.examId?.toString()).filter(Boolean) || [];
     
-    let query: any = { examId: { $in: user.exams } };
-    if (user.studentType) {
-      query.$or = [
-        { studentTypeId: user.studentType },
-        { studentTypeId: { $exists: false } },
-        { studentTypeId: null }
-      ];
-    } else {
-      query.$or = [
-        { studentTypeId: { $exists: false } },
-        { studentTypeId: null }
+    let query: any = {
+      $or: [
+        { examId: { $in: purchasedExams } },
+        { examId: { $exists: false } },
+        { examId: null }
+      ]
+    };
+
+    if (user?.studentType) {
+      query.$and = [
+        {
+          $or: [
+            { studentTypeId: user.studentType },
+            { studentTypeId: { $exists: false } },
+            { studentTypeId: null }
+          ]
+        }
       ];
     }
     
@@ -145,12 +164,13 @@ export const getMyMaterials = async (req: Request, res: Response): Promise<void>
 export const getMyTimetables = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    if (!user || !user.exams || user.exams.length === 0) {
+    const purchasedExams = user?.purchasedPlans?.filter((p: any) => p.isActive).map((p: any) => p.examId?.toString()) || [];
+    if (!user || purchasedExams.length === 0) {
       res.json([]);
       return;
     }
     
-    let query: any = { examId: { $in: user.exams } };
+    let query: any = { examId: { $in: purchasedExams } };
     if (user.studentType) {
       query.$or = [
         { studentTypeId: user.studentType },
@@ -177,26 +197,35 @@ export const getMyTimetables = async (req: Request, res: Response): Promise<void
 export const getMyTests = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    if (!user || !user.exams || user.exams.length === 0) {
+    if (!user) {
+      res.json([]);
+      return;
+    }
+
+    const purchasedExamIds = user.purchasedPlans?.filter((p: any) => p.isActive).map((p: any) => (p.examId?._id || p.examId)?.toString()) || [];
+    const selectedExamIds = (user.exams || []).map((e: any) => (e._id || e)?.toString());
+    const allUserExams = Array.from(new Set([...purchasedExamIds, ...selectedExamIds].filter(Boolean)));
+
+    if (allUserExams.length === 0) {
       res.json([]);
       return;
     }
     
     let query: any = { 
-      examId: { $in: user.exams },
+      examIds: { $in: allUserExams },
       status: 'Published'
     };
     
     if (user.studentType) {
       query.$or = [
-        { studentTypeId: user.studentType },
-        { studentTypeId: { $exists: false } },
-        { studentTypeId: null }
+        { studentTypeIds: user.studentType },
+        { studentTypeIds: { $exists: false } },
+        { studentTypeIds: { $size: 0 } }
       ];
     } else {
       query.$or = [
-        { studentTypeId: { $exists: false } },
-        { studentTypeId: null }
+        { studentTypeIds: { $exists: false } },
+        { studentTypeIds: { $size: 0 } }
       ];
     }
     
@@ -244,6 +273,32 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<v
     }).sort({ createdAt: -1 });
     
     res.json(notifications);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const bcrypt = require('bcryptjs');
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      res.status(400).json({ message: 'Current password is incorrect' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ message: 'Password updated successfully!' });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

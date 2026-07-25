@@ -45,132 +45,111 @@ export const defaultQuestions: Question[] = [
     id: 'q-kin-1',
     subjectId: 'physics',
     chapterId: 'kinematics',
-    questionText: 'A ball is thrown vertically upwards with a velocity of 20 m/s from the top of a tower of height 25 m. How long does it take for the ball to hit the ground? (Take g = 10 m/s²)',
+    content: 'A ball is thrown vertically upwards with a velocity of 20 m/s from the top of a tower of height 25 m. How long does it take for the ball to hit the ground? (Take g = 10 m/s²)',
     options: [
       '2 seconds',
       '3 seconds',
       '5 seconds',
       '6 seconds'
     ],
-    correctAnswerIndex: 2,
+    correctAnswer: '5 seconds',
     explanation: 'Using the displacement equation: s = ut + 0.5 * a * t². Taking upwards as positive: s = -25 m, u = +20 m/s, a = -10 m/s². Thus, -25 = 20t - 5t² => 5t² - 20t - 25 = 0 => t² - 4t - 5 = 0 => (t - 5)(t + 1) = 0. Since time cannot be negative, t = 5 seconds.',
-    difficulty: 'medium',
-    marks: 4,
-    negativeMarks: 1,
-    tags: ['Equations of Motion', 'Gravity']
+    difficulty: 'Medium',
   },
   {
     id: 'q-kin-2',
     subjectId: 'physics',
     chapterId: 'kinematics',
-    questionText: 'The displacement of a particle moving in a straight line is given by x = 2t³ - 5t² + 4t + 10 (where x is in meters and t is in seconds). What is the acceleration of the particle at t = 2 seconds?',
+    content: 'The displacement of a particle moving in a straight line is given by x = 2t³ - 5t² + 4t + 10 (where x is in meters and t is in seconds). What is the acceleration of the particle at t = 2 seconds?',
     options: [
       '10 m/s²',
       '14 m/s²',
       '16 m/s²',
       '24 m/s²'
     ],
-    correctAnswerIndex: 1,
+    correctAnswer: '14 m/s²',
     explanation: 'Velocity v = dx/dt = 6t² - 10t + 4. Acceleration a = dv/dt = 12t - 10. At t = 2, a = 12(2) - 10 = 24 - 10 = 14 m/s².',
-    difficulty: 'easy',
-    marks: 4,
-    negativeMarks: 1,
-    tags: ['Derivatives', 'Acceleration']
+    difficulty: 'Easy',
   },
   // Rotation (Physics)
   {
     id: 'q-rot-1',
     subjectId: 'physics',
     chapterId: 'rotation',
-    questionText: 'A thin uniform circular ring of mass M and radius R is rotating about its central axis perpendicular to its plane with an angular velocity ω. Two particles each of mass m are attached gently to the opposite ends of a diameter. What is the new angular velocity of the ring?',
+    content: 'A thin uniform circular ring of mass M and radius R is rotating about its central axis perpendicular to its plane with an angular velocity ω. Two particles each of mass m are attached gently to the opposite ends of a diameter. What is the new angular velocity of the ring?',
     options: [
       'Mω / (M + 2m)',
       'Mω / (M + m)',
       '(M + 2m)ω / M',
       '(M - 2m)ω / (M + 2m)'
     ],
-    correctAnswerIndex: 0,
+    correctAnswer: 'Mω / (M + 2m)',
     explanation: 'By Conservation of Angular Momentum: L_initial = L_final. Initial moment of inertia I_i = MR². Final moment of inertia I_f = MR² + 2mR². Therefore, I_i * ω_initial = I_f * ω_final => MR² * ω = (M + 2m)R² * ω_new => ω_new = Mω / (M + 2m).',
-    difficulty: 'hard',
-    marks: 4,
-    negativeMarks: 1,
-    tags: ['Angular Momentum', 'Moment of Inertia']
+    difficulty: 'Hard',
   },
   // Organic Chemistry (Chemistry)
   {
     id: 'q-org-1',
     subjectId: 'chemistry',
     chapterId: 'organic',
-    questionText: 'Which of the following organic compounds is most acidic and why?',
+    content: 'Which of the following organic compounds is most acidic and why?',
     options: [
       'Ethanol',
       'Phenol',
       'Acetic Acid',
       'Water'
     ],
-    correctAnswerIndex: 2,
+    correctAnswer: 'Acetic Acid',
     explanation: 'Acetic acid is the most acidic because its conjugate base (acetate ion) is stabilized by resonance with two equivalent electronegative oxygen atoms, which distributes the negative charge more effectively than in phenoxide.',
-    difficulty: 'easy',
-    marks: 4,
-    negativeMarks: 1,
-    tags: ['Acidity', 'Resonance Effect']
+    difficulty: 'Easy',
   },
   // Chemical Bonding (Chemistry)
   {
     id: 'q-bond-1',
     subjectId: 'chemistry',
     chapterId: 'inorganic',
-    questionText: 'According to VSEPR theory, what is the shape and hybridization of the XeF₄ (Xenon Tetrafluoride) molecule?',
+    content: 'According to VSEPR theory, what is the shape and hybridization of the XeF₄ (Xenon Tetrafluoride) molecule?',
     options: [
       'Square Planar, sp³d²',
       'Tetrahedral, sp³',
       'Square Pyramidal, sp³d',
       'Octahedral, d²sp³'
     ],
-    correctAnswerIndex: 0,
+    correctAnswer: 'Square Planar, sp³d²',
     explanation: 'Xenon has 8 valence electrons. In XeF₄, there are 4 single bonds with F and 2 lone pairs. Steric number = 4 + 2 = 6. Hybridization is sp³d². The electron geometry is octahedral, and the molecular shape is Square Planar to minimize lone pair-lone pair repulsion.',
-    difficulty: 'medium',
-    marks: 4,
-    negativeMarks: 1,
-    tags: ['VSEPR', 'Hybridization']
+    difficulty: 'Medium',
   },
   // Algebra (Mathematics)
   {
     id: 'q-alg-1',
     subjectId: 'mathematics',
     chapterId: 'algebra',
-    questionText: 'If α and β are the roots of the equation x² - 5x + 6 = 0, find the value of α³ + β³.',
+    content: 'If α and β are the roots of the equation x² - 5x + 6 = 0, find the value of α³ + β³.',
     options: [
       '35',
       '45',
       '65',
       '125'
     ],
-    correctAnswerIndex: 0,
+    correctAnswer: '35',
     explanation: 'Sum of roots α + β = 5. Product of roots αβ = 6. We know α³ + β³ = (α + β)³ - 3αβ(α + β). Substituting values: α³ + β³ = 5³ - 3(6)(5) = 125 - 90 = 35.',
-    difficulty: 'easy',
-    marks: 4,
-    negativeMarks: 1,
-    tags: ['Roots of Quadratic', 'Identities']
+    difficulty: 'Easy',
   },
   // Calculus (Mathematics)
   {
     id: 'q-calc-1',
     subjectId: 'mathematics',
     chapterId: 'calculus',
-    questionText: 'What is the limit of (sin x - x) / x³ as x approaches 0?',
+    content: 'What is the limit of (sin x - x) / x³ as x approaches 0?',
     options: [
       '0',
       '1/6',
       '-1/6',
       'does not exist'
     ],
-    correctAnswerIndex: 2,
+    correctAnswer: '-1/6',
     explanation: 'Using the Taylor Series expansion of sin x near 0: sin x = x - x³/6 + O(x⁵). So, (sin x - x) / x³ = (-x³/6) / x³ = -1/6.',
-    difficulty: 'hard',
-    marks: 4,
-    negativeMarks: 1,
-    tags: ['Limits', 'L\'Hospital\'s Rule']
+    difficulty: 'Hard',
   }
 ];
 
@@ -179,25 +158,27 @@ export const defaultTests: Test[] = [
   {
     id: 'test-weekly-1',
     title: 'Weekly Practice Test: Kinematics & Algebra',
-    description: 'Weekly test evaluating core components of 1D/2D kinematics in Physics and quadratic equations in Mathematics.',
-    type: 'weekly',
+    instructions: 'Weekly test evaluating core components of 1D/2D kinematics in Physics and quadratic equations in Mathematics.',
+    testType: 'Weekly',
     duration: 15,
-    totalMarks: 12,
-    negativeMarking: true,
+    marksPerQuestion: 4,
+    negativeMarksPerQuestion: 1,
     isFullSyllabus: false,
-    questionIds: ['q-kin-1', 'q-kin-2', 'q-alg-1'],
+    questions: ['q-kin-1', 'q-kin-2', 'q-alg-1'],
+    status: 'Published',
     createdAt: new Date().toISOString()
   },
   {
     id: 'test-monthly-1',
     title: 'Monthly Grand Test: Physics, Chemistry & Math',
-    description: 'Comprehensive monthly exam assessing multiple chapters across all three core technical subjects.',
-    type: 'monthly',
+    instructions: 'Comprehensive monthly exam assessing multiple chapters across all three core technical subjects.',
+    testType: 'Grand',
     duration: 30,
-    totalMarks: 24,
-    negativeMarking: true,
+    marksPerQuestion: 4,
+    negativeMarksPerQuestion: 1,
     isFullSyllabus: true,
-    questionIds: ['q-kin-1', 'q-kin-2', 'q-rot-1', 'q-org-1', 'q-bond-1', 'q-alg-1'],
+    questions: ['q-kin-1', 'q-kin-2', 'q-rot-1', 'q-org-1', 'q-bond-1', 'q-alg-1'],
+    status: 'Published',
     createdAt: new Date().toISOString()
   }
 ];

@@ -1,39 +1,52 @@
 import { Request, Response } from 'express';
 import Doubt from '../models/Doubt';
 
-// Ask a doubt (Student)
+// @desc    Raise a doubt from scorecard (Student)
+// @route   POST /api/doubts
+// @access  Student
 export const askDoubt = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { examId, chapterId, questionId, content } = req.body;
-    const studentId = (req as any).user.id;
+    const { testId, testAttemptId, questionId, content } = req.body;
+    const studentId = (req as any).user._id || (req as any).user.id;
+
+    if (!questionId || !content) {
+      res.status(400).json({ message: 'questionId and content are required' });
+      return;
+    }
 
     const newDoubt = new Doubt({
       studentId,
-      examId,
-      chapterId,
+      testId,
+      testAttemptId,
       questionId,
       content,
     });
 
     await newDoubt.save();
-    res.status(201).json(newDoubt);
+
+    const populated = await Doubt.findById(newDoubt._id)
+      .populate('questionId', 'content options correctAnswer')
+      .populate('testId', 'title');
+
+    res.status(201).json(populated);
   } catch (error) {
-    console.error('Error asking doubt:', error);
+    console.error('Error raising doubt:', error);
     res.status(500).json({ message: 'Server error creating doubt' });
   }
 };
 
-// Get student's doubts
+// @desc    Get student's own doubts
+// @route   GET /api/doubts/my
+// @access  Student
 export const getMyDoubts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const studentId = (req as any).user.id;
-    // We could filter by examId if passed in query
-    const filter: any = { studentId };
-    if (req.query.examId) {
-      filter.examId = req.query.examId;
-    }
+    const studentId = (req as any).user._id || (req as any).user.id;
 
-    const doubts = await Doubt.find(filter).populate('chapterId questionId').sort({ createdAt: -1 });
+    const doubts = await Doubt.find({ studentId })
+      .populate('questionId', 'content options correctAnswer')
+      .populate('testId', 'title')
+      .sort({ createdAt: -1 });
+
     res.json(doubts);
   } catch (error) {
     console.error('Error fetching doubts:', error);
@@ -41,22 +54,39 @@ export const getMyDoubts = async (req: Request, res: Response): Promise<void> =>
   }
 };
 
-// Get all doubts (Admin)
+// @desc    Get all doubts (Admin)
+// @route   GET /api/doubts
+// @access  Admin
 export const getAllDoubts = async (req: Request, res: Response): Promise<void> => {
   try {
-    const doubts = await Doubt.find().populate('studentId chapterId questionId').sort({ createdAt: -1 });
+    const filter: any = {};
+    if (req.query.status) filter.status = req.query.status;
+
+    const doubts = await Doubt.find(filter)
+      .populate('studentId', 'name email')
+      .populate('questionId', 'content options correctAnswer difficulty')
+      .populate('testId', 'title testType')
+      .sort({ createdAt: -1 });
+
     res.json(doubts);
   } catch (error) {
     res.status(500).json({ message: 'Server error fetching all doubts' });
   }
 };
 
-// Answer a doubt (Admin)
-export const answerDoubt = async (req: Request, res: Response): Promise<void> => {
+// @desc    Reply to a doubt (Admin)
+// @route   PUT /api/doubts/:id/reply
+// @access  Admin
+export const replyToDoubt = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { answer } = req.body;
+    const { adminReply } = req.body;
     const doubtId = req.params.id;
-    const adminId = (req as any).user.id;
+    const adminId = (req as any).user._id || (req as any).user.id;
+
+    if (!adminReply) {
+      res.status(400).json({ message: 'adminReply is required' });
+      return;
+    }
 
     const doubt = await Doubt.findById(doubtId);
     if (!doubt) {
@@ -64,14 +94,40 @@ export const answerDoubt = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    doubt.answer = answer;
+    doubt.adminReply = adminReply;
     doubt.status = 'answered';
-    doubt.answeredBy = adminId;
-    doubt.answeredAt = new Date();
+    doubt.repliedBy = adminId;
+    doubt.repliedAt = new Date();
 
     await doubt.save();
+
+    const updated = await Doubt.findById(doubt._id)
+      .populate('studentId', 'name email')
+      .populate('questionId', 'content options correctAnswer')
+      .populate('testId', 'title');
+
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error replying to doubt' });
+  }
+};
+
+// @desc    Close a doubt
+// @route   PATCH /api/doubts/:id/close
+// @access  Admin
+export const closeDoubt = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const doubt = await Doubt.findByIdAndUpdate(
+      req.params.id,
+      { status: 'closed' },
+      { new: true }
+    );
+    if (!doubt) {
+      res.status(404).json({ message: 'Doubt not found' });
+      return;
+    }
     res.json(doubt);
   } catch (error) {
-    res.status(500).json({ message: 'Server error answering doubt' });
+    res.status(500).json({ message: 'Server error closing doubt' });
   }
 };

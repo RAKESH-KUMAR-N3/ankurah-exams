@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 
 const studyMaterialSchema = new mongoose.Schema(
   {
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-    examId: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam', required: true },
+    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
+    examId: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam' },
     studentTypeId: { type: mongoose.Schema.Types.ObjectId, ref: 'StudentType' }, // Optional
     subjectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
     chapterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chapter', required: true },

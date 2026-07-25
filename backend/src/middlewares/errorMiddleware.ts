@@ -16,6 +16,12 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     statusCode = 404;
   }
 
+  // Check for Mongoose duplicate key error
+  if (err.code === 11000) {
+    message = 'This record already exists. Please choose a different name.';
+    statusCode = 400;
+  }
+
   res.status(statusCode).json({
     message,
     stack: process.env.NODE_ENV === 'production' ? null : err.stack,

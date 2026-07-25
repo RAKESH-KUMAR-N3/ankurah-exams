@@ -1,9 +1,15 @@
 export type UserRole = 'student' | 'admin';
 
+export interface StudentType {
+  id: string;
+  name: string;
+}
+
 export interface User {
   uid: string;
   name: string;
   email: string;
+  phone?: string;
   role: UserRole;
   selectedEntranceExams?: string[];
   selectedCompetitiveExams?: string[];
@@ -31,15 +37,15 @@ export interface Plan {
 
 export interface Doubt {
   _id: string;
-  studentId: string;
-  examId?: string;
-  chapterId?: string;
-  questionId?: string;
+  studentId: string | { name: string; email: string };
+  testId?: string | { title: string; testType: string };
+  testAttemptId?: string;
+  questionId?: string | { content: string; options: string[]; correctAnswer: string };
   content: string;
   status: 'open' | 'answered' | 'closed';
-  answer?: string;
-  answeredBy?: string;
-  answeredAt?: string;
+  adminReply?: string;
+  repliedBy?: string;
+  repliedAt?: string;
   createdAt: string;
 }
 
@@ -49,6 +55,7 @@ export interface EntranceExam {
   categoryId?: string;
   name: string;
   description: string;
+  allowedStudentTypes?: any[];
 }
 
 export interface CompetitiveExam {
@@ -57,12 +64,14 @@ export interface CompetitiveExam {
   categoryId?: string;
   name: string;
   description: string;
+  allowedStudentTypes?: any[];
 }
 
 export interface Subject {
   id: string;
   name: string;
   examIds: string[]; // Can map to multiple exams
+  applicableFor?: string[];
   description: string;
 }
 
@@ -100,48 +109,74 @@ export interface StudyMaterial {
 }
 
 export interface Question {
-  id: string;
+  _id?: string;
+  id?: string;
+  categoryId?: string;
   subjectId: string;
   chapterId: string;
-  questionText: string;
-  options: string[]; // Exactly 4 options
-  correctAnswerIndex: number;
-  explanation: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  marks: number;
-  negativeMarks: number;
-  tags?: string[];
+  content: string;
+  options: string[];
+  correctAnswer: string;
+  explanation?: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  // marks/negativeMarks are optional - now managed at Test level
+  marks?: number;
+  negativeMarks?: number;
 }
 
 export interface Test {
-  id: string;
+  _id?: string;
+  id?: string;
   title: string;
-  description: string;
-  type: 'weekly' | 'monthly' | 'practice';
-  duration: number; // in minutes
-  totalMarks: number;
-  negativeMarking: boolean;
-  isFullSyllabus: boolean;
-  subjectId?: string; // Optional if full syllabus
-  chapterId?: string; // Optional if subject-wise or full syllabus
-  examId?: any; // To link test with a specific exam
-  questionIds: string[];
-  createdAt: string;
+  categoryId?: string;
+  examIds?: string[] | any[];         // Multi-batch assignment
+  studentTypeIds?: string[] | any[];  // Multi-group assignment
+  testType: 'Chapter' | 'Grand' | 'Weekly' | 'Monthly' | 'Practice';
+  isDynamic?: boolean;
+  subjectId?: string;
+  chapterId?: string;
+  dynamicTotalQuestions?: number;
+  targetDifficulty?: 'Easy' | 'Medium' | 'Hard' | 'Mixed';
+  questions?: string[];
+  duration: number;                   // in minutes
+  marksPerQuestion?: number;          // default 4
+  negativeMarksPerQuestion?: number;  // default 1
+  retakeLimit?: number;               // 0 = unlimited
+  isFullSyllabus?: boolean;
+  status?: 'Draft' | 'Published';
+  instructions?: string;
+  createdAt?: string;
 }
 
 export interface TestAttempt {
-  id: string;
-  userId: string;
-  testId: string;
-  answers: Record<string, number>; // Question ID -> selected option index (0-3), -1 for unattempted
+  _id?: string;
+  id?: string;
+  studentId?: string;
+  testId: string | any;
+  attemptNumber?: number;
   score: number;
+  totalMarks?: number;
+  responses: {
+    questionId: string | any;
+    selectedOption?: string | null;
+    isCorrect?: boolean | null;
+  }[];
+  status: 'In-Progress' | 'Completed' | 'Force-Submitted';
+  tabSwitchCount?: number;
+  autoSubmitted?: boolean;
+  timeTakenSeconds?: number;
+  submittedAt?: string;
+  createdAt?: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  studentId: string;
+  name: string;
+  totalScore: number;
+  totalMarks: number;
+  attemptCount: number;
   percentage: number;
-  accuracy: number;
-  correctCount: number;
-  wrongCount: number;
-  unattemptedCount: number;
-  timeTakenSeconds: number;
-  submittedAt: string;
 }
 
 export interface Announcement {

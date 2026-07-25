@@ -1,9 +1,10 @@
 import express from 'express';
-import { loginUser, registerUser } from '../controllers/authController';
+import { loginUser, registerUser, getAuthMetadata } from '../controllers/authController';
 import { validate, loginSchema, registerSchema } from '../validations/schemas';
 
 const router = express.Router();
 
+router.get('/metadata', getAuthMetadata);
 router.post('/login', validate(loginSchema), loginUser);
 router.post('/register', validate(registerSchema), registerUser);
 

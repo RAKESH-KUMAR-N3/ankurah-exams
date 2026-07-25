@@ -3,17 +3,31 @@ import Plan from '../models/Plan';
 import User from '../models/User';
 import Exam from '../models/Exam';
 import Category from '../models/Category';
+import StudentType from '../models/StudentType';
 
-// Get all plans grouped by category
 export const getPlans = async (req: Request, res: Response): Promise<void> => {
   try {
     const plans = await Plan.find({ isActive: true }).populate({
       path: 'examId',
-      populate: { path: 'categoryId' }
+      populate: [
+        { path: 'categoryId' },
+        { path: 'allowedStudentTypes' }
+      ]
     });
     
-    // We can just return raw plans and let frontend group them, or group them here.
-    res.json(plans);
+    // Filter out plans where the exam has been deleted & dynamic description formatting
+    const validPlans = plans
+      .filter(p => p.examId != null)
+      .map(p => {
+        const pObj: any = p.toObject();
+        const examName = pObj.examId?.name;
+        if (examName) {
+          pObj.description = `Full access plan for ${examName}`;
+        }
+        return pObj;
+      });
+
+    res.json(validPlans);
   } catch (error) {
     console.error('Error fetching plans:', error);
     res.status(500).json({ message: 'Server error fetching plans' });

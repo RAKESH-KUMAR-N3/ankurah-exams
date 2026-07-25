@@ -92,8 +92,8 @@ export const getStudentDashboardSummary = async (req: Request, res: Response): P
     const endOfDay = new Date(today);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Queries scoped by student selection
-    let baseQuery: any = { examId: { $in: user.exams || [] } };
+    // Queries scoped by student's enrolled exams (now using examIds array)
+    let baseQuery: any = { examIds: { $in: user.exams || [] } };
     if (user.studentType) {
       baseQuery.$or = [
         { studentTypeId: user.studentType },
@@ -116,8 +116,11 @@ export const getStudentDashboardSummary = async (req: Request, res: Response): P
     const upcomingTests = await Test.find(upcomingTestsQuery).sort({ createdAt: -1 }).limit(3).lean();
 
     // 3. Recent Results & Performance
-    const recentResults = await TestAttempt.find({ studentId: user._id })
-      .populate('testId', 'title totalMarks')
+    const recentResults = await TestAttempt.find({ 
+      studentId: user._id,
+      status: { $in: ['Completed', 'Force-Submitted'] }
+    })
+      .populate('testId', 'title marksPerQuestion duration testType')
       .sort({ createdAt: -1 })
       .limit(3)
       .lean();

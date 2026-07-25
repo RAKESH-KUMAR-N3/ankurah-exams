@@ -5,14 +5,14 @@ import { validate, studentTypeSchema } from '../validations/schemas';
 
 const router = express.Router();
 
-router.use(protect, authorize('admin'));
+router.use(protect);
 
 router.route('/')
   .get(getStudentTypes)
-  .post(validate(studentTypeSchema), createStudentType);
+  .post(authorize('admin'), validate(studentTypeSchema), createStudentType);
 
 router.route('/:id')
-  .put(validate(studentTypeSchema), updateStudentType)
-  .delete(deleteStudentType);
+  .put(authorize('admin'), validate(studentTypeSchema), updateStudentType)
+  .delete(authorize('admin'), deleteStudentType);
 
 export default router;

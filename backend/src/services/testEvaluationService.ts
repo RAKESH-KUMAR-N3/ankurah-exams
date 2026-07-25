@@ -4,6 +4,49 @@ import Question from '../models/Question';
 import PerformanceMetric from '../models/PerformanceMetric';
 import mongoose from 'mongoose';
 
+export const resolveCorrectAnswer = (rawCorrect: string, options: string[]): string => {
+  if (!rawCorrect) return options?.[0] || '';
+  const trimmed = rawCorrect.trim();
+  if (options && options.includes(trimmed)) return trimmed;
+
+  const lower = trimmed.toLowerCase();
+  if (lower === 'option a' || lower === 'optiona' || lower === 'a' || lower === '1' || lower === 'option 1') {
+    return options?.[0] || trimmed;
+  }
+  if (lower === 'option b' || lower === 'optionb' || lower === 'b' || lower === '2' || lower === 'option 2') {
+    return options?.[1] || trimmed;
+  }
+  if (lower === 'option c' || lower === 'optionc' || lower === 'c' || lower === '3' || lower === 'option 3') {
+    return options?.[2] || trimmed;
+  }
+  if (lower === 'option d' || lower === 'optiond' || lower === 'd' || lower === '4' || lower === 'option 4') {
+    return options?.[3] || trimmed;
+  }
+
+  return trimmed;
+};
+
+export const isAnswerCorrect = (selectedOption: string, correctAnswer: string, options: string[]): boolean => {
+  if (!selectedOption) return false;
+  const sel = selectedOption.trim();
+  const corr = (correctAnswer || '').trim();
+
+  if (sel === corr) return true;
+  if (sel.toLowerCase() === corr.toLowerCase()) return true;
+
+  const resolvedCorr = resolveCorrectAnswer(corr, options || []);
+  if (sel === resolvedCorr || sel.toLowerCase() === resolvedCorr.toLowerCase()) {
+    return true;
+  }
+
+  const resolvedSel = resolveCorrectAnswer(sel, options || []);
+  if (resolvedSel === corr || resolvedSel.toLowerCase() === corr.toLowerCase() || (resolvedCorr && resolvedSel === resolvedCorr)) {
+    return true;
+  }
+
+  return false;
+};
+
 export const evaluateTestAttempt = async (attemptId: string) => {
   const attempt = await TestAttempt.findById(attemptId).populate('testId');
   if (!attempt) throw new Error('Attempt not found');
@@ -11,14 +54,22 @@ export const evaluateTestAttempt = async (attemptId: string) => {
   const test: any = attempt.testId;
   if (!test) throw new Error('Test not found');
 
+  // Get marks scheme from Test (global per question)
+  const marksPerQuestion: number = test.marksPerQuestion ?? 4;
+  const negativeMarksPerQuestion: number = test.negativeMarksPerQuestion ?? 1;
+
   let score = 0;
-  
-  // Get all questions from the test
-  const questions = await Question.find({ _id: { $in: test.questions } });
+  let totalMarks = 0;
+
+  // Get all questions for this attempt
+  const questionIds = attempt.responses.map((r: any) => r.questionId);
+  const questions = await Question.find({ _id: { $in: questionIds } });
   const questionMap = new Map();
   questions.forEach(q => questionMap.set(q._id.toString(), q));
 
-  // Evaluate each response
+  totalMarks = questions.length * marksPerQuestion;
+
+  // Evaluate each response using global marks scheme
   const evaluatedResponses = attempt.responses.map((resp: any) => {
     const questionIdStr = resp.questionId.toString();
     const q: any = questionMap.get(questionIdStr);
@@ -26,14 +77,14 @@ export const evaluateTestAttempt = async (attemptId: string) => {
     let isCorrect = false;
     
     if (q) {
-      if (resp.selectedOption && resp.selectedOption === q.correctAnswer) {
+      if (resp.selectedOption && isAnswerCorrect(resp.selectedOption, q.correctAnswer, q.options)) {
         isCorrect = true;
-        score += q.marks;
-      } else if (resp.selectedOption && resp.selectedOption !== q.correctAnswer) {
-        if (test.negativeMarking) {
-          score -= q.negativeMarks;
-        }
+        score += marksPerQuestion;
+      } else if (resp.selectedOption) {
+        // Apply negative marking
+        score -= negativeMarksPerQuestion;
       }
+      // No answer = no change (unattempted)
     }
     
     return {
@@ -44,11 +95,18 @@ export const evaluateTestAttempt = async (attemptId: string) => {
   });
 
   attempt.responses = evaluatedResponses as any;
-  attempt.score = score;
+  attempt.score = Math.max(0, score); // score can't be negative
+  attempt.totalMarks = totalMarks;
+  attempt.submittedAt = attempt.submittedAt || new Date();
   await attempt.save();
 
-  // Now update performance metrics
-  await updatePerformanceMetrics(attempt.studentId.toString(), test.examId.toString(), questions, evaluatedResponses);
+  // Update performance metrics
+  if (test.examIds && test.examIds.length > 0) {
+    // Update metrics for each exam this test belongs to
+    for (const examId of test.examIds) {
+      await updatePerformanceMetrics(attempt.studentId.toString(), examId.toString(), questions, evaluatedResponses);
+    }
+  }
 
   return attempt;
 };
@@ -74,8 +132,12 @@ const updatePerformanceMetrics = async (
   const chapterStatsMap = new Map();
   
   questions.forEach(q => {
-    const chapterIdStr = q.chapterId.toString();
-    const response = evaluatedResponses.find(r => r.questionId.toString() === q._id.toString());
+    if (!q || !q.chapterId) return;
+    const chapterIdStr = (q.chapterId?._id || q.chapterId).toString();
+    const response = evaluatedResponses.find(r => {
+      const rqId = r.questionId?._id || r.questionId;
+      return rqId && rqId.toString() === q._id.toString();
+    });
     
     if (!chapterStatsMap.has(chapterIdStr)) {
       chapterStatsMap.set(chapterIdStr, { attempted: 0, correct: 0 });
@@ -83,7 +145,6 @@ const updatePerformanceMetrics = async (
     
     const stats = chapterStatsMap.get(chapterIdStr);
     
-    // If the student attempted the question
     if (response && response.selectedOption) {
       stats.attempted += 1;
       if (response.isCorrect) {
@@ -92,7 +153,6 @@ const updatePerformanceMetrics = async (
     }
   });
 
-  // Update existing metric chapter stats
   for (const [chapterIdStr, stats] of chapterStatsMap.entries()) {
     const existingChapterStat = metric.chapterWiseStats.find((cs: any) => cs.chapterId?.toString() === chapterIdStr);
     
@@ -114,7 +174,6 @@ const updatePerformanceMetrics = async (
     }
   }
 
-  // Recalculate overall accuracy
   let totalAttempted = 0;
   let totalCorrect = 0;
   

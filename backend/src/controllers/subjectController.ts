@@ -1,13 +1,30 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
 import Subject from '../models/Subject';
+import mongoose from 'mongoose';
 
 // @desc    Create a Subject
 // @route   POST /api/subjects
 // @access  Admin
 export const createSubject = asyncHandler(async (req: Request, res: Response) => {
-  const { name, examId, applicableFor } = req.body;
-  const subject = await Subject.create({ name, examId, applicableFor });
+  const { name, examId, subjectCategory, applicableFor } = req.body;
+
+  if (!name || !name.trim()) {
+    res.status(400);
+    throw new Error('Subject name is required');
+  }
+
+  const subjectData: any = {
+    name: name.trim(),
+    subjectCategory: subjectCategory || 'entrance',
+    applicableFor: Array.isArray(applicableFor) ? applicableFor.filter(id => mongoose.Types.ObjectId.isValid(id)) : []
+  };
+
+  if (examId && mongoose.Types.ObjectId.isValid(examId)) {
+    subjectData.examId = examId;
+  }
+
+  const subject = await Subject.create(subjectData);
   res.status(201).json(subject);
 });
 
@@ -23,12 +40,23 @@ export const getSubjects = asyncHandler(async (req: Request, res: Response) => {
 // @route   PUT /api/subjects/:id
 // @access  Admin
 export const updateSubject = asyncHandler(async (req: Request, res: Response) => {
-  const { name, examId, applicableFor } = req.body;
+  const { name, examId, subjectCategory, applicableFor } = req.body;
   const subject = await Subject.findById(req.params.id);
+
   if (subject) {
-    subject.name = name || subject.name;
-    subject.examId = examId || subject.examId;
-    subject.applicableFor = applicableFor || subject.applicableFor;
+    if (name) subject.name = name.trim();
+    if (subjectCategory) subject.subjectCategory = subjectCategory;
+
+    if (examId && mongoose.Types.ObjectId.isValid(examId)) {
+      subject.examId = examId as any;
+    } else if (examId === null || examId === '') {
+      subject.examId = undefined;
+    }
+
+    if (applicableFor && Array.isArray(applicableFor)) {
+      subject.applicableFor = applicableFor.filter(id => mongoose.Types.ObjectId.isValid(id));
+    }
+
     const updatedSubject = await subject.save();
     res.json(updatedSubject);
   } else {

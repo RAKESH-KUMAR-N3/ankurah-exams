@@ -2,29 +2,31 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   fetchAdminDashboard, fetchStudentDashboard,
-  fetchExams, fetchSubjects, fetchChapters, fetchQuestions,
+  fetchExams, fetchStudentTypes, fetchSubjects, fetchChapters, fetchQuestions,
   fetchTests, fetchStudyMaterials, fetchTimetables, fetchNotifications,
   fetchStudentList, fetchMyProfile
 } from './lib/api';
-import { User, EntranceExam, CompetitiveExam, Subject, Chapter, Question, Test, Timetable, StudyMaterial, TestAttempt, Announcement, Notification } from './types';
-import Auth from './components/Auth';
-import LandingPage from './components/LandingPage';
-import StudentDashboard from './components/StudentDashboard';
-import AnalyticsSection from './components/AnalyticsSection';
-import TimetableSection from './components/TimetableSection';
-import StudyMaterialSection from './components/StudyMaterialSection';
-import TestSection from './components/TestSection';
-import PlanStore from './components/PlanStore';
-import StudentDoubts from './components/StudentDoubts';
-import AdminManagement from './components/AdminManagement';
-import AboutPage from './components/AboutPage';
-import EntranceExamsPage from './components/EntranceExamsPage';
-import CompetitiveExamsPage from './components/CompetitiveExamsPage';
-import ContactPage from './components/ContactPage';
+import { User, EntranceExam, CompetitiveExam, StudentType, Subject, Chapter, Question, Test, Timetable, StudyMaterial, TestAttempt, Announcement, Notification } from './types';
+import Auth from './pages/public/Auth';
+import LandingPage from './pages/public/LandingPage';
+import StudentDashboard from './pages/student/StudentDashboard';
+import AnalyticsSection from './components/admin/AnalyticsSection';
+import TimetableSection from './components/student/TimetableSection';
+import StudyMaterialSection from './components/student/StudyMaterialSection';
+import TestSection from './components/student/TestSection';
+import PlanStore from './pages/student/PlanStore';
+import StudentDoubts from './components/student/StudentDoubts';
+import AdminManagement from './pages/admin/AdminDashboard';
+import AboutPage from './pages/public/AboutPage';
+import EntranceExamsPage from './pages/public/EntranceExamsPage';
+import CompetitiveExamsPage from './pages/public/CompetitiveExamsPage';
+import ContactPage from './pages/public/ContactPage';
+import StudentProfilePage from './pages/student/StudentProfilePage';
+import ProfileModal from './components/student/ProfileModal';
 import logo from './assets/logo.png';
 import {
   Sparkles, Award, Calendar, BookOpen, FileText, Shield,
-  LogOut, Menu, X, Flame, TrendingUp, HelpCircle, Users, LayoutDashboard, Layers, Database, Bell, Layout, MessageCircle
+  LogOut, Menu, X, Flame, TrendingUp, HelpCircle, Users, LayoutDashboard, Layers, Database, Bell, Layout, MessageCircle, User as UserIcon
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -35,24 +37,27 @@ const mapBackendUser = (data: any): User => ({
   uid: data._id,
   name: data.name,
   email: data.email,
+  phone: data.phone || '',
   role: data.role,
   selectedEntranceExams: data.exams || [],
   selectedCompetitiveExams: [],
   studentType: data.studentType || '',
   studyPlan: 'yearly',
+  purchasedPlans: data.purchasedPlans || [],
   streak: 1,
   lastActiveDate: new Date().toISOString(),
   createdAt: data.createdAt || new Date().toISOString(),
 });
 
 // Map backend Exam to frontend EntranceExam/CompetitiveExam shape
-const mapExam = (e: any): EntranceExam => ({ id: e._id, name: e.name, description: '' });
+const mapExam = (e: any): EntranceExam => ({ id: e._id, name: e.name, description: e.description || '', allowedStudentTypes: e.allowedStudentTypes || [] });
 
 // Map backend Subject to frontend Subject shape
 const mapSubject = (s: any): Subject => ({
   id: s._id,
   name: s.name,
   examIds: s.examId ? [s.examId._id || s.examId] : [],
+  applicableFor: s.applicableFor ? s.applicableFor.map((x: any) => x._id || x) : [],
   description: '',
 });
 
@@ -66,31 +71,40 @@ const mapChapter = (c: any): Chapter => ({
 
 // Map backend Question to frontend Question
 const mapQuestion = (q: any): Question => ({
+  _id: q._id,
   id: q._id,
-  subjectId: q.subjectId || '',
-  chapterId: q.chapterId || '',
-  questionText: q.content,
+  categoryId: q.categoryId?._id || q.categoryId || '',
+  subjectId: q.subjectId?._id || q.subjectId || '',
+  chapterId: q.chapterId?._id || q.chapterId || '',
+  content: q.content || q.questionText || '',
   options: q.options || [],
-  correctAnswerIndex: q.options ? q.options.indexOf(q.correctAnswer) : 0,
+  correctAnswer: q.correctAnswer || '',
   explanation: q.explanation || '',
-  difficulty: (q.difficulty?.toLowerCase() || 'medium') as 'easy' | 'medium' | 'hard',
-  marks: q.marks || 1,
-  negativeMarks: q.negativeMarks || 0,
+  difficulty: (q.difficulty || 'Medium') as 'Easy' | 'Medium' | 'Hard',
 });
 
 // Map backend Test to frontend Test
 const mapTest = (t: any): Test => ({
+  _id: t._id,
   id: t._id,
   title: t.title,
-  description: t.instructions || '',
-  type: (t.testType?.toLowerCase() || 'practice') as 'weekly' | 'monthly' | 'practice',
-  duration: t.duration || 60,
-  totalMarks: t.totalMarks || 0,
-  negativeMarking: t.negativeMarking || false,
-  isFullSyllabus: !t.subjectId,
+  categoryId: t.categoryId?._id || t.categoryId,
+  examIds: Array.isArray(t.examIds) ? t.examIds.map((e: any) => e._id || e) : [],
+  studentTypeIds: Array.isArray(t.studentTypeIds) ? t.studentTypeIds.map((s: any) => s._id || s) : [],
+  testType: (t.testType || 'Chapter') as Test['testType'],
+  isDynamic: t.isDynamic || false,
   subjectId: t.subjectId?._id || t.subjectId,
   chapterId: t.chapterId?._id || t.chapterId,
-  questionIds: t.questions || [],
+  dynamicTotalQuestions: t.dynamicTotalQuestions,
+  targetDifficulty: t.targetDifficulty,
+  questions: t.questions || [],
+  duration: t.duration || 60,
+  marksPerQuestion: t.marksPerQuestion ?? 4,
+  negativeMarksPerQuestion: t.negativeMarksPerQuestion ?? 1,
+  retakeLimit: t.retakeLimit ?? 0,
+  isFullSyllabus: t.isFullSyllabus || false,
+  status: t.status || 'Draft',
+  instructions: t.instructions,
   createdAt: t.createdAt || new Date().toISOString(),
 });
 
@@ -132,6 +146,12 @@ const mapNotification = (n: any): Notification => ({
   createdAt: n.createdAt || new Date().toISOString(),
 });
 
+// Map backend StudentType to frontend StudentType
+const mapStudentType = (st: any): StudentType => ({
+  id: st._id,
+  name: st.name,
+});
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const navigate = useNavigate();
@@ -141,6 +161,7 @@ export default function App() {
   // App-wide Academic Data
   const [entranceExams, setEntranceExams] = useState<EntranceExam[]>([]);
   const [competitiveExams, setCompetitiveExams] = useState<CompetitiveExam[]>([]);
+  const [studentTypes, setStudentTypes] = useState<StudentType[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -151,6 +172,72 @@ export default function App() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [studentsList, setStudentsList] = useState<User[]>([]);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Admin Sidebar Menu State
+  const DEFAULT_ADMIN_MENU = React.useMemo(() => [
+    { id: 'admin_dashboard', label: 'Dashboard Overview', icon: Flame, color: 'text-emerald-300' },
+    { id: 'admin_payments', label: 'Payments', icon: Database, color: 'text-emerald-350' },
+    { id: 'admin_students', label: 'Students', icon: Users, color: 'text-emerald-350' },
+    { id: 'admin_student_types', label: 'Student Groups', icon: Users, color: 'text-emerald-300' },
+    { id: 'admin_exams', label: 'Courses / Plans', icon: Award, color: 'text-emerald-300' },
+    { id: 'admin_subjects', label: 'Subjects & Chapters', icon: Layers, color: 'text-emerald-300' },
+    { id: 'admin_questions', label: 'Question Bank', icon: Database, color: 'text-emerald-300' },
+    { id: 'admin_tests', label: 'Create Tests', icon: FileText, color: 'text-emerald-300' },
+    { id: 'admin_materials', label: 'Study Material', icon: BookOpen, color: 'text-emerald-300' },
+    { id: 'admin_timetables', label: 'Timetable', icon: Calendar, color: 'text-emerald-300' },
+  ], []);
+
+  const [adminMenu, setAdminMenu] = useState(() => {
+    const saved = localStorage.getItem('ankurah_admin_menu_order');
+    if (saved) {
+      try {
+        const order = JSON.parse(saved);
+        const sorted = [...DEFAULT_ADMIN_MENU].sort((a, b) => {
+          const idxA = order.indexOf(a.id);
+          const idxB = order.indexOf(b.id);
+          if (idxA === -1) return 1;
+          if (idxB === -1) return -1;
+          return idxA - idxB;
+        });
+        return sorted;
+      } catch(e) {}
+    }
+    return DEFAULT_ADMIN_MENU;
+  });
+
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => e.target && (e.target as HTMLElement).classList.add('opacity-50', 'bg-emerald-900/50'), 0);
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedId(null);
+    e.target && (e.target as HTMLElement).classList.remove('opacity-50', 'bg-emerald-900/50');
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) return;
+
+    const oldIndex = adminMenu.findIndex(i => i.id === draggedId);
+    const newIndex = adminMenu.findIndex(i => i.id === targetId);
+
+    const newMenu = [...adminMenu];
+    const [removed] = newMenu.splice(oldIndex, 1);
+    newMenu.splice(newIndex, 0, removed);
+    
+    setAdminMenu(newMenu);
+    localStorage.setItem('ankurah_admin_menu_order', JSON.stringify(newMenu.map(i => i.id)));
+  };
 
   // Layout UI states
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -165,10 +252,20 @@ export default function App() {
     // Validate token by fetching profile
     fetchMyProfile()
       .then((data: any) => {
-        setCurrentUser(mapBackendUser(data));
+        const mappedUser = mapBackendUser(data);
+        setCurrentUser(mappedUser);
         setAuthState('authenticated');
-        if (data.role === 'admin') navigate('/dashboard/admin_dashboard');
-        else navigate('/dashboard/dashboard');
+        
+        const currentPath = window.location.pathname;
+        if (data.role === 'admin') {
+          if (!currentPath.startsWith('/dashboard/admin_')) {
+            navigate('/dashboard/admin_dashboard');
+          }
+        } else {
+          if (!currentPath.startsWith('/dashboard/') || currentPath === '/dashboard' || currentPath === '/dashboard/') {
+            navigate('/dashboard/dashboard');
+          }
+        }
       })
       .catch(() => {
         localStorage.removeItem('token');
@@ -181,8 +278,9 @@ export default function App() {
     try {
       if (user.role === 'admin') {
         // Admin fetches all data
-        const [examsRes, subjectsRes, chaptersRes, questionsRes, testsRes, materialsRes, timetablesRes, notifsRes, studentsRes] = await Promise.allSettled([
+        const [examsRes, studentTypesRes, subjectsRes, chaptersRes, questionsRes, testsRes, materialsRes, timetablesRes, notifsRes, studentsRes] = await Promise.allSettled([
           fetchExams({ limit: '1000' }),
+          fetchStudentTypes({ limit: '1000' }),
           fetchSubjects({ limit: '1000' }),
           fetchChapters({ limit: '1000' }),
           fetchQuestions({ limit: '1000' }),
@@ -194,25 +292,36 @@ export default function App() {
         ]);
 
         if (examsRes.status === 'fulfilled') {
-          const all = examsRes.value?.data || [];
-          setEntranceExams(all.map(mapExam));
-          setCompetitiveExams(all.map(mapExam));
+          const all = Array.isArray(examsRes.value) ? examsRes.value : examsRes.value?.data || [];
+          
+          const isCompExam = (e: any) => {
+            if (e.type) return e.type === 'competitive';
+            if (e.categoryId?.name) return e.categoryId.name === 'Competitive Exams';
+            return /sbi|po|clat|nda|bank|ssc|rrb|cat|upsc|gate|group|constable|si/i.test(e.name || '');
+          };
+
+          const entrance = all.filter((e: any) => !isCompExam(e));
+          const competitive = all.filter((e: any) => isCompExam(e));
+
+          setEntranceExams(entrance.map(mapExam));
+          setCompetitiveExams(competitive.map(mapExam));
         }
-        if (subjectsRes.status === 'fulfilled') setSubjects((subjectsRes.value?.data || []).map(mapSubject));
-        if (chaptersRes.status === 'fulfilled') setChapters((chaptersRes.value?.data || []).map(mapChapter));
-        if (questionsRes.status === 'fulfilled') setQuestions((questionsRes.value?.data || []).map(mapQuestion));
-        if (testsRes.status === 'fulfilled') setTests((testsRes.value?.data || []).map(mapTest));
-        if (materialsRes.status === 'fulfilled') setMaterials((materialsRes.value?.data || []).map(mapMaterial));
-        if (timetablesRes.status === 'fulfilled') setTimetables((timetablesRes.value?.data || []).map(mapTimetable));
-        if (notifsRes.status === 'fulfilled') setNotifications((notifsRes.value?.data || []).map(mapNotification));
+        if (studentTypesRes.status === 'fulfilled') setStudentTypes((Array.isArray(studentTypesRes.value) ? studentTypesRes.value : studentTypesRes.value?.data || []).map(mapStudentType));
+        if (subjectsRes.status === 'fulfilled') setSubjects((Array.isArray(subjectsRes.value) ? subjectsRes.value : subjectsRes.value?.data || []).map(mapSubject));
+        if (chaptersRes.status === 'fulfilled') setChapters((Array.isArray(chaptersRes.value) ? chaptersRes.value : chaptersRes.value?.data || []).map(mapChapter));
+        if (questionsRes.status === 'fulfilled') setQuestions((Array.isArray(questionsRes.value) ? questionsRes.value : questionsRes.value?.data || []).map(mapQuestion));
+        if (testsRes.status === 'fulfilled') setTests((Array.isArray(testsRes.value) ? testsRes.value : testsRes.value?.data || []).map(mapTest));
+        if (materialsRes.status === 'fulfilled') setMaterials((Array.isArray(materialsRes.value) ? materialsRes.value : materialsRes.value?.data || []).map(mapMaterial));
+        if (timetablesRes.status === 'fulfilled') setTimetables((Array.isArray(timetablesRes.value) ? timetablesRes.value : timetablesRes.value?.data || []).map(mapTimetable));
+        if (notifsRes.status === 'fulfilled') setNotifications((Array.isArray(notifsRes.value) ? notifsRes.value : notifsRes.value?.data || []).map(mapNotification));
         if (studentsRes.status === 'fulfilled') {
-          const studs = (studentsRes.value?.data || []).map((u: any) => mapBackendUser(u));
+          const studs = (Array.isArray(studentsRes.value) ? studentsRes.value : studentsRes.value?.data || []).map((u: any) => mapBackendUser(u));
           setStudentsList(studs);
         }
       } else {
         // Student fetches their personalized data
         const { fetchMySubjects, fetchMyChapters, fetchMyMaterials, fetchMyTimetables, fetchMyTests, fetchMyNotifications, fetchMyAttempts, fetchExams } = await import('./lib/api');
-        const [examsRes, subjectsRes, chaptersRes, materialsRes, timetablesRes, testsRes, notifsRes] = await Promise.allSettled([
+        const [examsRes, subjectsRes, chaptersRes, materialsRes, timetablesRes, testsRes, notifsRes, attemptsRes] = await Promise.allSettled([
           fetchExams({ limit: '1000' }),
           fetchMySubjects(),
           fetchMyChapters(),
@@ -220,12 +329,15 @@ export default function App() {
           fetchMyTimetables(),
           fetchMyTests(),
           fetchMyNotifications(),
+          fetchMyAttempts(),
         ]);
 
         if (examsRes.status === 'fulfilled') {
-          const all = examsRes.value?.data || [];
-          setEntranceExams(all.map(mapExam));
-          setCompetitiveExams(all.map(mapExam));
+          const all = examsRes.value?.data || Array.isArray(examsRes.value) ? examsRes.value : [];
+          const entrance = all.filter((e: any) => e.categoryId?.name === 'Entrance Exams' || e.type === 'entrance');
+          const competitive = all.filter((e: any) => e.categoryId?.name === 'Competitive Exams' || e.type === 'competitive');
+          setEntranceExams(entrance.map(mapExam));
+          setCompetitiveExams(competitive.map(mapExam));
         }
         if (subjectsRes.status === 'fulfilled') setSubjects((subjectsRes.value || []).map(mapSubject));
         if (chaptersRes.status === 'fulfilled') setChapters((chaptersRes.value || []).map(mapChapter));
@@ -233,6 +345,7 @@ export default function App() {
         if (timetablesRes.status === 'fulfilled') setTimetables((timetablesRes.value || []).map(mapTimetable));
         if (testsRes.status === 'fulfilled') setTests((testsRes.value || []).map(mapTest));
         if (notifsRes.status === 'fulfilled') setNotifications((notifsRes.value || []).map(mapNotification));
+        if (attemptsRes.status === 'fulfilled') setAttempts(attemptsRes.value || []);
       }
     } catch (err) {
       console.error('Data load error:', err);
@@ -275,6 +388,20 @@ export default function App() {
     if (currentUser) loadAllData(currentUser);
   };
 
+  // After purchase: re-fetch user profile first so purchasedPlans is up-to-date,
+  // then reload all student data (subjects, materials, tests, etc.)
+  const handlePurchaseSuccess = async () => {
+    try {
+      const freshData = await fetchMyProfile();
+      const freshUser = { ...mapBackendUser(freshData), purchasedPlans: freshData.purchasedPlans || [] };
+      setCurrentUser(freshUser);
+      await loadAllData(freshUser);
+    } catch (err) {
+      console.error('Failed to refresh after purchase:', err);
+      if (currentUser) loadAllData(currentUser);
+    }
+  };
+
   const location = useLocation();
   const pathParts = location.pathname.split('/');
   const activeTab = pathParts.length > 2 && pathParts[1] === 'dashboard'
@@ -306,7 +433,7 @@ export default function App() {
           />
         );
       case 'store':
-        return <PlanStore user={currentUser} onPurchaseSuccess={() => loadAllData(currentUser)} />;
+        return <PlanStore user={currentUser} onPurchaseSuccess={handlePurchaseSuccess} />;
       case 'timetable':
         return (
           <TimetableSection
@@ -324,6 +451,7 @@ export default function App() {
             materials={materials}
             subjects={subjects}
             chapters={chapters}
+            studentTypes={studentTypes}
           />
         );
       case 'doubts':
@@ -333,9 +461,7 @@ export default function App() {
           <TestSection
             user={currentUser}
             tests={tests}
-            questions={questions}
             attempts={attempts}
-            subjects={subjects}
             onTestSubmitted={() => currentUser && loadAllData(currentUser)}
           />
         );
@@ -351,8 +477,19 @@ export default function App() {
             onNavigate={(tab) => handleTabChange(tab)}
           />
         );
+      case 'profile':
+        return (
+          <StudentProfilePage
+            user={currentUser}
+            studentTypes={studentTypes}
+            allPlans={entranceExams}
+            onNavigateToStore={() => handleTabChange('store')}
+          />
+        );
       case 'admin_dashboard':
+      case 'admin_payments':
       case 'admin_students':
+      case 'admin_student_types':
       case 'admin_exams':
       case 'admin_subjects':
       case 'admin_questions':
@@ -368,6 +505,7 @@ export default function App() {
             students={studentsList}
             entranceExams={entranceExams}
             competitiveExams={competitiveExams}
+            studentTypes={studentTypes}
             subjects={subjects}
             chapters={chapters}
             questions={questions}
@@ -469,26 +607,28 @@ export default function App() {
                 >
                   <TrendingUp className={`w-4 h-4 ${activeTab === 'analytics' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Performance
                 </button>
+                <button
+                  onClick={() => handleTabChange('profile')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'profile' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                >
+                  <UserIcon className={`w-4 h-4 ${activeTab === 'profile' ? 'text-emerald-600' : 'text-emerald-300'}`} /> My Profile
+                </button>
               </>
             )}
 
             {isUserAdmin && (
               <div className="space-y-1">
                 <div className="px-4 py-2 text-xs font-bold text-emerald-200/50 uppercase tracking-wider mb-2">Admin Menu</div>
-                {[
-                  { id: 'admin_dashboard', label: 'Dashboard Overview', icon: Flame, color: 'text-emerald-300' },
-                  { id: 'admin_payments', label: 'Payments', icon: Database, color: 'text-emerald-350' },
-                  { id: 'admin_students', label: 'Students', icon: Users, color: 'text-emerald-350' },
-                  { id: 'admin_exams', label: 'Exams & Plans', icon: Award, color: 'text-emerald-300' },
-                  { id: 'admin_subjects', label: 'Subjects & Chapters', icon: Layers, color: 'text-emerald-300' },
-                  { id: 'admin_questions', label: 'Question Bank', icon: Database, color: 'text-emerald-300' },
-                  { id: 'admin_materials', label: 'Study Material', icon: BookOpen, color: 'text-emerald-300' },
-                  { id: 'admin_timetables', label: 'Timetable', icon: Calendar, color: 'text-emerald-300' },
-                ].map((item) => (
+                {adminMenu.map((item) => (
                   <button
                     key={item.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, item.id)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={(e) => handleDragOver(e, item.id)}
+                    onDrop={(e) => handleDrop(e, item.id)}
                     onClick={() => handleTabChange(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${activeTab === item.id ? 'bg-white text-emerald-900 shadow-xs' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-md text-xs font-semibold transition-all cursor-grab active:cursor-grabbing ${activeTab === item.id ? 'bg-white text-emerald-900 shadow-xs' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                   >
                     <item.icon className={`w-4 h-4 ${activeTab === item.id ? 'text-emerald-600' : 'text-emerald-300'}`} /> {item.label}
                   </button>
@@ -532,12 +672,18 @@ export default function App() {
               </div>
             )}
             <div className="flex items-center gap-3">
-              <div className="text-right hidden md:block">
-                <span className="font-bold text-xs text-slate-900 block truncate leading-tight">{currentUser?.name}</span>
-                <span className="text-[10px] text-slate-500 block capitalize">{currentUser?.role} Account</span>
-              </div>
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs">
-                {currentUser?.name?.substring(0, 2)}
+              <div 
+                onClick={() => handleTabChange('profile')}
+                title="View My Profile Page"
+                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <div className="text-right hidden md:block">
+                  <span className="font-bold text-xs text-slate-900 block truncate leading-tight">{currentUser?.name}</span>
+                  <span className="text-[10px] text-slate-500 block capitalize">{currentUser?.role} Account</span>
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs">
+                  {currentUser?.name?.substring(0, 2)}
+                </div>
               </div>
               <button
                 onClick={handleSignOut}
@@ -553,6 +699,18 @@ export default function App() {
         <main className="flex-grow overflow-y-auto p-6 md:p-8 max-w-7xl w-full mx-auto geom-grid-pattern">
           {renderActiveView()}
         </main>
+
+        {/* Profile Modal */}
+        {currentUser && (
+          <ProfileModal
+            user={currentUser}
+            studentTypes={studentTypes}
+            allPlans={entranceExams}
+            isOpen={isProfileOpen}
+            onClose={() => setIsProfileOpen(false)}
+            onNavigateToStore={() => handleTabChange('store')}
+          />
+        )}
       </div>
 
     </div>

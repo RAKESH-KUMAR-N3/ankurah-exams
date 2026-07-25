@@ -3,14 +3,14 @@ import mongoose from 'mongoose';
 const doubtSchema = new mongoose.Schema(
   {
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    examId: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam' },
-    chapterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chapter' },
-    questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question' },
-    content: { type: String, required: true },
+    testId: { type: mongoose.Schema.Types.ObjectId, ref: 'Test' },        // Which test this doubt is from
+    testAttemptId: { type: mongoose.Schema.Types.ObjectId, ref: 'TestAttempt' }, // Which specific attempt
+    questionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Question', required: true }, // The question in doubt
+    content: { type: String, required: true },                            // Student's doubt message
     status: { type: String, enum: ['open', 'answered', 'closed'], default: 'open' },
-    answer: { type: String },
-    answeredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    answeredAt: { type: Date }
+    adminReply: { type: String },                                         // Admin's reply (was 'answer')
+    repliedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },    // Which admin replied
+    repliedAt: { type: Date }
   },
   { timestamps: true }
 );

@@ -5,14 +5,12 @@ import { validate, examSchema } from '../validations/schemas';
 
 const router = express.Router();
 
-router.use(protect, authorize('admin'));
-
 router.route('/')
-  .get(getExams)
-  .post(validate(examSchema), createExam);
+  .get(protect, getExams)
+  .post(protect, authorize('admin'), validate(examSchema), createExam);
 
 router.route('/:id')
-  .put(validate(examSchema), updateExam)
-  .delete(deleteExam);
+  .put(protect, authorize('admin'), validate(examSchema), updateExam)
+  .delete(protect, authorize('admin'), deleteExam);
 
 export default router;

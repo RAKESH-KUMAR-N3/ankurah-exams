@@ -85,3 +85,55 @@ export const fetchMyTests = (type?: string) => apiGet('/api/students/tests', typ
 export const fetchMyNotifications = () => apiGet('/api/students/notifications');
 export const fetchMyPerformance = () => apiGet('/api/performance/my');
 export const fetchMyAttempts = () => apiGet('/api/test-attempts/my');
+
+// ─── Payments ─────────────────────────────────────────────────────────────────
+export const createPaymentOrder = (planId: string) => apiPost('/api/payments/create-order', { planId });
+export const verifyPaymentOrder = (payload: any) => apiPost('/api/payments/verify', payload);
+
+// ─── Exam Execution ───────────────────────────────────────────────────────────
+export const apiPatch = (path: string, body?: any) =>
+  fetch(`${BASE_URL}${path}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(handleResponse);
+
+export const startExam = (testId: string) =>
+  apiPost(`/api/test-attempts/start/${testId}`, {});
+
+export const saveExamProgress = (attemptId: string, responses: any[]) =>
+  apiPut(`/api/test-attempts/save/${attemptId}`, { responses });
+
+export const submitExam = (attemptId: string, timeTakenSeconds: number) =>
+  apiPost(`/api/test-attempts/submit/${attemptId}`, { timeTakenSeconds });
+
+export const reportTabSwitch = (attemptId: string) =>
+  apiPost(`/api/test-attempts/tab-switch/${attemptId}`, {});
+
+export const fetchAttemptDetails = (attemptId: string) =>
+  apiGet(`/api/test-attempts/${attemptId}`);
+
+// ─── Leaderboard ──────────────────────────────────────────────────────────────
+export const fetchLeaderboard = () => apiGet('/api/test-attempts/leaderboard');
+
+// ─── Doubts ───────────────────────────────────────────────────────────────────
+export const raiseDoubt = (payload: { testId?: string; testAttemptId?: string; questionId: string; content: string }) =>
+  apiPost('/api/doubts', payload);
+
+export const fetchMyDoubts = () => apiGet('/api/doubts/my');
+
+export const fetchAllDoubts = (status?: string) =>
+  apiGet('/api/doubts', status ? { status } : {});
+
+export const replyToDoubt = (doubtId: string, adminReply: string) =>
+  apiPut(`/api/doubts/${doubtId}/reply`, { adminReply });
+
+export const closeDoubt = (doubtId: string) =>
+  apiPatch(`/api/doubts/${doubtId}/close`);
+
+// ─── Test Management ──────────────────────────────────────────────────────────
+export const toggleTestStatus = (testId: string) =>
+  apiPatch(`/api/tests/${testId}/toggle-status`);
+
+export const fetchTestById = (testId: string) =>
+  apiGet(`/api/tests/${testId}`);

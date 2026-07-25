@@ -26,9 +26,9 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import planRoutes from './routes/planRoutes';
 import doubtRoutes from './routes/doubtRoutes';
 import transactionRoutes from './routes/transactionRoutes';
-
-
-dotenv.config();
+import uploadRoutes from './routes/uploadRoutes';
+import paymentRoutes from './routes/paymentRoutes';
+import path from 'path';dotenv.config();
 
 // Connect to MongoDB
 connectDB();
@@ -38,6 +38,9 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+const __dirname = path.resolve();
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 // Health check
 app.get('/', (req: express.Request, res: express.Response) => {
@@ -61,7 +64,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/doubts', doubtRoutes);
 app.use('/api/transactions', transactionRoutes);
-
+app.use('/api/payments', paymentRoutes);
 // Student routes (protected for students)
 app.use('/api/students', studentRoutes);
 app.use('/api/test-attempts', testAttemptRoutes);
@@ -72,6 +75,7 @@ app.use('/api/import', importRoutes);
 app.use('/api/student-management', studentManagementRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/upload', uploadRoutes);
 
 
 // Error Handling Middlewares

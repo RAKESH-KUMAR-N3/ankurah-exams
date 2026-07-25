@@ -9,7 +9,8 @@ import {
   getMyMaterials,
   getMyTimetables,
   getMyTests,
-  getMyNotifications
+  getMyNotifications,
+  changePassword
 } from '../controllers/studentController';
 
 const router = express.Router();
@@ -20,6 +21,8 @@ router.use(protect);
 router.route('/profile')
   .get(getProfile)
   .put(validate(studentProfileUpdateSchema), updateProfile);
+
+router.post('/change-password', changePassword);
 
 router.get('/subjects', getMySubjects);
 router.get('/chapters', getMyChapters);
