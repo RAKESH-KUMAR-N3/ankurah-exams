@@ -71,9 +71,9 @@ export default function AdminManagement({
   // Form states
   const [examForm, setExamForm] = useState<{ id: string; name: string; description: string; type: string; price: string; allowedStudentTypes: string[] }>({ id: '', name: '', description: '', type: 'entrance', price: '', allowedStudentTypes: [] });
   const [editingExamId, setEditingExamId] = useState<string | null>(null);
-  const [studentTypeForm, setStudentTypeForm] = useState({ name: '' });
+  const [studentTypeForm, setStudentTypeForm] = useState<{name: string; state?: string}>({ name: '', state: 'AP' });
   const [editingStudentTypeId, setEditingStudentTypeId] = useState<string | null>(null);
-  const [subjectForm, setSubjectForm] = useState({ id: '', name: '', examId: '', applicableFor: [] as string[], description: '' });
+  const [subjectForm, setSubjectForm] = useState({ id: '', name: '', state: 'AP', examId: '', applicableFor: [] as string[], description: '' });
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
   const [chapterForm, setChapterForm] = useState(() => {
     const savedGroup = sessionStorage.getItem('ankurah_chapter_group');
@@ -92,8 +92,18 @@ export default function AdminManagement({
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
 
   // Multi-level navigation state for Exams & Plans tab
-  const [selectedExamCategory, setSelectedExamCategory] = useState<'entrance' | 'competitive' | null>(null);
+  const [selectedExamCategory, setSelectedExamCategory] = useState<'entrance' | 'competitive' | null>(() => {
+    return (sessionStorage.getItem('ankurah_selected_exam_category') as 'entrance' | 'competitive') || null;
+  });
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (selectedExamCategory) {
+      sessionStorage.setItem('ankurah_selected_exam_category', selectedExamCategory);
+    } else {
+      sessionStorage.removeItem('ankurah_selected_exam_category');
+    }
+  }, [selectedExamCategory]);
 
   // Fetch admin-specific data on mount or refresh
   React.useEffect(() => {
@@ -171,6 +181,7 @@ export default function AdminManagement({
             type: examType,
             description: examForm.description,
             name: examForm.name,
+            state: examForm.state || 'Both',
             allowedStudentTypes: examForm.allowedStudentTypes,
             price: examForm.price
           })
@@ -184,6 +195,7 @@ export default function AdminManagement({
             name: examForm.name,
             description: examForm.description,
             type: examType,
+            state: examForm.state || 'Both',
             price: examForm.price,
             allowedStudentTypes: examForm.allowedStudentTypes
           })
@@ -237,8 +249,8 @@ export default function AdminManagement({
   };
 
   // 1.5 Manage Student Types
-  const handleEditStudentTypeClick = (st: StudentType) => {
-    setStudentTypeForm({ name: st.name });
+  const handleEditStudentTypeClick = (st: any) => {
+    setStudentTypeForm({ name: st.name, state: st.state || 'AP' });
     setEditingStudentTypeId(st.id);
   };
 
@@ -251,18 +263,19 @@ export default function AdminManagement({
         res = await fetch(`${API_URL}/api/student-types/${editingStudentTypeId}`, {
           method: 'PUT',
           headers: authHeaders(),
-          body: JSON.stringify({ name: studentTypeForm.name })
+          body: JSON.stringify({ name: studentTypeForm.name, state: studentTypeForm.state || 'AP' })
         });
       } else {
         res = await fetch(`${API_URL}/api/student-types`, {
           method: 'POST',
           headers: authHeaders(),
-          body: JSON.stringify({ name: studentTypeForm.name })
+          body: JSON.stringify({ name: studentTypeForm.name, state: studentTypeForm.state || 'AP' })
         });
       }
       if (!res.ok) throw new Error(editingStudentTypeId ? 'Failed to update student group' : 'Failed to create student group');
-      setStudentTypeForm({ name: '' });
+      setStudentTypeForm({ name: '', state: 'AP' });
       setEditingStudentTypeId(null);
+      if (onRefresh) onRefresh();
       showSuccess(editingStudentTypeId ? "Student group updated successfully!" : `Successfully created ${studentTypeForm.name}!`);
     } catch (err: any) {
       showError(err.message);
@@ -279,6 +292,7 @@ export default function AdminManagement({
         headers: authHeaders()
       });
       if (!res.ok) throw new Error('Failed to delete student group');
+      if (onRefresh) onRefresh();
       showSuccess("Student group deleted successfully.");
     } catch (err: any) {
       showError(err.message);
@@ -290,6 +304,7 @@ export default function AdminManagement({
     setSubjectForm({
       id: sub.id,
       name: sub.name,
+      state: sub.state || 'AP',
       examId: sub.examIds?.[0] || '',
       applicableFor: sub.applicableFor?.map((a: any) => a._id || a.id || a) || [],
       description: sub.description || ''
@@ -303,6 +318,7 @@ export default function AdminManagement({
     try {
       const payload: any = {
         name: subjectForm.name,
+        state: subjectForm.state || 'AP',
         subjectCategory: (subjectForm as any).subjectCategory || 'entrance',
         applicableFor: []
       };
@@ -330,7 +346,7 @@ export default function AdminManagement({
         throw new Error(errData.message || (editingSubjectId ? 'Failed to update subject' : 'Failed to create subject'));
       }
       
-      setSubjectForm({ id: '', name: '', examId: '', applicableFor: [], description: '' });
+      setSubjectForm(prev => ({ id: '', name: '', state: 'AP', examId: '', applicableFor: [], description: '', subjectCategory: (prev as any).subjectCategory || 'entrance' }));
       setEditingSubjectId(null);
       onRefresh();
       showSuccess(editingSubjectId ? "Subject updated successfully!" : "Subject created successfully!");

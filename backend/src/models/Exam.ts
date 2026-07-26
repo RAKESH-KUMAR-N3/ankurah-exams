@@ -6,6 +6,7 @@ const examSchema = new mongoose.Schema(
     examId: { type: String, required: true, unique: true },
     description: { type: String },
     type: { type: String, enum: ['entrance', 'competitive'], default: 'entrance' },
+    state: { type: String, enum: ['AP', 'TG', 'Both'], default: 'Both' },
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     allowedStudentTypes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StudentType' }],
   },

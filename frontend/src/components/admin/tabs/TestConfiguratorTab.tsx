@@ -51,6 +51,7 @@ export default function TestConfiguratorTab({
   onRefresh,
 }: TestConfiguratorTabProps) {
   const [testCategoryTab, setTestCategoryTab] = useState<'entrance' | 'competitive'>('entrance');
+  const [selectedState, setSelectedState] = useState<'AP' | 'TG'>('AP');
   const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -71,12 +72,26 @@ export default function TestConfiguratorTab({
     return /general|knowledge|gk|reasoning|aptitude|current affairs|banking|clat|nda/i.test(s.name || '');
   };
 
-  const targetExams = testCategoryTab === 'entrance' ? entranceExams : competitiveExams;
+  const rawTargetExams = testCategoryTab === 'entrance' ? entranceExams : competitiveExams;
+  const targetExams = testCategoryTab === 'entrance'
+    ? (rawTargetExams || []).filter((e: any) => (e.state || 'AP') === selectedState || e.state === 'Both')
+    : rawTargetExams;
+
   const targetExamIds = (targetExams || []).map((e: any) => (e.id || e._id).toString());
 
   const tabSubjects = subjects.filter((s: any) =>
     testCategoryTab === 'competitive' ? isCompSubject(s) : !isCompSubject(s)
   );
+
+  // Filter entrance subjects by selected state
+  const filteredSubjects = testCategoryTab === 'entrance'
+    ? tabSubjects.filter((s: any) => (s.state || 'AP') === selectedState || s.state === 'Both')
+    : tabSubjects;
+
+  // Filter entrance student groups by selected state
+  const filteredStudentTypes = testCategoryTab === 'entrance'
+    ? (studentTypes || []).filter((st: any) => (st.state || 'AP') === selectedState)
+    : studentTypes;
 
   const tabSubjectIds = (tabSubjects || []).map((s: any) => (s.id || s._id).toString());
 
@@ -97,11 +112,14 @@ export default function TestConfiguratorTab({
           : false
       );
 
-  const filteredSubjects = tabSubjects;
-
   const filteredChapters = chapters.filter(c =>
     !form.subjectId || (c.subjectId === form.subjectId || (c.subjectId as any)?._id === form.subjectId)
   );
+
+  const handleStateChange = (st: 'AP' | 'TG') => {
+    setSelectedState(st);
+    setForm(prev => ({ ...prev, subjectId: '', chapterId: '', studentTypeIds: [] }));
+  };
 
   const toggleStudentTypeId = (id: string) => {
     setForm(prev => ({
@@ -113,12 +131,33 @@ export default function TestConfiguratorTab({
   };
 
   const toggleExamId = (id: string) => {
-    setForm(prev => ({
-      ...prev,
-      examIds: prev.examIds.includes(id)
+    setForm(prev => {
+      const isSelected = prev.examIds.includes(id);
+      const newExamIds = isSelected
         ? prev.examIds.filter(eid => eid !== id)
-        : [...prev.examIds, id],
-    }));
+        : [...prev.examIds, id];
+
+      let newStudentTypeIds = [...prev.studentTypeIds];
+
+      // If exam is being selected, auto-select its configured student groups
+      if (!isSelected) {
+        const exObj = targetExams?.find((e: any) => (e.id || e._id).toString() === id);
+        if (exObj && Array.isArray(exObj.allowedStudentTypes)) {
+          exObj.allowedStudentTypes.forEach((typeObjOrId: any) => {
+            const stId = typeof typeObjOrId === 'string' ? typeObjOrId : (typeObjOrId._id || typeObjOrId.id);
+            if (stId && !newStudentTypeIds.includes(stId)) {
+              newStudentTypeIds.push(stId);
+            }
+          });
+        }
+      }
+
+      return {
+        ...prev,
+        examIds: newExamIds,
+        studentTypeIds: newStudentTypeIds,
+      };
+    });
   };
 
   const allExams = [...entranceExams, ...competitiveExams];
@@ -148,7 +187,7 @@ export default function TestConfiguratorTab({
     setSuccess('');
     
     if (form.examIds.length === 0) {
-      setError('Please assign the test to at least one Course/Exam (blue buttons).');
+      setError('Please assign the test to at least one Course/Exam.');
       return;
     }
 
@@ -267,7 +306,7 @@ export default function TestConfiguratorTab({
           type="button"
           onClick={() => {
             setTestCategoryTab('entrance');
-            setForm(f => ({ ...f, subjectId: '', chapterId: '', examIds: [] }));
+            setForm(f => ({ ...f, subjectId: '', chapterId: '', examIds: [], studentTypeIds: [] }));
           }}
           className={`flex items-center gap-2 px-5 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
             testCategoryTab === 'entrance'
@@ -281,7 +320,7 @@ export default function TestConfiguratorTab({
           type="button"
           onClick={() => {
             setTestCategoryTab('competitive');
-            setForm(f => ({ ...f, subjectId: '', chapterId: '', examIds: [] }));
+            setForm(f => ({ ...f, subjectId: '', chapterId: '', examIds: [], studentTypeIds: [] }));
           }}
           className={`flex items-center gap-2 px-5 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
             testCategoryTab === 'competitive'
@@ -295,16 +334,98 @@ export default function TestConfiguratorTab({
 
       {/* ── CREATE TEST FORM ──────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${testCategoryTab === 'competitive' ? 'bg-blue-50' : 'bg-emerald-50'}`}>
-            <Plus size={18} className={testCategoryTab === 'competitive' ? 'text-blue-600' : 'text-emerald-600'} />
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${testCategoryTab === 'competitive' ? 'bg-blue-50' : 'bg-emerald-50'}`}>
+              <Plus size={18} className={testCategoryTab === 'competitive' ? 'text-blue-600' : 'text-emerald-600'} />
+            </div>
+            <h2 className="text-lg font-black text-slate-800">
+              {testCategoryTab === 'entrance' ? 'Create Entrance Exam Test' : 'Create Competitive Exam Test'}
+            </h2>
           </div>
-          <h2 className="text-lg font-black text-slate-800">
-            {testCategoryTab === 'entrance' ? 'Create Entrance Exam Test' : 'Create Competitive Exam Test'}
-          </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+          {/* State Selector ONLY for Entrance Exams */}
+          {testCategoryTab === 'entrance' && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select State *</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleStateChange('AP')}
+                  className={`py-3 px-4 font-bold text-xs rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
+                    selectedState === 'AP'
+                      ? 'bg-orange-500 text-white border-orange-600 shadow-sm scale-[1.01]'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Andhra Pradesh (AP)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStateChange('TG')}
+                  className={`py-3 px-4 font-bold text-xs rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
+                    selectedState === 'TG'
+                      ? 'bg-pink-600 text-white border-pink-700 shadow-sm scale-[1.01]'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Telangana (TG)
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Assign to Courses/Exams - MANDATORY */}
+          <div className={`p-4 rounded-2xl border-2 transition-all ${
+            form.examIds.length === 0
+              ? 'border-red-300 bg-red-50'
+              : 'border-emerald-300 bg-emerald-50'
+          }`}>
+            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
+              form.examIds.length === 0 ? 'text-red-600' : 'text-emerald-700'
+            }`}>
+              {form.examIds.length === 0 ? '⚠' : '✓'} Assign to Courses / Exams ({testCategoryTab === 'entrance' ? selectedState : 'Competitive'})
+              <span className="text-red-500 ml-0.5">*</span>
+              <span className="ml-2 normal-case font-normal text-slate-500">
+                {form.examIds.length === 0
+                  ? '(Required! Select at least one course — students who bought it can see the test)'
+                  : `(${form.examIds.length} course(s) selected ✓)`
+                }
+              </span>
+            </label>
+            {targetExams && targetExams.length > 0 ? (
+              <select
+                value={form.examIds.length > 0 ? form.examIds[0] : ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setForm(f => ({ ...f, examIds: val ? [val] : [] }));
+                }}
+                className={`w-full p-3 bg-white border rounded-xl text-slate-900 font-semibold focus:outline-none text-xs cursor-pointer transition-colors ${
+                  form.examIds.length === 0 
+                    ? 'border-red-300 focus:border-red-500' 
+                    : 'border-emerald-300 focus:border-emerald-500'
+                }`}
+                required
+              >
+                <option value="">-- Select a Course / Exam --</option>
+                {targetExams.map((ex: any) => {
+                  const exId = ex.id || ex._id;
+                  return (
+                    <option key={exId} value={exId}>
+                      {ex.name}
+                    </option>
+                  );
+                })}
+              </select>
+            ) : (
+              <p className="text-xs text-slate-400">No {testCategoryTab} courses/exams found. Create courses in Courses / Plans first.</p>
+            )}
+          </div>
 
           {/* Mode Toggle */}
           <div className="flex gap-3">
@@ -340,10 +461,71 @@ export default function TestConfiguratorTab({
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 transition"
-              placeholder={testCategoryTab === 'entrance' ? 'e.g. Physics Chapter 3 – Thermodynamics' : 'e.g. SBI PO Mock Test 1 – General Awareness'}
+              placeholder={testCategoryTab === 'entrance' ? `e.g. Physics (${selectedState}) - Chapter 1` : 'e.g. SBI PO Mock Test 1 – General Awareness'}
               required
             />
           </div>
+
+          {/* Dynamic Test Options */}
+          {form.mode === 'dynamic' && (
+            <div className="space-y-4 pt-2">
+              <div className={`grid grid-cols-1 ${testCategoryTab === 'entrance' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subject</label>
+                  <select
+                    value={form.subjectId}
+                    onChange={e => setForm(f => ({ ...f, subjectId: e.target.value, chapterId: '' }))}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 text-xs cursor-pointer"
+                  >
+                    <option value="">All Subjects {testCategoryTab === 'entrance' ? `(${selectedState})` : '(Competitive)'}</option>
+                    {filteredSubjects.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} {testCategoryTab === 'entrance' ? `(${s.state || selectedState})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                {testCategoryTab === 'entrance' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Chapter</label>
+                    <select
+                      value={form.chapterId}
+                      onChange={e => setForm(f => ({ ...f, chapterId: e.target.value }))}
+                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 text-xs cursor-pointer disabled:opacity-50 disabled:bg-slate-100"
+                      disabled={!form.subjectId}
+                    >
+                      <option value="">{form.subjectId ? 'All Chapters' : 'Select a Subject first'}</option>
+                      {filteredChapters.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Difficulty</label>
+                  <select
+                    value={form.targetDifficulty}
+                    onChange={e => setForm(f => ({ ...f, targetDifficulty: e.target.value }))}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 text-xs cursor-pointer"
+                  >
+                    <option value="Mixed">Mixed</option>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Number of Questions *</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={form.dynamicTotalQuestions}
+                  onChange={e => setForm(f => ({ ...f, dynamicTotalQuestions: Number(e.target.value) }))}
+                  className="w-full md:w-48 p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 text-xs"
+                  required
+                />
+              </div>
+            </div>
+          )}
 
           {/* Duration + Marks Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -394,151 +576,6 @@ export default function TestConfiguratorTab({
               />
             </div>
           </div>
-
-          {/* Dynamic Test Options */}
-          {form.mode === 'dynamic' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 space-y-4">
-              <h4 className="text-sm font-black text-blue-700 flex items-center gap-2">
-                <Zap size={16} /> Dynamic Test Settings
-              </h4>
-
-              <div className={`grid grid-cols-1 ${testCategoryTab === 'entrance' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subject</label>
-                  <select
-                    value={form.subjectId}
-                    onChange={e => setForm(f => ({ ...f, subjectId: e.target.value, chapterId: '' }))}
-                    className="w-full p-3 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-blue-400 text-xs"
-                  >
-                    <option value="">All Subjects ({testCategoryTab === 'entrance' ? 'Entrance' : 'Competitive'})</option>
-                    {filteredSubjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-                {testCategoryTab === 'entrance' && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Chapter</label>
-                    <select
-                      value={form.chapterId}
-                      onChange={e => setForm(f => ({ ...f, chapterId: e.target.value }))}
-                      className="w-full p-3 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-blue-400 text-xs"
-                      disabled={!form.subjectId}
-                    >
-                      <option value="">All Chapters</option>
-                      {filteredChapters.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Difficulty</label>
-                  <select
-                    value={form.targetDifficulty}
-                    onChange={e => setForm(f => ({ ...f, targetDifficulty: e.target.value }))}
-                    className="w-full p-3 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-blue-400 text-xs"
-                  >
-                    <option value="Mixed">Mixed</option>
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Number of Questions *</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.dynamicTotalQuestions}
-                  onChange={e => setForm(f => ({ ...f, dynamicTotalQuestions: Number(e.target.value) }))}
-                  className="w-full md:w-48 p-3 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-blue-400 text-xs"
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Assign to Courses/Exams - MANDATORY */}
-          <div className={`p-4 rounded-2xl border-2 transition-all ${
-            form.examIds.length === 0
-              ? 'border-red-300 bg-red-50'
-              : 'border-emerald-300 bg-emerald-50'
-          }`}>
-            <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
-              form.examIds.length === 0 ? 'text-red-600' : 'text-emerald-700'
-            }`}>
-              {form.examIds.length === 0 ? '⚠' : '✓'} Assign to Courses / Exams ({testCategoryTab === 'entrance' ? 'Entrance' : 'Competitive'})
-              <span className="text-red-500 ml-0.5">*</span>
-              <span className="ml-2 normal-case font-normal text-slate-500">
-                {form.examIds.length === 0
-                  ? '(Required! Select at least one course — students who bought it can see the test)'
-                  : `(${form.examIds.length} course(s) selected ✓)`
-                }
-              </span>
-            </label>
-            {targetExams && targetExams.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {targetExams.map((ex: any) => {
-                  const exId = ex.id || ex._id;
-                  const isSelected = form.examIds.includes(exId);
-                  return (
-                    <button
-                      key={exId}
-                      type="button"
-                      onClick={() => toggleExamId(exId)}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-bold border-2 transition-all text-left ${
-                        isSelected
-                          ? testCategoryTab === 'competitive'
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm scale-[1.02]'
-                            : 'bg-emerald-600 text-white border-emerald-600 shadow-sm scale-[1.02]'
-                          : 'bg-white text-slate-600 border-slate-300 hover:border-blue-400 hover:bg-blue-50'
-                      }`}
-                    >
-                      {isSelected ? '✓ ' : '○ '}{ex.name}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400">No {testCategoryTab} courses/exams found. Create courses in Courses / Plans first.</p>
-            )}
-          </div>
-
-          {/* Assign to Student Groups (Entrance Exams Only) */}
-          {testCategoryTab === 'entrance' && (
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                Assign to Student Groups
-                <span className="ml-2 normal-case font-normal text-slate-400">(Optional: restrict to specific groups)</span>
-              </label>
-              {studentTypes && studentTypes.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {studentTypes.map((st: any) => {
-                    const stId = st.id || st._id;
-                    const isSelected = form.studentTypeIds.includes(stId);
-                    return (
-                      <button
-                        key={stId}
-                        type="button"
-                        onClick={() => toggleStudentTypeId(stId)}
-                        className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all text-left ${
-                          isSelected
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
-                      >
-                        {isSelected ? '✓ ' : '+ '}{st.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-400">No student groups configured.</p>
-              )}
-            </div>
-          )}
 
           {/* Grand Test CSV Upload */}
           {form.mode === 'grand' && (
@@ -598,7 +635,7 @@ export default function TestConfiguratorTab({
           <button
             type="submit"
             disabled={saving || loading}
-            className="w-full py-3 px-6 bg-slate-900 text-white rounded-xl font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 px-6 bg-slate-900 text-white rounded-xl font-black uppercase tracking-wider hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 cursor-pointer"
           >
             {saving ? (
               <><RotateCcw size={16} className="animate-spin" /> Creating...</>
@@ -623,11 +660,11 @@ export default function TestConfiguratorTab({
           <select
             value={filterGroupId}
             onChange={e => setFilterGroupId(e.target.value)}
-            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none"
+            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
           >
             <option value="all">All Groups</option>
             {studentTypes && studentTypes.map((st: any) => (
-              <option key={st.id || st._id} value={st.id || st._id}>{st.name}</option>
+              <option key={st.id || st._id} value={st.id || st._id}>{st.name} ({st.state || 'AP'})</option>
             ))}
           </select>
         </div>
@@ -672,10 +709,12 @@ export default function TestConfiguratorTab({
                     {Array.isArray((t as any).studentTypeIds) && (t as any).studentTypeIds.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         {(t as any).studentTypeIds.map((sid: any, i: number) => {
-                          const stName = studentTypes?.find((s: any) => (s.id || s._id) === (sid?._id || sid))?.name;
+                          const st = studentTypes?.find((s: any) => (s.id || s._id) === (sid?._id || sid));
+                          const stName = st?.name;
+                          const stState = st?.state;
                           return stName ? (
-                            <span key={i} className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 font-bold">
-                              {stName}
+                            <span key={i} className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 font-bold flex items-center gap-1">
+                              {stName} {stState && <span className="text-[8px] opacity-75 bg-emerald-200 text-emerald-800 px-1 rounded">{stState}</span>}
                             </span>
                           ) : null;
                         })}
@@ -709,14 +748,14 @@ export default function TestConfiguratorTab({
                             type="button"
                             onClick={() => handleSaveExamIds(tid)}
                             disabled={savingExams || editExamIds.length === 0}
-                            className="px-3 py-1.5 bg-blue-600 text-white text-[11px] font-black rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+                            className="px-3 py-1.5 bg-blue-600 text-white text-[11px] font-black rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1 cursor-pointer"
                           >
                             {savingExams ? <RotateCcw size={11} className="animate-spin" /> : '✓'} Save
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingExamsForId(null)}
-                            className="px-3 py-1.5 bg-slate-200 text-slate-600 text-[11px] font-bold rounded-lg hover:bg-slate-300"
+                            className="px-3 py-1.5 bg-slate-200 text-slate-600 text-[11px] font-bold rounded-lg hover:bg-slate-300 cursor-pointer"
                           >
                             Cancel
                           </button>
@@ -745,7 +784,7 @@ export default function TestConfiguratorTab({
                             setEditExamIds(currentExamIds);
                             setEditingExamsForId(tid);
                           }}
-                          className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline ml-1"
+                          className="text-[10px] text-blue-600 hover:text-blue-800 font-bold underline ml-1 cursor-pointer"
                         >
                           {Array.isArray((t as any).examIds) && (t as any).examIds.length > 0 ? 'Edit Courses' : '+ Assign Courses'}
                         </button>
@@ -764,7 +803,7 @@ export default function TestConfiguratorTab({
                         isPublished
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                           : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                      } disabled:opacity-50`}
+                      } disabled:opacity-50 cursor-pointer`}
                     >
                       {isToggling ? (
                         <RotateCcw size={13} className="animate-spin" />
@@ -779,7 +818,7 @@ export default function TestConfiguratorTab({
                     <button
                       onClick={() => handleDelete(tid)}
                       disabled={isDeleting}
-                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                       title="Delete test"
                     >
                       {isDeleting ? <RotateCcw size={15} className="animate-spin" /> : <Trash2 size={15} />}

@@ -37,15 +37,19 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
     refreshAttempts();
   }, [tab]);
 
+  const [submittedResult, setSubmittedResult] = useState<any>(null);
+
   const handleExamComplete = (result: any) => {
     onTestSubmitted(result);
-    setActiveExam(null);
+    setSubmittedResult(result);
+    // Do NOT setActiveExam(null) here - let ExamPage show scorecard first
     refreshAttempts();
   };
 
   const handleCloseExam = () => {
     setActiveExam(null);
     setReviewAttemptId(null);
+    setSubmittedResult(null);
     refreshAttempts();
   };
 

@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ['admin', 'student'], default: 'student' },
     
     // Student specific fields
+    state: { type: String, enum: ['AP', 'TG', 'Both'], default: 'Both' },
     category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
     studentType: { type: mongoose.Schema.Types.ObjectId, ref: 'StudentType' },
     exams: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Exam' }],

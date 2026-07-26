@@ -184,7 +184,7 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
       const data = await submitExam(attempt._id, timeTaken);
       setResult(data.result);
       setPhase('scorecard');
-      onComplete(data.result);
+      onComplete?.(data.result);
 
       // Exit fullscreen
       if (document.exitFullscreen) document.exitFullscreen().catch(() => {});

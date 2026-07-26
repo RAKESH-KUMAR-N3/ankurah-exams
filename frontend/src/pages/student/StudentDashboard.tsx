@@ -97,17 +97,23 @@ export default function StudentDashboard({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-800/60 text-emerald-300 rounded-lg text-[10px] font-black mb-4 border border-emerald-500/30 uppercase tracking-widest">
-              <Award className="w-3.5 h-3.5" />
-              Active Subscription
+              {user.purchasedPlans && user.purchasedPlans.length > 0 ? (
+                <><Award className="w-3.5 h-3.5" /> Active Subscription</>
+              ) : (
+                <><Sparkles className="w-3.5 h-3.5" /> Welcome Student</>
+              )}
             </div>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-2">
               {user.purchasedPlans && user.purchasedPlans.length > 0 
-                ? `Academic Plan Active` 
+                ? 'Academic Plan Active' 
                 : 'Welcome, ' + user.name + '!'}
             </h1>
             <p className="text-emerald-100/90 text-sm max-w-xl leading-relaxed font-medium">
-              You are currently enrolled in the <span className="text-white font-bold tracking-wide">Yearly Plan</span>. 
-              Keep up the momentum to secure your top rank!
+              {user.purchasedPlans && user.purchasedPlans.length > 0 ? (
+                <>You are currently enrolled in an active course plan. Keep up the momentum to secure your top rank!</>
+              ) : (
+                <>Explore and subscribe to course plans to unlock full access to practice tests, grand exams, and study materials.</>
+              )}
             </p>
           </div>
           

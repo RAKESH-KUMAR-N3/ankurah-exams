@@ -265,8 +265,12 @@ export default function StudentProfilePage({
                 <Award className="w-5 h-5 text-emerald-600" />
                 <h2 className="text-lg font-black text-slate-800">My Subscriptions</h2>
               </div>
-              <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
-                Active
+              <span className={`px-2.5 py-0.5 text-xs font-bold rounded-full border ${
+                purchasedPlans.length > 0 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                  : 'bg-slate-100 text-slate-500 border-slate-200'
+              }`}>
+                {purchasedPlans.length > 0 ? 'Active' : 'No Active Plan'}
               </span>
             </div>
 
@@ -291,17 +295,10 @@ export default function StudentProfilePage({
                 })}
               </div>
             ) : (
-              <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-black text-slate-900 text-base">
-                    {user.studyPlan ? `${user.studyPlan.replace('_', ' ').toUpperCase()} PLAN` : 'Yearly Academic Pass'}
-                  </h4>
-                  <span className="px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-black uppercase rounded-lg tracking-wider">
-                    ACTIVE
-                  </span>
-                </div>
-                <p className="text-xs text-emerald-900 leading-relaxed font-medium">
-                  Full access to all board subjects, practice questions, tests, and study materials.
+              <div className="p-5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 text-center">
+                <p className="text-xs font-bold text-slate-600">No active plan subscriptions found.</p>
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                  Explore and purchase a course plan to unlock full access to tests, practice questions, and study materials.
                 </p>
               </div>
             )}

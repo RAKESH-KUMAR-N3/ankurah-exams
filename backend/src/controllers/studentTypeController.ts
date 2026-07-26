@@ -6,8 +6,13 @@ import StudentType from '../models/StudentType';
 // @route   POST /api/student-types
 // @access  Admin
 export const createStudentType = asyncHandler(async (req: Request, res: Response) => {
-  const { name } = req.body;
-  const studentType = await StudentType.create({ name });
+  console.log('Received body in createStudentType:', req.body);
+  const { name, state } = req.body;
+  if (!name || !state) {
+    res.status(400);
+    throw new Error('Please provide group name and state');
+  }
+  const studentType = await StudentType.create({ name, state });
   res.status(201).json(studentType);
 });
 
@@ -23,10 +28,11 @@ export const getStudentTypes = asyncHandler(async (req: Request, res: Response) 
 // @route   PUT /api/student-types/:id
 // @access  Admin
 export const updateStudentType = asyncHandler(async (req: Request, res: Response) => {
-  const { name } = req.body;
+  const { name, state } = req.body;
   const studentType = await StudentType.findById(req.params.id);
   if (studentType) {
     studentType.name = name || studentType.name;
+    if (state) studentType.state = state;
     const updatedStudentType = await studentType.save();
     res.json(updatedStudentType);
   } else {

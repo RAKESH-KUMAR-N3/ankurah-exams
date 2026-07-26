@@ -21,6 +21,7 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      state: user.state,
       token: generateToken(user._id.toString()),
     });
   } else {
@@ -33,7 +34,7 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
 // @route   POST /api/auth/register
 // @access  Public
 export const registerUser = asyncHandler(async (req: Request, res: Response) => {
-  const { name, email, password, phone, role, category, exams, studentType, plan } = req.body;
+  const { name, email, password, phone, role, category, exams, studentType, plan, state } = req.body;
 
   const userExists = await User.findOne({ email });
 
@@ -51,6 +52,7 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
     password: hashedPassword,
     phone,
     role: role || 'student',
+    state: state || 'Both',
     category: category && category !== '' ? category : undefined,
     studentType: studentType && studentType !== '' ? studentType : undefined,
     exams: Array.isArray(exams) && exams.length > 0 ? exams : [],
@@ -63,6 +65,7 @@ export const registerUser = asyncHandler(async (req: Request, res: Response) => 
       email: user.email,
       phone: user.phone,
       role: user.role,
+      state: user.state,
       token: generateToken(user._id.toString()),
     });
   } else {

@@ -1,6 +1,9 @@
 import TestAttempt from '../models/TestAttempt';
 import Test from '../models/Test';
 import Question from '../models/Question';
+import ApEntranceQuestion from '../models/ApEntranceQuestion';
+import TgEntranceQuestion from '../models/TgEntranceQuestion';
+import CompetitiveQuestionBySubject from '../models/CompetitiveQuestionBySubject';
 import PerformanceMetric from '../models/PerformanceMetric';
 import mongoose from 'mongoose';
 
@@ -61,9 +64,13 @@ export const evaluateTestAttempt = async (attemptId: string) => {
   let score = 0;
   let totalMarks = 0;
 
-  // Get all questions for this attempt
+  // Get all questions for this attempt (queries apentrancequestions, tgentrancequestions, competitivequestionsbysubjects)
   const questionIds = attempt.responses.map((r: any) => r.questionId);
-  const questions = await Question.find({ _id: { $in: questionIds } });
+  const apQuestions = await ApEntranceQuestion.find({ _id: { $in: questionIds } });
+  const tgQuestions = await TgEntranceQuestion.find({ _id: { $in: questionIds } });
+  const compQuestions = await CompetitiveQuestionBySubject.find({ _id: { $in: questionIds } });
+  const legacyQuestions = await Question.find({ _id: { $in: questionIds } });
+  const questions = [...apQuestions, ...tgQuestions, ...compQuestions, ...legacyQuestions];
   const questionMap = new Map();
   questions.forEach(q => questionMap.set(q._id.toString(), q));
 

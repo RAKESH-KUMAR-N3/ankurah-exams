@@ -3,6 +3,9 @@ export type UserRole = 'student' | 'admin';
 export interface StudentType {
   id: string;
   name: string;
+  state?: 'AP' | 'TG';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface User {
@@ -11,6 +14,7 @@ export interface User {
   email: string;
   phone?: string;
   role: UserRole;
+  state?: 'AP' | 'TG' | 'Both';
   selectedEntranceExams?: string[];
   selectedCompetitiveExams?: string[];
   studentType?: 'first_year' | 'second_year' | 'long_term' | '';
@@ -55,6 +59,7 @@ export interface EntranceExam {
   categoryId?: string;
   name: string;
   description: string;
+  state?: 'AP' | 'TG' | 'Both';
   allowedStudentTypes?: any[];
 }
 
@@ -64,12 +69,14 @@ export interface CompetitiveExam {
   categoryId?: string;
   name: string;
   description: string;
+  state?: 'AP' | 'TG' | 'Both';
   allowedStudentTypes?: any[];
 }
 
 export interface Subject {
   id: string;
   name: string;
+  state?: 'AP' | 'TG' | 'Both';
   examIds: string[]; // Can map to multiple exams
   applicableFor?: string[];
   description: string;

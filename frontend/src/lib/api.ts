@@ -62,6 +62,7 @@ export const fetchStudentDashboard = () => apiGet('/api/dashboard/student');
 
 // ─── Admin Data ───────────────────────────────────────────────────────────────
 export const fetchCategories = (params?: Record<string, string>) => apiGet('/api/categories', params);
+export const fetchStates = (params?: Record<string, string>) => apiGet('/api/states', params);
 export const fetchExams = (params?: Record<string, string>) => apiGet('/api/exams', params);
 export const fetchStudentTypes = (params?: Record<string, string>) => apiGet('/api/student-types', params);
 export const fetchSubjects = (params?: Record<string, string>) => apiGet('/api/subjects', params);

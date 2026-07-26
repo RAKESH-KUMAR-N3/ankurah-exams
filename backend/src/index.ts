@@ -7,6 +7,7 @@ import { notFound, errorHandler } from './middlewares/errorMiddleware';
 // Route imports
 import authRoutes from './routes/authRoutes';
 import categoryRoutes from './routes/categoryRoutes';
+import stateRoutes from './routes/stateRoutes';
 import examRoutes from './routes/examRoutes';
 import studentTypeRoutes from './routes/studentTypeRoutes';
 import subjectRoutes from './routes/subjectRoutes';
@@ -52,6 +53,7 @@ app.use('/api/auth', authRoutes);
 
 // Admin Academic Management routes (protected)
 app.use('/api/categories', categoryRoutes);
+app.use('/api/states', stateRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/student-types', studentTypeRoutes);
 app.use('/api/subjects', subjectRoutes);

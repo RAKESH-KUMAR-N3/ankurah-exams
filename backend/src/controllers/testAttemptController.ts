@@ -3,7 +3,49 @@ import { AuthRequest as Request } from '../middlewares/authMiddleware';
 import TestAttempt from '../models/TestAttempt';
 import Test from '../models/Test';
 import Question from '../models/Question';
+import ApEntranceQuestion from '../models/ApEntranceQuestion';
+import TgEntranceQuestion from '../models/TgEntranceQuestion';
+import CompetitiveQuestionBySubject from '../models/CompetitiveQuestionBySubject';
+import Subject from '../models/Subject';
 import { evaluateTestAttempt } from '../services/testEvaluationService';
+
+const fetchRandomQs = async (query: any, size: number) => {
+  const [ap, tg, comp] = await Promise.all([
+    ApEntranceQuestion.aggregate([{ $match: query }, { $sample: { size } }]),
+    TgEntranceQuestion.aggregate([{ $match: query }, { $sample: { size } }]),
+    CompetitiveQuestionBySubject.aggregate([{ $match: query }, { $sample: { size } }])
+  ]);
+  return [...ap, ...tg, ...comp].sort(() => 0.5 - Math.random()).slice(0, size);
+};
+
+export const populateAttemptQuestions = async (attempt: any, selectFields: string) => {
+  if (!attempt) return attempt;
+  const attemptObj = attempt.toObject ? attempt.toObject() : attempt;
+  if (!attemptObj.responses || attemptObj.responses.length === 0) return attemptObj;
+
+  const qIds = attemptObj.responses.map((r: any) => r.questionId).filter(Boolean);
+  if (qIds.length === 0) return attemptObj;
+
+  const [ap, tg, comp, legacy] = await Promise.all([
+    ApEntranceQuestion.find({ _id: { $in: qIds } }).select(selectFields).lean(),
+    TgEntranceQuestion.find({ _id: { $in: qIds } }).select(selectFields).lean(),
+    CompetitiveQuestionBySubject.find({ _id: { $in: qIds } }).select(selectFields).lean(),
+    Question.find({ _id: { $in: qIds } }).select(selectFields).lean()
+  ]);
+
+  const qMap = new Map();
+  [...ap, ...tg, ...comp, ...legacy].forEach((q: any) => {
+    qMap.set(q._id.toString(), q);
+  });
+
+  attemptObj.responses.forEach((r: any) => {
+    if (r.questionId && qMap.has(r.questionId.toString())) {
+      r.questionId = qMap.get(r.questionId.toString());
+    }
+  });
+
+  return attemptObj;
+};
 
 // @desc    Start or resume a test
 // @route   POST /api/attempts/start/:testId
@@ -28,13 +70,11 @@ export const startTest = async (req: Request, res: Response): Promise<void> => {
       studentId: req.user?._id,
       testId,
       status: 'In-Progress'
-    }).populate({
-      path: 'responses.questionId',
-      select: 'content options difficulty explanation'
     });
 
     if (existingAttempt) {
-      res.status(200).json(existingAttempt);
+      const populatedExisting = await populateAttemptQuestions(existingAttempt, 'content options difficulty explanation');
+      res.status(200).json(populatedExisting);
       return;
     }
 
@@ -61,41 +101,49 @@ export const startTest = async (req: Request, res: Response): Promise<void> => {
     let initialResponses: any[] = [];
 
     if (test.isDynamic && test.dynamicTotalQuestions) {
-      // Dynamic test: pick random questions from question bank
+      // Dynamic test: pick random questions strictly from matching subject/exam
+      let allowedSubjectIds: any[] = [];
+      if (test.subjectId) {
+        allowedSubjectIds = [(test.subjectId as any)._id || test.subjectId];
+      } else if (test.examIds && test.examIds.length > 0) {
+        const parsedExamIds = test.examIds.map((e: any) => (e._id || e.id || e).toString());
+        const matchingSubjects = await Subject.find({
+          $or: [
+            { examId: { $in: parsedExamIds } },
+            { applicableFor: { $in: req.user?.studentType ? [req.user.studentType] : [] } }
+          ]
+        }).select('_id');
+        allowedSubjectIds = matchingSubjects.map((s: any) => s._id);
+      }
+
       const matchQuery: any = {};
-      if (test.subjectId) matchQuery.subjectId = test.subjectId;
-      if (test.chapterId) matchQuery.chapterId = test.chapterId;
-      // Filter by difficulty if not Mixed
+      if (allowedSubjectIds.length > 0) {
+        matchQuery.subjectId = { $in: allowedSubjectIds };
+      }
+      if (test.chapterId) {
+        matchQuery.chapterId = (test.chapterId as any)._id || test.chapterId;
+      }
       if (test.targetDifficulty && test.targetDifficulty !== 'Mixed') {
         matchQuery.difficulty = test.targetDifficulty;
       }
 
-      let randomQuestions = await Question.aggregate([
-        { $match: matchQuery },
-        { $sample: { size: test.dynamicTotalQuestions } }
-      ]);
+      let randomQuestions = await fetchRandomQs(matchQuery, test.dynamicTotalQuestions);
 
-      // Fallback: if no questions match specific difficulty/chapter, fallback to all questions for subject/chapter or all questions
-      if (randomQuestions.length === 0 && test.chapterId) {
-        randomQuestions = await Question.aggregate([
-          { $match: { chapterId: test.chapterId } },
-          { $sample: { size: test.dynamicTotalQuestions } }
-        ]);
+      // Fallback 1: Relax difficulty filter, keep subject/chapter
+      if (randomQuestions.length < test.dynamicTotalQuestions && matchQuery.difficulty) {
+        delete matchQuery.difficulty;
+        randomQuestions = await fetchRandomQs(matchQuery, test.dynamicTotalQuestions);
       }
-      if (randomQuestions.length === 0 && test.subjectId) {
-        randomQuestions = await Question.aggregate([
-          { $match: { subjectId: test.subjectId } },
-          { $sample: { size: test.dynamicTotalQuestions } }
-        ]);
-      }
-      if (randomQuestions.length === 0) {
-        randomQuestions = await Question.aggregate([
-          { $sample: { size: test.dynamicTotalQuestions } }
-        ]);
+
+      // Fallback 2: Relax chapter filter, keep subject(s)
+      if (randomQuestions.length < test.dynamicTotalQuestions && matchQuery.chapterId && allowedSubjectIds.length > 0) {
+        randomQuestions = await fetchRandomQs({ subjectId: { $in: allowedSubjectIds } }, test.dynamicTotalQuestions);
       }
 
       if (randomQuestions.length === 0) {
-        res.status(400).json({ message: 'No questions available in the question bank for this test.' });
+        res.status(400).json({ 
+          message: 'No questions found in Question Bank for the subject of this test. Please upload questions in Question Bank first.' 
+        });
         return;
       }
 
@@ -130,10 +178,7 @@ export const startTest = async (req: Request, res: Response): Promise<void> => {
 
     const savedAttempt = await attempt.save();
 
-    const populatedAttempt = await TestAttempt.findById(savedAttempt._id).populate({
-      path: 'responses.questionId',
-      select: 'content options difficulty explanation'
-    });
+    const populatedAttempt = await populateAttemptQuestions(savedAttempt, 'content options difficulty explanation');
 
     res.status(201).json(populatedAttempt);
   } catch (error: any) {
@@ -245,9 +290,9 @@ export const submitTest = async (req: Request, res: Response): Promise<void> => 
     await evaluatedAttempt.save();
 
     // Populate for immediate scorecard display
-    const result = await TestAttempt.findById(evaluatedAttempt._id)
-      .populate({ path: 'testId', select: 'title testType duration marksPerQuestion negativeMarksPerQuestion' })
-      .populate({ path: 'responses.questionId', select: 'content options correctAnswer explanation difficulty' });
+    let result = await TestAttempt.findById(evaluatedAttempt._id)
+      .populate({ path: 'testId', select: 'title testType duration marksPerQuestion negativeMarksPerQuestion' });
+    result = await populateAttemptQuestions(result, 'content options correctAnswer explanation difficulty');
     
     res.json({ message: 'Test submitted successfully', result });
   } catch (error: any) {
@@ -291,20 +336,18 @@ export const getResultDetails = async (req: Request, res: Response): Promise<voi
   try {
     const { id } = req.params;
     
-    const attempt = await TestAttempt.findOne({ _id: id, studentId: req.user?._id })
+    let attempt = await TestAttempt.findOne({ _id: id, studentId: req.user?._id })
       .populate({
         path: 'testId',
         select: 'title testType marksPerQuestion negativeMarksPerQuestion duration instructions isFullSyllabus'
-      })
-      .populate({
-        path: 'responses.questionId',
-        select: 'content options correctAnswer explanation difficulty chapterId subjectId'
       });
       
     if (!attempt) {
       res.status(404).json({ message: 'Result not found' });
       return;
     }
+
+    attempt = await populateAttemptQuestions(attempt, 'content options correctAnswer explanation difficulty chapterId subjectId');
     
     res.json(attempt);
   } catch (error: any) {

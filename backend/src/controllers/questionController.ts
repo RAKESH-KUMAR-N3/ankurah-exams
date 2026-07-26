@@ -1,23 +1,63 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
-import Question from '../models/Question';
+import ApEntranceQuestion from '../models/ApEntranceQuestion';
+import TgEntranceQuestion from '../models/TgEntranceQuestion';
+import CompetitiveQuestionBySubject from '../models/CompetitiveQuestionBySubject';
+import Subject from '../models/Subject';
+import CompetitiveSubject from '../models/CompetitiveSubject';
+import Chapter from '../models/Chapter';
 import csvParser from 'csv-parser';
 import { Readable } from 'stream';
 import { resolveCorrectAnswer } from '../services/testEvaluationService';
 
-// @desc    Create a Question (standalone in question bank)
+// Helper: Determine target collection model based on subjectId
+const getQuestionModelForSubject = async (subjectId: string) => {
+  const compSub = await CompetitiveSubject.findById(subjectId);
+  if (compSub) {
+    return { model: CompetitiveQuestionBySubject, type: 'competitive' };
+  }
+
+  const sub = await Subject.findById(subjectId);
+  if (sub && sub.state === 'TG') {
+    return { model: TgEntranceQuestion, type: 'tg_entrance' };
+  }
+
+  // Default to AP Entrance Question
+  return { model: ApEntranceQuestion, type: 'ap_entrance' };
+};
+
+// @desc    Create a Question
 // @route   POST /api/questions
 // @access  Admin
 export const createQuestion = asyncHandler(async (req: Request, res: Response) => {
   const { categoryId, subjectId, chapterId, content, options, correctAnswer, explanation, difficulty } = req.body;
-  const question = await Question.create({
-    categoryId, subjectId, chapterId, content, options, correctAnswer, explanation, difficulty
-    // marks/negativeMarks intentionally not stored here — managed at Test level
-  });
-  res.status(201).json(question);
+
+  if (!subjectId) {
+    res.status(400);
+    throw new Error('subjectId is required');
+  }
+
+  const { model, type } = await getQuestionModelForSubject(subjectId);
+
+  const payload: any = {
+    subjectId,
+    content: content ? content.trim() : '',
+    options: Array.isArray(options) ? options.map((o: string) => o.trim()) : [],
+    correctAnswer: correctAnswer ? correctAnswer.trim() : '',
+    explanation: explanation ? explanation.trim() : '',
+    difficulty: difficulty || 'Medium'
+  };
+
+  if (type !== 'competitive') {
+    if (categoryId) payload.categoryId = categoryId;
+    if (chapterId) payload.chapterId = chapterId;
+  }
+
+  const createdQuestion = await model.create(payload);
+  res.status(201).json(createdQuestion);
 });
 
-// @desc    Get all Questions (filterable by subject/chapter/difficulty)
+// @desc    Get all Questions (queries 'apentrancequestions', 'tgentrancequestions', and 'competitivequestionsbysubjects')
 // @route   GET /api/questions
 // @access  Admin
 export const getQuestions = asyncHandler(async (req: Request, res: Response) => {
@@ -26,54 +66,120 @@ export const getQuestions = asyncHandler(async (req: Request, res: Response) => 
   if (req.query.chapterId) filter.chapterId = req.query.chapterId;
   if (req.query.difficulty) filter.difficulty = req.query.difficulty;
 
-  const questions = await Question.find(filter)
-    .populate('categoryId subjectId chapterId');
-  res.json(questions);
+  const apRaw = await ApEntranceQuestion.find(filter).sort({ createdAt: -1 }).lean();
+  const tgRaw = await TgEntranceQuestion.find(filter).sort({ createdAt: -1 }).lean();
+
+  const compFilter: any = {};
+  if (req.query.subjectId) compFilter.subjectId = req.query.subjectId;
+  if (req.query.difficulty) compFilter.difficulty = req.query.difficulty;
+  const compRaw = await CompetitiveQuestionBySubject.find(compFilter).sort({ createdAt: -1 }).lean();
+
+  const apEnriched = await Promise.all(
+    apRaw.map(async (q: any) => {
+      const sub = await Subject.findById(q.subjectId).lean();
+      const chap = q.chapterId ? await Chapter.findById(q.chapterId).lean() : null;
+      return { ...q, subjectId: sub || { _id: q.subjectId, name: 'Subject' }, chapterId: chap || undefined };
+    })
+  );
+
+  const tgEnriched = await Promise.all(
+    tgRaw.map(async (q: any) => {
+      const sub = await Subject.findById(q.subjectId).lean();
+      const chap = q.chapterId ? await Chapter.findById(q.chapterId).lean() : null;
+      return { ...q, subjectId: sub || { _id: q.subjectId, name: 'Subject' }, chapterId: chap || undefined };
+    })
+  );
+
+  const compEnriched = await Promise.all(
+    compRaw.map(async (q: any) => {
+      const sub = await CompetitiveSubject.findById(q.subjectId).lean();
+      return { ...q, subjectId: sub || { _id: q.subjectId, name: 'Subject' }, isCompetitive: true };
+    })
+  );
+
+  res.json([...apEnriched, ...tgEnriched, ...compEnriched]);
 });
 
-// @desc    Update a Question
+// @desc    Update a Question (checks all 3 collections)
 // @route   PUT /api/questions/:id
 // @access  Admin
 export const updateQuestion = asyncHandler(async (req: Request, res: Response) => {
   const { categoryId, subjectId, chapterId, content, options, correctAnswer, explanation, difficulty } = req.body;
-  const question = await Question.findById(req.params.id);
-  
-  if (question) {
-    if (categoryId !== undefined) question.categoryId = categoryId;
-    if (subjectId !== undefined) question.subjectId = subjectId;
-    if (chapterId !== undefined) question.chapterId = chapterId;
-    if (content !== undefined) question.content = content;
-    if (options !== undefined) question.options = options;
-    if (correctAnswer !== undefined) question.correctAnswer = correctAnswer;
-    if (explanation !== undefined) question.explanation = explanation;
-    if (difficulty !== undefined) question.difficulty = difficulty;
 
-    const updatedQuestion = await question.save();
-    res.json(updatedQuestion);
-  } else {
-    res.status(404);
-    throw new Error('Question not found');
+  let apQ = await ApEntranceQuestion.findById(req.params.id);
+  if (apQ) {
+    if (subjectId !== undefined) apQ.subjectId = subjectId;
+    if (chapterId !== undefined) apQ.chapterId = chapterId || undefined;
+    if (content !== undefined) apQ.content = content.trim();
+    if (options !== undefined) apQ.options = Array.isArray(options) ? options.map((o: string) => o.trim()) : options;
+    if (correctAnswer !== undefined) apQ.correctAnswer = correctAnswer.trim();
+    if (explanation !== undefined) apQ.explanation = explanation.trim();
+    if (difficulty !== undefined) apQ.difficulty = difficulty;
+
+    const updated = await apQ.save();
+    return res.json(updated);
   }
+
+  let tgQ = await TgEntranceQuestion.findById(req.params.id);
+  if (tgQ) {
+    if (subjectId !== undefined) tgQ.subjectId = subjectId;
+    if (chapterId !== undefined) tgQ.chapterId = chapterId || undefined;
+    if (content !== undefined) tgQ.content = content.trim();
+    if (options !== undefined) tgQ.options = Array.isArray(options) ? options.map((o: string) => o.trim()) : options;
+    if (correctAnswer !== undefined) tgQ.correctAnswer = correctAnswer.trim();
+    if (explanation !== undefined) tgQ.explanation = explanation.trim();
+    if (difficulty !== undefined) tgQ.difficulty = difficulty;
+
+    const updated = await tgQ.save();
+    return res.json(updated);
+  }
+
+  let compQ = await CompetitiveQuestionBySubject.findById(req.params.id);
+  if (compQ) {
+    if (subjectId !== undefined) compQ.subjectId = subjectId as any;
+    if (content !== undefined) compQ.content = content.trim();
+    if (options !== undefined) compQ.options = Array.isArray(options) ? options.map((o: string) => o.trim()) : options;
+    if (correctAnswer !== undefined) compQ.correctAnswer = correctAnswer.trim();
+    if (explanation !== undefined) compQ.explanation = explanation.trim();
+    if (difficulty !== undefined) compQ.difficulty = difficulty;
+
+    const updated = await compQ.save();
+    return res.json(updated);
+  }
+
+  res.status(404);
+  throw new Error('Question not found');
 });
 
-// @desc    Delete a Question
+// @desc    Delete a Question (checks all 3 collections)
 // @route   DELETE /api/questions/:id
 // @access  Admin
 export const deleteQuestion = asyncHandler(async (req: Request, res: Response) => {
-  const question = await Question.findById(req.params.id);
-  if (question) {
-    await Question.deleteOne({ _id: question._id });
-    res.json({ message: 'Question removed' });
-  } else {
-    res.status(404);
-    throw new Error('Question not found');
+  let apQ = await ApEntranceQuestion.findById(req.params.id);
+  if (apQ) {
+    await ApEntranceQuestion.deleteOne({ _id: apQ._id });
+    return res.json({ message: 'AP Entrance Question removed' });
   }
+
+  let tgQ = await TgEntranceQuestion.findById(req.params.id);
+  if (tgQ) {
+    await TgEntranceQuestion.deleteOne({ _id: tgQ._id });
+    return res.json({ message: 'TG Entrance Question removed' });
+  }
+
+  let compQ = await CompetitiveQuestionBySubject.findById(req.params.id);
+  if (compQ) {
+    await CompetitiveQuestionBySubject.deleteOne({ _id: compQ._id });
+    return res.json({ message: 'Competitive Question removed' });
+  }
+
+  res.status(404);
+  throw new Error('Question not found');
 });
 
-// @desc    Bulk Upload Questions to Question Bank via CSV
+// @desc    Bulk Upload Questions via CSV
 // @route   POST /api/questions/bulk-upload
 // @access  Admin
-// CSV columns: content/Question, optionA, optionB, optionC, optionD, correctAnswer/Correct Answer, explanation/Explanation, difficulty/Difficulty
 export const bulkUploadQuestions = asyncHandler(async (req: Request, res: Response) => {
   const { categoryId, subjectId, chapterId } = req.body;
   if (!req.file) {
@@ -81,6 +187,12 @@ export const bulkUploadQuestions = asyncHandler(async (req: Request, res: Respon
     throw new Error('Please upload a CSV file');
   }
 
+  if (!subjectId) {
+    res.status(400);
+    throw new Error('subjectId is required for bulk upload');
+  }
+
+  const { model } = await getQuestionModelForSubject(subjectId);
   const results: any[] = [];
   const stream = Readable.from(req.file.buffer);
   
@@ -95,7 +207,7 @@ export const bulkUploadQuestions = asyncHandler(async (req: Request, res: Respon
             row['optionB'] || row['Option B'],
             row['optionC'] || row['Option C'],
             row['optionD'] || row['Option D']
-          ].filter(Boolean);
+          ].map(o => (o || '').toString().trim()).filter(Boolean);
 
           const rawCorrect = row['correctAnswer'] || row['Correct Answer'] || '';
           const correctAnswer = resolveCorrectAnswer(rawCorrect, options);
@@ -107,15 +219,15 @@ export const bulkUploadQuestions = asyncHandler(async (req: Request, res: Respon
             categoryId: (row['categoryId'] || categoryId) || undefined,
             subjectId: row['subjectId'] || subjectId,
             chapterId: validChapId,
-            content: row['content'] || row['Question'],
+            content: (row['content'] || row['Question'] || '').toString().trim(),
             options,
             correctAnswer,
-            explanation: row['explanation'] || row['Explanation'] || '',
+            explanation: (row['explanation'] || row['Explanation'] || '').toString().trim(),
             difficulty: row['difficulty'] || row['Difficulty'] || 'Medium',
           };
         });
 
-        const inserted = await Question.insertMany(questionsToInsert);
+        const inserted = await model.insertMany(questionsToInsert);
         res.status(201).json({ 
           message: `${inserted.length} questions uploaded successfully`, 
           count: inserted.length 

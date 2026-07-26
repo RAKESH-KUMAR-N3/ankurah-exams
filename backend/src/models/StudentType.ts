@@ -2,9 +2,14 @@ import mongoose from 'mongoose';
 
 const studentTypeSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, unique: true }, // e.g., 'Inter 1st Year', 'Inter 2nd Year', 'Long Term'
+    name: { type: String, required: true },
+    state: { type: String, required: true }, // 'AP', 'TG', etc.
+    stateId: { type: mongoose.Schema.Types.ObjectId, ref: 'State' },
   },
   { timestamps: true }
 );
 
-export default mongoose.model('StudentType', studentTypeSchema);
+studentTypeSchema.index({ name: 1, state: 1 }, { unique: true });
+
+// Explicitly store in 'studentgroupsbystates' collection in MongoDB
+export default mongoose.model('StudentType', studentTypeSchema, 'studentgroupsbystates');

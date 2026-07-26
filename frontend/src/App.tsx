@@ -39,6 +39,7 @@ const mapBackendUser = (data: any): User => ({
   email: data.email,
   phone: data.phone || '',
   role: data.role,
+  state: data.state || 'Both',
   selectedEntranceExams: data.exams || [],
   selectedCompetitiveExams: [],
   studentType: data.studentType || '',
@@ -50,12 +51,13 @@ const mapBackendUser = (data: any): User => ({
 });
 
 // Map backend Exam to frontend EntranceExam/CompetitiveExam shape
-const mapExam = (e: any): EntranceExam => ({ id: e._id, name: e.name, description: e.description || '', allowedStudentTypes: e.allowedStudentTypes || [] });
+const mapExam = (e: any): EntranceExam => ({ id: e._id, name: e.name, description: e.description || '', state: e.state || 'Both', allowedStudentTypes: e.allowedStudentTypes || [] });
 
 // Map backend Subject to frontend Subject shape
 const mapSubject = (s: any): Subject => ({
   id: s._id,
   name: s.name,
+  state: s.state || 'Both',
   examIds: s.examId ? [s.examId._id || s.examId] : [],
   applicableFor: s.applicableFor ? s.applicableFor.map((x: any) => x._id || x) : [],
   description: '',
@@ -150,6 +152,7 @@ const mapNotification = (n: any): Notification => ({
 const mapStudentType = (st: any): StudentType => ({
   id: st._id,
   name: st.name,
+  state: st.state || 'AP',
 });
 
 // ─── App ──────────────────────────────────────────────────────────────────────

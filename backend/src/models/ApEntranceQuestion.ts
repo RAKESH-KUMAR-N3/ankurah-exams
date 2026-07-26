@@ -1,11 +1,9 @@
 import mongoose from 'mongoose';
 
-const questionSchema = new mongoose.Schema(
+const apEntranceQuestionSchema = new mongoose.Schema(
   {
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
-    subjectId: { type: mongoose.Schema.Types.ObjectId, required: true },
+    subjectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
     chapterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chapter' },
-    subjectCategory: { type: String, enum: ['entrance', 'competitive'], default: 'entrance' },
     content: { type: String, required: true },
     options: [{ type: String, required: true }],
     correctAnswer: { type: String, required: true },
@@ -17,7 +15,6 @@ const questionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-questionSchema.index({ subjectId: 1, chapterId: 1 });
-questionSchema.index({ subjectCategory: 1, subjectId: 1 });
+apEntranceQuestionSchema.index({ subjectId: 1, chapterId: 1 });
 
-export default mongoose.model('Question', questionSchema);
+export default mongoose.model('ApEntranceQuestion', apEntranceQuestionSchema, 'apentrancequestions');
