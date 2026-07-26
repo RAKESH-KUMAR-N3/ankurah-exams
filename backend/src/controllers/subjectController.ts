@@ -25,7 +25,8 @@ export const createSubject = asyncHandler(async (req: Request, res: Response) =>
       subjectCategory: 'competitive',
       examId: validExamId,
     });
-    return res.status(201).json(compSubject);
+    res.status(201).json(compSubject);
+    return;
   }
 
   // Entrance Subjects -> saved in 'subjects' collection
@@ -46,7 +47,8 @@ export const createSubject = asyncHandler(async (req: Request, res: Response) =>
       applicableFor: validApplicable,
       examId: validExamId,
     });
-    return res.status(201).json([apSubject, tgSubject]);
+    res.status(201).json([apSubject, tgSubject]);
+    return;
   } else {
     const subject = await Subject.create({
       name: cleanName,
@@ -55,7 +57,8 @@ export const createSubject = asyncHandler(async (req: Request, res: Response) =>
       applicableFor: validApplicable,
       examId: validExamId,
     });
-    return res.status(201).json(subject);
+    res.status(201).json(subject);
+    return;
   }
 });
 
@@ -79,7 +82,8 @@ export const updateSubject = asyncHandler(async (req: Request, res: Response) =>
     if (name) compSub.name = name.trim();
     if (examId && mongoose.Types.ObjectId.isValid(examId)) compSub.examId = examId as any;
     const updatedComp = await compSub.save();
-    return res.json(updatedComp);
+    res.json(updatedComp);
+    return;
   }
 
   let subject = await Subject.findById(req.params.id);
@@ -91,7 +95,8 @@ export const updateSubject = asyncHandler(async (req: Request, res: Response) =>
       subject.examId = examId as any;
     }
     const updatedSubject = await subject.save();
-    return res.json(updatedSubject);
+    res.json(updatedSubject);
+    return;
   }
 
   res.status(404);
@@ -105,13 +110,15 @@ export const deleteSubject = asyncHandler(async (req: Request, res: Response) =>
   let compSub = await CompetitiveSubject.findById(req.params.id);
   if (compSub) {
     await CompetitiveSubject.deleteOne({ _id: compSub._id });
-    return res.json({ message: 'Competitive Subject removed' });
+    res.json({ message: 'Competitive Subject removed' });
+    return;
   }
 
   let subject = await Subject.findById(req.params.id);
   if (subject) {
     await Subject.deleteOne({ _id: subject._id });
-    return res.json({ message: 'Subject removed' });
+    res.json({ message: 'Subject removed' });
+    return;
   }
 
   res.status(404);

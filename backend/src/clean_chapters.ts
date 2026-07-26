@@ -23,7 +23,7 @@ async function run() {
     if (!subIdStr || !validSubjectIds.has(subIdStr)) {
       await Chapter.deleteOne({ _id: ch._id });
       deletedCount++;
-      console.log(`Deleted orphaned chapter: ${ch.name}`);
+      console.log(`Deleted orphaned chapter: ${ch.title}`);
     }
   }
 

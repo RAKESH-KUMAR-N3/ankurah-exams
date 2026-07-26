@@ -75,7 +75,8 @@ export const createExam = asyncHandler(async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(201).json([apExam, tgExam]);
+    res.status(201).json([apExam, tgExam]);
+    return;
   }
 
   const generatedExamId = `${baseId}-${Date.now().toString().slice(-5)}`;

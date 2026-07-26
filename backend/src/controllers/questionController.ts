@@ -53,7 +53,7 @@ export const createQuestion = asyncHandler(async (req: Request, res: Response) =
     if (chapterId) payload.chapterId = chapterId;
   }
 
-  const createdQuestion = await model.create(payload);
+  const createdQuestion = await (model as any).create(payload);
   res.status(201).json(createdQuestion);
 });
 
@@ -117,7 +117,8 @@ export const updateQuestion = asyncHandler(async (req: Request, res: Response) =
     if (difficulty !== undefined) apQ.difficulty = difficulty;
 
     const updated = await apQ.save();
-    return res.json(updated);
+    res.json(updated);
+    return;
   }
 
   let tgQ = await TgEntranceQuestion.findById(req.params.id);
@@ -131,7 +132,8 @@ export const updateQuestion = asyncHandler(async (req: Request, res: Response) =
     if (difficulty !== undefined) tgQ.difficulty = difficulty;
 
     const updated = await tgQ.save();
-    return res.json(updated);
+    res.json(updated);
+    return;
   }
 
   let compQ = await CompetitiveQuestionBySubject.findById(req.params.id);
@@ -144,7 +146,8 @@ export const updateQuestion = asyncHandler(async (req: Request, res: Response) =
     if (difficulty !== undefined) compQ.difficulty = difficulty;
 
     const updated = await compQ.save();
-    return res.json(updated);
+    res.json(updated);
+    return;
   }
 
   res.status(404);
@@ -158,19 +161,22 @@ export const deleteQuestion = asyncHandler(async (req: Request, res: Response) =
   let apQ = await ApEntranceQuestion.findById(req.params.id);
   if (apQ) {
     await ApEntranceQuestion.deleteOne({ _id: apQ._id });
-    return res.json({ message: 'AP Entrance Question removed' });
+    res.json({ message: 'AP Entrance Question removed' });
+    return;
   }
 
   let tgQ = await TgEntranceQuestion.findById(req.params.id);
   if (tgQ) {
     await TgEntranceQuestion.deleteOne({ _id: tgQ._id });
-    return res.json({ message: 'TG Entrance Question removed' });
+    res.json({ message: 'TG Entrance Question removed' });
+    return;
   }
 
   let compQ = await CompetitiveQuestionBySubject.findById(req.params.id);
   if (compQ) {
     await CompetitiveQuestionBySubject.deleteOne({ _id: compQ._id });
-    return res.json({ message: 'Competitive Question removed' });
+    res.json({ message: 'Competitive Question removed' });
+    return;
   }
 
   res.status(404);
@@ -227,7 +233,7 @@ export const bulkUploadQuestions = asyncHandler(async (req: Request, res: Respon
           };
         });
 
-        const inserted = await model.insertMany(questionsToInsert);
+        const inserted = await (model as any).insertMany(questionsToInsert);
         res.status(201).json({ 
           message: `${inserted.length} questions uploaded successfully`, 
           count: inserted.length 
