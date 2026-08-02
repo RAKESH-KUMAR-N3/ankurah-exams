@@ -40,9 +40,17 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
   const [submittedResult, setSubmittedResult] = useState<any>(null);
 
   const handleExamComplete = (result: any) => {
-    onTestSubmitted(result);
+    const attemptId = result?._id || result?.id;
+    if (attemptId) {
+      setReviewAttemptId(attemptId);
+      setActiveExam(null);
+    }
     setSubmittedResult(result);
-    // Do NOT setActiveExam(null) here - let ExamPage show scorecard first
+    try {
+      onTestSubmitted(result);
+    } catch (err) {
+      console.warn('onTestSubmitted background notification error:', err);
+    }
     refreshAttempts();
   };
 
@@ -50,6 +58,7 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
     setActiveExam(null);
     setReviewAttemptId(null);
     setSubmittedResult(null);
+    setTab('history');
     refreshAttempts();
   };
 

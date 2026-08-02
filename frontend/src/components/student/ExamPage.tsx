@@ -331,7 +331,7 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
               <span>Score: {result.score} / {result.totalMarks}</span>
             </div>
           )}
-          <button className="exam-btn-primary" onClick={onClose}>View Scorecard</button>
+          <button className="exam-btn-primary" onClick={() => setPhase('scorecard')}>View Scorecard</button>
         </div>
       </div>
     );
