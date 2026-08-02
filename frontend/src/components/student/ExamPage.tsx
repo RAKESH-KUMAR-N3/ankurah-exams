@@ -51,6 +51,7 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isSubmittingRef = useRef<boolean>(false);
 
   const questions: any[] = attempt?.responses?.map((r: any) => r.questionId) || [];
 
@@ -102,9 +103,10 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
 
   // ── Auto-save every 30s ─────────────────────────────────────────────────
   useEffect(() => {
-    if (phase !== 'running' || !attempt) return;
+    if (phase !== 'running' || !attempt || isSubmittingRef.current) return;
 
     autoSaveRef.current = setInterval(() => {
+      if (isSubmittingRef.current) return;
       const responseArray = buildResponseArray();
       saveExamProgress(attempt._id, responseArray).catch(() => {});
     }, 30000);
@@ -117,9 +119,11 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
     if (phase !== 'running') return;
 
     const handleVisibilityChange = async () => {
+      if (isSubmittingRef.current) return;
       if (document.hidden && attempt) {
         try {
           const res = await reportTabSwitch(attempt._id);
+          if (isSubmittingRef.current) return;
           setTabSwitchCount(res.tabSwitchCount);
           if (res.autoSubmitted) {
             clearInterval(timerRef.current!);
@@ -134,9 +138,11 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
     };
 
     const handleFullscreenChange = async () => {
+      if (isSubmittingRef.current) return;
       if (!isFullscreen() && phase === 'running' && attempt) {
         try {
           const res = await reportTabSwitch(attempt._id);
+          if (isSubmittingRef.current) return;
           setTabSwitchCount(res.tabSwitchCount);
           if (res.autoSubmitted) {
             clearInterval(timerRef.current!);
@@ -170,7 +176,8 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
 
   // ── Submit ──────────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (isAuto = false) => {
-    if (!attempt || phase === 'scorecard' || phase === 'force_submitted') return;
+    if (!attempt || phase === 'scorecard' || phase === 'force_submitted' || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     clearInterval(timerRef.current!);
     clearInterval(autoSaveRef.current!);
 
@@ -200,6 +207,7 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
       console.error('Submit error:', e);
       setError(e.message || 'Submit failed');
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   }, [attempt, phase, buildResponseArray, onComplete]);
 
@@ -365,7 +373,15 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
       );
     }
 
-    const stats = scorecardStats || { correct: 0, wrong: 0, unattempted: 0, total: 0, score: 0, totalMarks: 0, percentage: 0 };
+    const stats = {
+      score: result.score ?? 0,
+      totalMarks: result.totalMarks || (result.testId?.marksPerQuestion ? (result.testId.marksPerQuestion * (result.responses?.length || 0)) : (result.responses?.length || 0) * 4),
+      percentage: result.percentage ?? (result.totalMarks > 0 ? Math.round(((result.score ?? 0) / result.totalMarks) * 100) : 0),
+      correct: result.correctAnswers ?? (result.responses?.filter((r: any) => r.isCorrect).length || 0),
+      wrong: result.wrongAnswers ?? (result.responses?.filter((r: any) => r.selectedOption && !r.isCorrect).length || 0),
+      unattempted: result.unattempted ?? (result.responses?.filter((r: any) => !r.selectedOption).length || 0),
+      total: result.totalQuestions ?? (result.responses?.length || 0)
+    };
     const resultResponses = result.responses || [];
     const currentReviewResp = resultResponses[reviewIndex] || {};
     const currentQ = typeof currentReviewResp.questionId === 'object' ? currentReviewResp.questionId : null;

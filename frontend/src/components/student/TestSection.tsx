@@ -40,11 +40,6 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
   const [submittedResult, setSubmittedResult] = useState<any>(null);
 
   const handleExamComplete = (result: any) => {
-    const attemptId = result?._id || result?.id;
-    if (attemptId) {
-      setReviewAttemptId(attemptId);
-      setActiveExam(null);
-    }
     setSubmittedResult(result);
     try {
       onTestSubmitted(result);

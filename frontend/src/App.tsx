@@ -519,7 +519,7 @@ export default function App() {
   const isStudent = currentUser?.role === 'student';
   const isUserAdmin = currentUser?.role === 'admin';
 
-  const DashboardShell = () => (
+  const dashboardShellContent = (
     <div className="min-h-screen flex bg-geom-bg text-slate-900 font-sans">
 
       {sidebarOpen && (
@@ -733,9 +733,9 @@ export default function App() {
           element={(authState === 'unauthenticated' || !currentUser) ? <Navigate to="/login" replace /> : (
             currentUser?.role === 'admin' ? (
               <AdminProvider>
-                <DashboardShell />
+                {dashboardShellContent}
               </AdminProvider>
-            ) : <DashboardShell />
+            ) : dashboardShellContent
           )}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
