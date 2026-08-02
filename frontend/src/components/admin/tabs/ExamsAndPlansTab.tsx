@@ -13,9 +13,7 @@ export default function ExamsAndPlansTab() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const [selectedExamCategory, setSelectedExamCategory] = useState<'entrance' | 'competitive' | null>(() => {
-    return (sessionStorage.getItem('ankurah_selected_exam_category') as 'entrance' | 'competitive') || null;
-  });
+  const [selectedExamCategory, setSelectedExamCategory] = useState<'entrance' | 'competitive' | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [examForm, setExamForm] = useState<{ id: string; name: string; description: string; type: string; price: string; subjects: string[]; validityMonths: number }>({
     id: '',
@@ -162,7 +160,7 @@ export default function ExamsAndPlansTab() {
           <h2 className="text-2xl font-black text-slate-800">Select Exam Category</h2>
           <div className="flex gap-6">
             <button
-              onClick={() => { setSelectedExamCategory('entrance'); sessionStorage.setItem('ankurah_selected_exam_category', 'entrance'); }}
+              onClick={() => { setSelectedExamCategory('entrance'); }}
               className="px-8 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-500 transition-all flex flex-col items-center gap-3 cursor-pointer group"
             >
               <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
@@ -171,7 +169,7 @@ export default function ExamsAndPlansTab() {
               <span className="font-bold text-slate-800 group-hover:text-emerald-700">Entrance Tests</span>
             </button>
             <button
-              onClick={() => { setSelectedExamCategory('competitive'); sessionStorage.setItem('ankurah_selected_exam_category', 'competitive'); }}
+              onClick={() => { setSelectedExamCategory('competitive'); }}
               className="px-8 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-500 transition-all flex flex-col items-center gap-3 cursor-pointer group"
             >
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
@@ -187,7 +185,6 @@ export default function ExamsAndPlansTab() {
             <button 
               onClick={() => { 
                 setSelectedExamCategory(null); 
-                sessionStorage.removeItem('ankurah_selected_exam_category');
                 resetForm(); 
               }} 
               className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
