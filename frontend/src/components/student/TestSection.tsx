@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Test, TestAttempt } from '../../types';
 import {
   FileText, Clock, Award, Play, CheckCircle, ChevronLeft,
-  Zap, Trophy, BookOpen, RefreshCw, Filter, Eye
+  Zap, Trophy, BookOpen, RefreshCw, Filter, Eye, RotateCcw
 } from 'lucide-react';
 import ExamPage from './ExamPage';
 import Leaderboard from './Leaderboard';
@@ -15,6 +15,14 @@ interface TestSectionProps {
   onTestSubmitted: (result: any) => void;
 }
 
+const getAttemptTestId = (a: any): string => {
+  if (!a) return '';
+  if (typeof a.testId === 'object' && a.testId !== null) {
+    return (a.testId as any)._id || (a.testId as any).id || '';
+  }
+  return a.testId ? String(a.testId) : '';
+};
+
 export default function TestSection({ user, tests, attempts: initialAttempts, onTestSubmitted }: TestSectionProps) {
   const [activeExam, setActiveExam] = useState<Test | null>(null);
   const [reviewAttemptId, setReviewAttemptId] = useState<string | null>(null);
@@ -22,6 +30,13 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
   const [tab, setTab] = useState<'available' | 'history' | 'leaderboard'>('available');
   const [filterType, setFilterType] = useState<string>('all');
   const [loadingAttempts, setLoadingAttempts] = useState(false);
+
+  // Sync when initialAttempts prop updates
+  useEffect(() => {
+    if (initialAttempts) {
+      setAttempts(initialAttempts);
+    }
+  }, [initialAttempts]);
 
   // Refresh attempts from server
   const refreshAttempts = async () => {
@@ -60,8 +75,8 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
   // Build lookup: testId → latest attempt
   const attemptByTestId: Record<string, TestAttempt> = {};
   attempts.forEach(a => {
-    const tid = a.testId as string;
-    if (!attemptByTestId[tid] || new Date(a.submittedAt || '') > new Date(attemptByTestId[tid].submittedAt || '')) {
+    const tid = getAttemptTestId(a);
+    if (tid && (!attemptByTestId[tid] || new Date(a.submittedAt || (a as any).createdAt || '').getTime() > new Date(attemptByTestId[tid].submittedAt || (attemptByTestId[tid] as any).createdAt || '').getTime())) {
       attemptByTestId[tid] = a;
     }
   });
@@ -69,7 +84,7 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
   // Check retake eligibility
   const canAttempt = (test: Test) => {
     const tid = (test as any)._id || test.id;
-    const testAttempts = attempts.filter(a => a.testId === tid);
+    const testAttempts = attempts.filter(a => getAttemptTestId(a) === tid);
     const retakeLimit = test.retakeLimit ?? 0;
     if (retakeLimit === 0) return true; // unlimited
     return testAttempts.length < retakeLimit;
@@ -177,7 +192,7 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
                 const tid = (test as any)._id || test.id;
                 const latestAttempt = attemptByTestId[tid];
                 const eligible = canAttempt(test);
-                const attemptCount = attempts.filter(a => a.testId === tid).length;
+                const attemptCount = attempts.filter(a => getAttemptTestId(a) === tid).length;
 
                 return (
                   <div
@@ -196,7 +211,7 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
                           </span>
                           {latestAttempt && (
                             <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                              Last: {Math.round((latestAttempt as any).percentage || 0)}%
+                              Last Score: {Math.round((latestAttempt as any).percentage || 0)}%
                             </span>
                           )}
                         </div>
@@ -209,7 +224,7 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
                           {test.isDynamic && <span className="text-blue-500">⚡ {test.dynamicTotalQuestions}Q random</span>}
                           {test.isFullSyllabus && <span className="text-yellow-600">🏆 Grand Test</span>}
                           {attemptCount > 0 && (
-                            <span className="text-slate-400">
+                            <span className="text-slate-400 font-semibold">
                               Attempted {attemptCount}x
                               {test.retakeLimit ? ` / ${test.retakeLimit} max` : ''}
                             </span>
@@ -220,6 +235,17 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {latestAttempt && (
+                        <button
+                          id={`view-review-${tid}`}
+                          onClick={() => setReviewAttemptId((latestAttempt as any)._id || latestAttempt.id)}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                        >
+                          <Eye size={13} />
+                          View Scorecard
+                        </button>
+                      )}
+
                       {!eligible ? (
                         <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-lg">
                           Max Retakes Reached
@@ -228,10 +254,21 @@ export default function TestSection({ user, tests, attempts: initialAttempts, on
                         <button
                           id={`start-exam-${tid}`}
                           onClick={() => setActiveExam(test)}
-                          className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all"
+                          className={`flex items-center gap-1.5 px-4 py-2 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+                            latestAttempt ? 'bg-slate-900 hover:bg-slate-800' : 'bg-emerald-600 hover:bg-emerald-700'
+                          }`}
                         >
-                          <Play size={13} className="fill-white" />
-                          {latestAttempt ? 'Retake' : 'Start Exam'}
+                          {latestAttempt ? (
+                            <>
+                              <RotateCcw size={13} />
+                              Retake Exam
+                            </>
+                          ) : (
+                            <>
+                              <Play size={13} className="fill-white" />
+                              Start Exam
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
