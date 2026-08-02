@@ -10,16 +10,20 @@ import csvParser from 'csv-parser';
 import { Readable } from 'stream';
 import { resolveCorrectAnswer } from '../services/testEvaluationService';
 
+import mongoose from 'mongoose';
+
 // Helper: Determine target collection model based on subjectId
 const getQuestionModelForSubject = async (subjectId: string) => {
-  const compSub = await CompetitiveSubject.findById(subjectId);
-  if (compSub) {
-    return { model: CompetitiveQuestionBySubject, type: 'competitive' };
-  }
+  if (mongoose.isValidObjectId(subjectId)) {
+    const compSub = await CompetitiveSubject.findById(subjectId);
+    if (compSub) {
+      return { model: CompetitiveQuestionBySubject, type: 'competitive' };
+    }
 
-  const sub = await Subject.findById(subjectId);
-  if (sub && sub.state === 'TG') {
-    return { model: TgEntranceQuestion, type: 'tg_entrance' };
+    const sub = await Subject.findById(subjectId);
+    if (sub && sub.state === 'TG') {
+      return { model: TgEntranceQuestion, type: 'tg_entrance' };
+    }
   }
 
   // Default to AP Entrance Question
@@ -30,7 +34,7 @@ const getQuestionModelForSubject = async (subjectId: string) => {
 // @route   POST /api/questions
 // @access  Admin
 export const createQuestion = asyncHandler(async (req: Request, res: Response) => {
-  const { categoryId, subjectId, chapterId, content, options, correctAnswer, explanation, difficulty } = req.body;
+  const { categoryId, subjectId, chapterId, content, options, correctAnswer, explanation, difficulty, marks, negativeMarks } = req.body;
 
   if (!subjectId) {
     res.status(400);
@@ -39,18 +43,24 @@ export const createQuestion = asyncHandler(async (req: Request, res: Response) =
 
   const { model, type } = await getQuestionModelForSubject(subjectId);
 
+  const rawDiff = (difficulty || 'Medium').toString().toLowerCase();
+  const normalizedDifficulty = rawDiff.charAt(0).toUpperCase() + rawDiff.slice(1);
+
   const payload: any = {
     subjectId,
     content: content ? content.trim() : '',
     options: Array.isArray(options) ? options.map((o: string) => o.trim()) : [],
     correctAnswer: correctAnswer ? correctAnswer.trim() : '',
     explanation: explanation ? explanation.trim() : '',
-    difficulty: difficulty || 'Medium'
+    difficulty: normalizedDifficulty,
+    marks: marks !== undefined && marks !== null ? Number(marks) : 4,
+    negativeMarks: negativeMarks !== undefined && negativeMarks !== null ? Number(negativeMarks) : 1
   };
 
   if (type !== 'competitive') {
-    if (categoryId) payload.categoryId = categoryId;
-    if (chapterId) payload.chapterId = chapterId;
+    if (chapterId && mongoose.isValidObjectId(chapterId)) {
+      payload.chapterId = chapterId;
+    }
   }
 
   const createdQuestion = await (model as any).create(payload);
@@ -106,15 +116,21 @@ export const getQuestions = asyncHandler(async (req: Request, res: Response) => 
 export const updateQuestion = asyncHandler(async (req: Request, res: Response) => {
   const { categoryId, subjectId, chapterId, content, options, correctAnswer, explanation, difficulty } = req.body;
 
+  let cleanDifficulty: string | undefined = undefined;
+  if (difficulty) {
+    const rawDiff = difficulty.toString().toLowerCase();
+    cleanDifficulty = rawDiff.charAt(0).toUpperCase() + rawDiff.slice(1);
+  }
+
   let apQ = await ApEntranceQuestion.findById(req.params.id);
   if (apQ) {
     if (subjectId !== undefined) apQ.subjectId = subjectId;
-    if (chapterId !== undefined) apQ.chapterId = chapterId || undefined;
+    if (chapterId !== undefined) apQ.chapterId = (chapterId && mongoose.isValidObjectId(chapterId)) ? chapterId : undefined;
     if (content !== undefined) apQ.content = content.trim();
     if (options !== undefined) apQ.options = Array.isArray(options) ? options.map((o: string) => o.trim()) : options;
     if (correctAnswer !== undefined) apQ.correctAnswer = correctAnswer.trim();
     if (explanation !== undefined) apQ.explanation = explanation.trim();
-    if (difficulty !== undefined) apQ.difficulty = difficulty;
+    if (cleanDifficulty !== undefined) apQ.difficulty = cleanDifficulty as any;
 
     const updated = await apQ.save();
     res.json(updated);
@@ -124,12 +140,12 @@ export const updateQuestion = asyncHandler(async (req: Request, res: Response) =
   let tgQ = await TgEntranceQuestion.findById(req.params.id);
   if (tgQ) {
     if (subjectId !== undefined) tgQ.subjectId = subjectId;
-    if (chapterId !== undefined) tgQ.chapterId = chapterId || undefined;
+    if (chapterId !== undefined) tgQ.chapterId = (chapterId && mongoose.isValidObjectId(chapterId)) ? chapterId : undefined;
     if (content !== undefined) tgQ.content = content.trim();
     if (options !== undefined) tgQ.options = Array.isArray(options) ? options.map((o: string) => o.trim()) : options;
     if (correctAnswer !== undefined) tgQ.correctAnswer = correctAnswer.trim();
     if (explanation !== undefined) tgQ.explanation = explanation.trim();
-    if (difficulty !== undefined) tgQ.difficulty = difficulty;
+    if (cleanDifficulty !== undefined) tgQ.difficulty = cleanDifficulty as any;
 
     const updated = await tgQ.save();
     res.json(updated);
@@ -143,7 +159,7 @@ export const updateQuestion = asyncHandler(async (req: Request, res: Response) =
     if (options !== undefined) compQ.options = Array.isArray(options) ? options.map((o: string) => o.trim()) : options;
     if (correctAnswer !== undefined) compQ.correctAnswer = correctAnswer.trim();
     if (explanation !== undefined) compQ.explanation = explanation.trim();
-    if (difficulty !== undefined) compQ.difficulty = difficulty;
+    if (cleanDifficulty !== undefined) compQ.difficulty = cleanDifficulty as any;
 
     const updated = await compQ.save();
     res.json(updated);
