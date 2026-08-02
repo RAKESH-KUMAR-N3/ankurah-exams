@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Plan, StudentType } from "../../types";
+import { Plan } from "../../types";
 import {
   Sparkles,
   CheckCircle2,
-  Shield,
-  X,
-  ArrowRight,
   Loader2,
 } from "lucide-react";
 import {
   fetchPlans,
-  fetchStudentTypes,
   createPaymentOrder,
   verifyPaymentOrder,
 } from "../../lib/api";
@@ -22,29 +18,17 @@ interface PlanStoreProps {
 
 export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [studentTypes, setStudentTypes] = useState<StudentType[]>([]);
   const [loading, setLoading] = useState(true);
   const [mockPaymentState, setMockPaymentState] = useState<
     "idle" | "processing" | "success"
   >("idle");
   const [mockPaymentPlan, setMockPaymentPlan] = useState<Plan | null>(null);
 
-  // Group selection modal state before purchase
-  const [groupModalPlan, setGroupModalPlan] = useState<Plan | null>(null);
-  const [selectedGroupId, setSelectedGroupId] = useState<string>("");
-
   useEffect(() => {
-    Promise.all([
-      fetchPlans({ limit: "1000" }),
-      fetchStudentTypes({ limit: "1000" }).catch(() => []),
-    ])
-      .then(([plansRes, stRes]: [any, any]) => {
+    fetchPlans({ limit: "1000" })
+      .then((plansRes: any) => {
         const allPlans = plansRes.data || plansRes || [];
         setPlans(allPlans);
-        const stList = Array.isArray(stRes) ? stRes : stRes?.data || [];
-        setStudentTypes(
-          stList.map((st: any) => ({ id: st._id || st.id, name: st.name })),
-        );
         setLoading(false);
       })
       .catch((err) => {
@@ -53,26 +37,7 @@ export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
       });
   }, []);
 
-  const handleBuyClick = (plan: Plan) => {
-    setGroupModalPlan(plan);
-    const examObj = typeof plan.examId === "object" ? plan.examId : null;
-    const allowed = examObj?.allowedStudentTypes || [];
-    if (allowed.length > 0) {
-      const firstId =
-        typeof allowed[0] === "string"
-          ? allowed[0]
-          : allowed[0]._id || allowed[0].id;
-      setSelectedGroupId(firstId || "");
-    } else {
-      setSelectedGroupId("");
-    }
-  };
-
-  const handleProceedToPayment = async () => {
-    if (!groupModalPlan) return;
-    const plan = groupModalPlan;
-    setGroupModalPlan(null);
-
+  const handleBuyClick = async (plan: Plan) => {
     try {
       const order = await createPaymentOrder(plan._id);
 
@@ -85,7 +50,6 @@ export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
             await verifyPaymentOrder({
               planId: plan._id,
               razorpay_order_id: order.id,
-              studentTypeId: selectedGroupId,
             });
             setMockPaymentState("success");
           } catch (e) {
@@ -110,7 +74,6 @@ export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              studentTypeId: selectedGroupId,
             });
             alert(`Payment successful for ${plan.name}`);
             onPurchaseSuccess();
@@ -122,8 +85,8 @@ export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
           }
         },
         prefill: {
-          name: user.name,
-          email: user.email,
+          name: user?.name,
+          email: user?.email,
         },
         theme: {
           color: "#10b981",
@@ -174,13 +137,6 @@ export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
             <h3 className="text-2xl font-black text-slate-800">
               Entrance Exam Plans
             </h3>
-            {user?.state && user.state !== "Both" && (
-              <span
-                className={`px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${user.state === "AP" ? "bg-orange-100 text-orange-700" : "bg-pink-100 text-pink-700"}`}
-              >
-                {user.state} Region
-              </span>
-            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {plans
@@ -189,12 +145,7 @@ export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
                 const isCompetitive =
                   ex?.type === "competitive" ||
                   ex?.categoryId?.name === "Competitive Exams";
-                if (isCompetitive) return false;
-
-                const planState = ex?.state || "Both";
-                const userState = user?.state || "Both";
-                if (userState === "Both" || planState === "Both") return true;
-                return userState === planState;
+                return !isCompetitive;
               })
               .map((plan) => {
                 const examObj =
@@ -418,100 +369,6 @@ export default function PlanStore({ user, onPurchaseSuccess }: PlanStoreProps) {
           </div>
         )}
       </div>
-
-      {/* Select Student Group Modal Before Payment */}
-      {groupModalPlan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-6 relative overflow-hidden animate-in fade-in duration-200">
-            <button
-              onClick={() => setGroupModalPlan(null)}
-              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-black mb-2 border border-emerald-200">
-                <Shield className="w-3.5 h-3.5" /> Select Student Group
-              </div>
-              <h3 className="text-xl font-black text-slate-900">
-                {(typeof groupModalPlan.examId === "object" &&
-                  groupModalPlan.examId?.name) ||
-                  "Course Plan"}
-              </h3>
-              <p className="text-slate-500 text-xs font-medium mt-1">
-                Select your student group to map your exact study timetable,
-                tests, and materials.
-              </p>
-            </div>
-
-            {/* Allowed Groups Radio List */}
-            {(() => {
-              const examObj =
-                typeof groupModalPlan.examId === "object"
-                  ? groupModalPlan.examId
-                  : null;
-              const allowedGroups = examObj?.allowedStudentTypes || [];
-
-              if (allowedGroups.length === 0) {
-                return (
-                  <p className="text-xs text-slate-400 p-4 bg-slate-50 rounded-xl border">
-                    No specific groups restricted. Proceed to purchase.
-                  </p>
-                );
-              }
-
-              return (
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {allowedGroups.map((st: any) => {
-                    const stId = typeof st === "string" ? st : st._id || st.id;
-                    const stObjName =
-                      typeof st === "object" && st !== null && st.name
-                        ? st.name
-                        : null;
-                    const fallbackName = studentTypes.find(
-                      (s) => s.id === stId,
-                    )?.name;
-                    const stName = stObjName || fallbackName || stId;
-                    const isSelected = selectedGroupId === stId;
-
-                    return (
-                      <div
-                        key={stId}
-                        onClick={() => setSelectedGroupId(stId)}
-                        className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                          isSelected
-                            ? "bg-emerald-50 border-emerald-600 text-emerald-950 font-bold shadow-xs"
-                            : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
-                        }`}
-                      >
-                        <span className="text-xs font-bold">{stName}</span>
-                        {isSelected && (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
-            <button
-              onClick={handleProceedToPayment}
-              disabled={
-                !selectedGroupId &&
-                ((typeof groupModalPlan.examId === "object" &&
-                  groupModalPlan.examId?.allowedStudentTypes?.length) ||
-                  0) > 0
-              }
-              className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold uppercase tracking-wider text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Proceed to Pay ₹{groupModalPlan.price}{" "}
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Mock Payment Modal */}
       {mockPaymentState !== "idle" && mockPaymentPlan && (

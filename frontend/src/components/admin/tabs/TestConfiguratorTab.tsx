@@ -4,6 +4,7 @@ import {
   Clock, Award, RotateCcw, AlertTriangle, Upload
 } from 'lucide-react';
 import { Test, Subject, Chapter } from '../../../types';
+import { useAdminContext } from '../../../context/AdminContext';
 import { toggleTestStatus } from '../../../lib/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -40,28 +41,25 @@ const DEFAULT_FORM = {
   csvFile: null as File | null,
 };
 
-export default function TestConfiguratorTab({
-  entranceExams,
-  competitiveExams,
-  studentTypes,
-  tests,
-  subjects,
-  chapters,
-  loading,
-  onRefresh,
-}: TestConfiguratorTabProps) {
+export default function TestConfiguratorTab() {
+  const { entranceExams, competitiveExams, studentTypes, tests, subjects, chapters, refreshAdminData } = useAdminContext();
+  const loading = false;
+  const onRefresh = refreshAdminData;
+
   const [testCategoryTab, setTestCategoryTab] = useState<'entrance' | 'competitive'>('entrance');
-  const [selectedState, setSelectedState] = useState<'AP' | 'TG'>('AP');
   const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filterExamId, setFilterExamId] = useState<string>('all');
   const [filterGroupId, setFilterGroupId] = useState<string>('all');
   const [editingExamsForId, setEditingExamsForId] = useState<string | null>(null);
   const [editExamIds, setEditExamIds] = useState<string[]>([]);
   const [savingExams, setSavingExams] = useState(false);
+
+  const allExams = [...(entranceExams || []), ...(competitiveExams || [])];
 
   // Helper for competitive subject identification
   const competitiveExamIds = (competitiveExams || []).map((e: any) => e.id || e._id);
@@ -72,30 +70,48 @@ export default function TestConfiguratorTab({
     return /general|knowledge|gk|reasoning|aptitude|current affairs|banking|clat|nda/i.test(s.name || '');
   };
 
-  const rawTargetExams = testCategoryTab === 'entrance' ? entranceExams : competitiveExams;
-  const targetExams = testCategoryTab === 'entrance'
-    ? (rawTargetExams || []).filter((e: any) => (e.state || 'AP') === selectedState || e.state === 'Both')
-    : rawTargetExams;
-
+  const targetExams = testCategoryTab === 'entrance' ? (entranceExams || []) : (competitiveExams || []);
   const targetExamIds = (targetExams || []).map((e: any) => (e.id || e._id).toString());
 
   const tabSubjects = subjects.filter((s: any) =>
     testCategoryTab === 'competitive' ? isCompSubject(s) : !isCompSubject(s)
   );
 
-  // Filter entrance subjects by selected state
-  const filteredSubjects = testCategoryTab === 'entrance'
-    ? tabSubjects.filter((s: any) => (s.state || 'AP') === selectedState || s.state === 'Both')
-    : tabSubjects;
+  // Find currently selected exam
+  const selectedExam = form.examIds.length > 0
+    ? allExams.find((e: any) => (e.id || e._id).toString() === form.examIds[0])
+    : null;
 
-  // Filter entrance student groups by selected state
-  const filteredStudentTypes = testCategoryTab === 'entrance'
-    ? (studentTypes || []).filter((st: any) => (st.state || 'AP') === selectedState)
-    : studentTypes;
+  // Filter subjects based on selected Course / Exam
+  const filteredSubjects = React.useMemo(() => {
+    if (!selectedExam) {
+      return tabSubjects;
+    }
+    // 1. If selected exam has explicit subjects configured
+    if (selectedExam.subjects && Array.isArray(selectedExam.subjects) && selectedExam.subjects.length > 0) {
+      const subjectIdSet = new Set(
+        selectedExam.subjects.map((sub: any) => (sub?._id || sub?.id || sub).toString())
+      );
+      const matched = tabSubjects.filter(s => subjectIdSet.has((s.id || (s as any)._id).toString()));
+      if (matched.length > 0) return matched;
+    }
+    // 2. If exam has state (AP/TG), filter subjects by state tag in name or state field
+    if (selectedExam.state && selectedExam.state !== 'Both') {
+      const stateMatches = tabSubjects.filter(s =>
+        s.name.includes(`(${selectedExam.state})`) || (s as any).state === selectedExam.state
+      );
+      if (stateMatches.length > 0) return stateMatches;
+    }
+    return tabSubjects;
+  }, [selectedExam, tabSubjects]);
+
+  const filteredChapters = chapters.filter(c =>
+    !form.subjectId || (c.subjectId === form.subjectId || (c.subjectId as any)?._id === form.subjectId)
+  );
 
   const tabSubjectIds = (tabSubjects || []).map((s: any) => (s.id || s._id).toString());
 
-  // Filter tests matching the selected tab
+  // Filter tests matching the selected tab and optional course / group filters
   const categoryTests = tests.filter(t => {
     const tExams = Array.isArray((t as any).examIds) ? (t as any).examIds.map((e: any) => (e?._id || e?.id || e).toString()) : [];
     const tSubId = (((t.subjectId as any)?._id || t.subjectId || '')).toString();
@@ -104,63 +120,43 @@ export default function TestConfiguratorTab({
     return matchesExam || matchesSubject || (testCategoryTab === 'entrance' && tExams.length === 0 && !tSubId);
   });
 
-  const filteredTests = filterGroupId === 'all'
-    ? categoryTests
-    : categoryTests.filter(t =>
-        Array.isArray((t as any).studentTypeIds)
-          ? (t as any).studentTypeIds.some((id: any) => (id?._id || id) === filterGroupId)
-          : false
-      );
+  const filteredTests = categoryTests.filter(t => {
+    const tExams = Array.isArray((t as any).examIds) ? (t as any).examIds.map((e: any) => (e?._id || e?.id || e).toString()) : [];
+    const matchesCourse = filterExamId === 'all' || tExams.includes(filterExamId);
+    return matchesCourse;
+  });
 
-  const filteredChapters = chapters.filter(c =>
-    !form.subjectId || (c.subjectId === form.subjectId || (c.subjectId as any)?._id === form.subjectId)
-  );
+  const handleExamChange = (examId: string) => {
+    if (!examId) {
+      setForm(prev => ({
+        ...prev,
+        examIds: [],
+        studentTypeIds: [],
+        subjectId: '',
+        chapterId: '',
+      }));
+      return;
+    }
 
-  const handleStateChange = (st: 'AP' | 'TG') => {
-    setSelectedState(st);
-    setForm(prev => ({ ...prev, subjectId: '', chapterId: '', studentTypeIds: [] }));
-  };
+    const exObj = allExams.find((e: any) => (e.id || e._id).toString() === examId);
+    const newStudentTypeIds: string[] = [];
+    if (exObj && Array.isArray(exObj.allowedStudentTypes)) {
+      exObj.allowedStudentTypes.forEach((typeObjOrId: any) => {
+        const stId = typeof typeObjOrId === 'string' ? typeObjOrId : (typeObjOrId._id || typeObjOrId.id);
+        if (stId && !newStudentTypeIds.includes(stId)) {
+          newStudentTypeIds.push(stId);
+        }
+      });
+    }
 
-  const toggleStudentTypeId = (id: string) => {
     setForm(prev => ({
       ...prev,
-      studentTypeIds: prev.studentTypeIds.includes(id)
-        ? prev.studentTypeIds.filter(sid => sid !== id)
-        : [...prev.studentTypeIds, id],
+      examIds: [examId],
+      studentTypeIds: newStudentTypeIds,
+      subjectId: '',
+      chapterId: '',
     }));
   };
-
-  const toggleExamId = (id: string) => {
-    setForm(prev => {
-      const isSelected = prev.examIds.includes(id);
-      const newExamIds = isSelected
-        ? prev.examIds.filter(eid => eid !== id)
-        : [...prev.examIds, id];
-
-      let newStudentTypeIds = [...prev.studentTypeIds];
-
-      // If exam is being selected, auto-select its configured student groups
-      if (!isSelected) {
-        const exObj = targetExams?.find((e: any) => (e.id || e._id).toString() === id);
-        if (exObj && Array.isArray(exObj.allowedStudentTypes)) {
-          exObj.allowedStudentTypes.forEach((typeObjOrId: any) => {
-            const stId = typeof typeObjOrId === 'string' ? typeObjOrId : (typeObjOrId._id || typeObjOrId.id);
-            if (stId && !newStudentTypeIds.includes(stId)) {
-              newStudentTypeIds.push(stId);
-            }
-          });
-        }
-      }
-
-      return {
-        ...prev,
-        examIds: newExamIds,
-        studentTypeIds: newStudentTypeIds,
-      };
-    });
-  };
-
-  const allExams = [...entranceExams, ...competitiveExams];
 
   const handleSaveExamIds = async (testId: string) => {
     setSavingExams(true);
@@ -347,40 +343,7 @@ export default function TestConfiguratorTab({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
 
-          {/* State Selector ONLY for Entrance Exams */}
-          {testCategoryTab === 'entrance' && (
-            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select State *</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleStateChange('AP')}
-                  className={`py-3 px-4 font-bold text-xs rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                    selectedState === 'AP'
-                      ? 'bg-orange-500 text-white border-orange-600 shadow-sm scale-[1.01]'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  Andhra Pradesh (AP)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleStateChange('TG')}
-                  className={`py-3 px-4 font-bold text-xs rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${
-                    selectedState === 'TG'
-                      ? 'bg-pink-600 text-white border-pink-700 shadow-sm scale-[1.01]'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                  Telangana (TG)
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Assign to Courses/Exams - MANDATORY */}
+          {/* Select Course / Plan - MANDATORY */}
           <div className={`p-4 rounded-2xl border-2 transition-all ${
             form.examIds.length === 0
               ? 'border-red-300 bg-red-50'
@@ -389,22 +352,19 @@ export default function TestConfiguratorTab({
             <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
               form.examIds.length === 0 ? 'text-red-600' : 'text-emerald-700'
             }`}>
-              {form.examIds.length === 0 ? '⚠' : '✓'} Assign to Courses / Exams ({testCategoryTab === 'entrance' ? selectedState : 'Competitive'})
+              {form.examIds.length === 0 ? '⚠' : '✓'} Select Course / Plan ({testCategoryTab === 'entrance' ? 'Entrance' : 'Competitive'})
               <span className="text-red-500 ml-0.5">*</span>
               <span className="ml-2 normal-case font-normal text-slate-500">
                 {form.examIds.length === 0
-                  ? '(Required! Select at least one course — students who bought it can see the test)'
-                  : `(${form.examIds.length} course(s) selected ✓)`
+                  ? '(Required! Select the Course/Plan this test belongs to)'
+                  : `(Course selected: ${selectedExam?.name || '1 Plan'}) ✓`
                 }
               </span>
             </label>
             {targetExams && targetExams.length > 0 ? (
               <select
                 value={form.examIds.length > 0 ? form.examIds[0] : ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setForm(f => ({ ...f, examIds: val ? [val] : [] }));
-                }}
+                onChange={(e) => handleExamChange(e.target.value)}
                 className={`w-full p-3 bg-white border rounded-xl text-slate-900 font-semibold focus:outline-none text-xs cursor-pointer transition-colors ${
                   form.examIds.length === 0 
                     ? 'border-red-300 focus:border-red-500' 
@@ -412,9 +372,9 @@ export default function TestConfiguratorTab({
                 }`}
                 required
               >
-                <option value="">-- Select a Course / Exam --</option>
+                <option value="">-- Select a Course / Plan --</option>
                 {targetExams.map((ex: any) => {
-                  const exId = ex.id || ex._id;
+                  const exId = (ex.id || ex._id).toString();
                   return (
                     <option key={exId} value={exId}>
                       {ex.name}
@@ -423,7 +383,7 @@ export default function TestConfiguratorTab({
                 })}
               </select>
             ) : (
-              <p className="text-xs text-slate-400">No {testCategoryTab} courses/exams found. Create courses in Courses / Plans first.</p>
+              <p className="text-xs text-slate-400">No {testCategoryTab} courses/plans found. Create courses in Courses / Plans first.</p>
             )}
           </div>
 
@@ -461,7 +421,7 @@ export default function TestConfiguratorTab({
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 transition"
-              placeholder={testCategoryTab === 'entrance' ? `e.g. Physics (${selectedState}) - Chapter 1` : 'e.g. SBI PO Mock Test 1 – General Awareness'}
+              placeholder={testCategoryTab === 'entrance' ? 'e.g. Botany 1st Year - Chapter 1 Test' : 'e.g. SBI PO Mock Test 1 – General Awareness'}
               required
             />
           </div>
@@ -471,15 +431,24 @@ export default function TestConfiguratorTab({
             <div className="space-y-4 pt-2">
               <div className={`grid grid-cols-1 ${testCategoryTab === 'entrance' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Subject</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Subject {selectedExam ? `(${filteredSubjects.length} available)` : ''}
+                  </label>
                   <select
                     value={form.subjectId}
                     onChange={e => setForm(f => ({ ...f, subjectId: e.target.value, chapterId: '' }))}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 text-xs cursor-pointer"
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 text-xs cursor-pointer disabled:opacity-50 disabled:bg-slate-100"
+                    disabled={form.examIds.length === 0}
                   >
-                    <option value="">All Subjects {testCategoryTab === 'entrance' ? `(${selectedState})` : '(Competitive)'}</option>
+                    <option value="">
+                      {form.examIds.length === 0 
+                        ? '-- Select Course / Plan First --' 
+                        : filteredSubjects.length === 0 
+                          ? 'No subjects linked' 
+                          : 'All Subjects (in this Course)'}
+                    </option>
                     {filteredSubjects.map(s => (
-                      <option key={s.id} value={s.id}>{s.name} {testCategoryTab === 'entrance' ? `(${s.state || selectedState})` : ''}</option>
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
                 </div>
@@ -648,7 +617,7 @@ export default function TestConfiguratorTab({
 
       {/* ── TESTS LIST ────────────────────────────────── */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center">
               <FileQuestion size={18} className="text-slate-600" />
@@ -656,17 +625,23 @@ export default function TestConfiguratorTab({
             <h2 className="text-lg font-black text-slate-800">All Tests</h2>
             <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{filteredTests.length}</span>
           </div>
-          {/* Filter by group */}
-          <select
-            value={filterGroupId}
-            onChange={e => setFilterGroupId(e.target.value)}
-            className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
-          >
-            <option value="all">All Groups</option>
-            {studentTypes && studentTypes.map((st: any) => (
-              <option key={st.id || st._id} value={st.id || st._id}>{st.name} ({st.state || 'AP'})</option>
-            ))}
-          </select>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Filter by Course / Plan */}
+            <select
+              value={filterExamId}
+              onChange={e => setFilterExamId(e.target.value)}
+              className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
+            >
+              <option value="all">All Courses / Plans</option>
+              {targetExams && targetExams.map((ex: any) => {
+                const exId = (ex.id || ex._id).toString();
+                return (
+                  <option key={exId} value={exId}>{ex.name}</option>
+                );
+              })}
+            </select>
+          </div>
         </div>
 
         {filteredTests.length === 0 ? (

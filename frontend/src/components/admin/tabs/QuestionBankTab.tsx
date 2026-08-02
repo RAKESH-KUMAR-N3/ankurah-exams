@@ -1,21 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { Subject, Chapter } from '../../../types';
+import { useAdminContext } from '../../../context/AdminContext';
 import { Edit2, Trash2, HelpCircle, CheckCircle2, Search, RefreshCw, BookOpen, ChevronDown, ChevronRight, PlusCircle } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-export default function QuestionBankTab({
-  subjects,
-  chapters,
-  competitiveExams,
-  questionForm,
-  setQuestionForm,
-  handleCreateQuestion,
-  loading
-}: any) {
+export default function QuestionBankTab() {
+  const { subjects, chapters, competitiveExams, refreshAdminData } = useAdminContext();
+  const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [questionForm, setQuestionForm] = useState({ id: '', subjectId: '', chapterId: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium' as any, marks: 4, negativeMarks: 1, tags: '', explanation: '' });
+
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setErrorMsg(null);
+    refreshAdminData();
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  const showError = (msg: string) => {
+    setErrorMsg(msg);
+    setSuccessMsg(null);
+    setTimeout(() => setErrorMsg(null), 5000);
+  };
+
+  const handleCreateQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const options = [questionForm.oA, questionForm.oB, questionForm.oC, questionForm.oD].filter(Boolean);
+    const correctAnswer = options[questionForm.correctAnswerIndex] || '';
+
+    try {
+      const res = await fetch(`${API_URL}/api/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({
+          content: questionForm.questionText,
+          options,
+          correctAnswer,
+          explanation: questionForm.explanation,
+          difficulty: questionForm.difficulty.toUpperCase(),
+          marks: questionForm.marks,
+          negativeMarks: questionForm.negativeMarks,
+          subjectId: questionForm.subjectId,
+          chapterId: questionForm.chapterId
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create question');
+      setQuestionForm(prev => ({ ...prev, id: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, explanation: '' }));
+      showSuccess('Question item linked in Central Bank!');
+    } catch (err: any) {
+      showError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const [qTab, setQTab] = useState<'entrance' | 'competitive'>('entrance');
-  const [selectedState, setSelectedState] = useState<'AP' | 'TG'>('AP');
-  const [activeView, setActiveView] = useState<'bulk' | 'single'>('bulk');
+    const [activeView, setActiveView] = useState<'bulk' | 'single'>('bulk');
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [bulkSubjectId, setBulkSubjectId] = useState('');
   const [bulkChapterId, setBulkChapterId] = useState('');
@@ -39,9 +84,7 @@ export default function QuestionBankTab({
   });
 
   // Filter entrance subjects by selected state (AP or TG)
-  const filteredSubjects = qTab === 'entrance' 
-    ? tabSubjects.filter((s: any) => (s.state || 'AP') === selectedState)
-    : tabSubjects;
+  const filteredSubjects = tabSubjects;
 
   // Questions list state (all questions for the tab)
   const [allQuestions, setAllQuestions] = useState<any[]>([]);
@@ -69,7 +112,7 @@ export default function QuestionBankTab({
 
   useEffect(() => {
     fetchQuestions();
-  }, [qTab, selectedState]);
+  }, [qTab]);
 
   const toggleSubjectExpand = (subId: string) => {
     setExpandedSubjects(prev => ({
@@ -78,12 +121,7 @@ export default function QuestionBankTab({
     }));
   };
 
-  const handleStateChange = (state: 'AP' | 'TG') => {
-    setSelectedState(state);
-    setBulkSubjectId('');
-    setBulkChapterId('');
-    setQuestionForm((prev: any) => ({ ...prev, subjectId: '', chapterId: '' }));
-  };
+  
 
   const handleBulkUpload = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,7 +177,7 @@ export default function QuestionBankTab({
         if (!res.ok) throw new Error('Failed to update question');
         alert('Question updated successfully!');
         setEditingQuestionId(null);
-        setQuestionForm({ id: '', subjectId: questionForm.subjectId, chapterId: questionForm.chapterId, questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium', marks: 4, negativeMarks: 1, explanation: '' });
+        setQuestionForm({ id: '', subjectId: questionForm.subjectId, chapterId: questionForm.chapterId, questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium', marks: 4, negativeMarks: 1, tags: '', explanation: '' });
         fetchQuestions();
       } catch (err: any) {
         alert(err.message);
@@ -166,9 +204,7 @@ export default function QuestionBankTab({
 
     const subId = q.subjectId?._id || q.subjectId || '';
     const foundSub = subjects.find((s: any) => s.id === subId || s._id === subId);
-    if (foundSub && foundSub.state) {
-      setSelectedState(foundSub.state);
-    }
+    
 
     setQuestionForm({
       id: q._id || q.id,
@@ -181,6 +217,9 @@ export default function QuestionBankTab({
       oD: options[3] || '',
       correctAnswerIndex: correctIdx,
       difficulty: (q.difficulty || 'medium').toLowerCase(),
+      marks: q.marks || 4,
+      negativeMarks: q.negativeMarks || 1,
+      tags: '',
       explanation: q.explanation || ''
     });
     setActiveView('single');
@@ -258,27 +297,7 @@ export default function QuestionBankTab({
         <form onSubmit={handleBulkUpload} className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="space-y-4">
             {/* STATE SELECTION ONLY FOR ENTRANCE EXAMS */}
-            {qTab === 'entrance' && (
-              <div>
-                <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">State</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleStateChange('AP')}
-                    className={`py-2.5 px-4 font-bold text-xs rounded-xl border transition-colors ${selectedState === 'AP' ? 'bg-orange-500 text-white border-orange-600 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-                  >
-                    Andhra Pradesh (AP)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleStateChange('TG')}
-                    className={`py-2.5 px-4 font-bold text-xs rounded-xl border transition-colors ${selectedState === 'TG' ? 'bg-pink-600 text-white border-pink-700 shadow-xs' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-                  >
-                    Telangana (TG)
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* State selection removed */}
 
             <div>
               <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Subject</label>
@@ -292,9 +311,9 @@ export default function QuestionBankTab({
                 className="w-full p-3 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs cursor-pointer"
                 required
               >
-                <option value="">Select Subject {qTab === 'entrance' ? `(${selectedState})` : '(Competitive)'}</option>
+                <option value="">Select Subject</option>
                 {filteredSubjects.map((sub: Subject) => (
-                  <option key={sub.id} value={sub.id}>{sub.name} {qTab === 'entrance' ? `(${sub.state || selectedState})` : ''}</option>
+                  <option key={sub.id} value={sub.id}>{sub.name}</option>
                 ))}
               </select>
             </div>
@@ -350,28 +369,7 @@ export default function QuestionBankTab({
         /* ── SINGLE / EDIT QUESTION FORM ── */
         <form onSubmit={handleSingleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm">
           <div className="space-y-4">
-            {/* STATE SELECTION ONLY FOR ENTRANCE EXAMS */}
-            {qTab === 'entrance' && (
-              <div>
-                <label className="block text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">State</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleStateChange('AP')}
-                    className={`py-2 px-3 font-bold text-xs rounded-xl border transition-colors ${selectedState === 'AP' ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-                  >
-                    Andhra Pradesh (AP)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleStateChange('TG')}
-                    className={`py-2 px-3 font-bold text-xs rounded-xl border transition-colors ${selectedState === 'TG' ? 'bg-pink-600 text-white border-pink-700' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'}`}
-                  >
-                    Telangana (TG)
-                  </button>
-                </div>
-              </div>
-            )}
+            {/* State selection removed */}
 
             <div>
               <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Subject</label>
@@ -381,9 +379,9 @@ export default function QuestionBankTab({
                 className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none cursor-pointer"
                 required
               >
-                <option value="">Select Subject {qTab === 'entrance' ? `(${selectedState})` : '(Competitive)'}</option>
+                <option value="">Select Subject</option>
                 {filteredSubjects.map((sub: Subject) => (
-                  <option key={sub.id} value={sub.id}>{sub.name} {qTab === 'entrance' ? `(${sub.state || selectedState})` : ''}</option>
+                  <option key={sub.id} value={sub.id}>{sub.name}</option>
                 ))}
               </select>
             </div>
@@ -489,7 +487,7 @@ export default function QuestionBankTab({
               {editingQuestionId && (
                 <button
                   type="button"
-                  onClick={() => { setEditingQuestionId(null); setQuestionForm({ id: '', subjectId: '', chapterId: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium', explanation: '' }); }}
+                  onClick={() => { setEditingQuestionId(null); setQuestionForm({ id: '', subjectId: '', chapterId: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium', marks: 4, negativeMarks: 1, tags: '', explanation: '' }); }}
                   className="py-3 px-6 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold uppercase tracking-wider transition-colors cursor-pointer"
                 >
                   Cancel
@@ -507,7 +505,7 @@ export default function QuestionBankTab({
             <BookOpen className="w-5 h-5 text-emerald-600" />
             <div>
               <h4 className="text-lg font-bold text-slate-800">
-                {qTab === 'entrance' ? `Entrance Subjects Question Bank (${selectedState})` : 'Competitive Subjects Question Bank'}
+                {qTab === 'entrance' ? 'Entrance Subjects Question Bank' : 'Competitive Subjects Question Bank'}
               </h4>
               <p className="text-xs text-slate-500 font-medium">Click on any subject below to view and manage its questions.</p>
             </div>
@@ -545,7 +543,7 @@ export default function QuestionBankTab({
         ) : filteredSubjects.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <HelpCircle className="w-12 h-12 mx-auto mb-3 text-slate-200" />
-            <p className="font-bold text-slate-600">No subjects created yet for {qTab === 'entrance' ? selectedState : 'Competitive Exams'}.</p>
+            <p className="font-bold text-slate-600">No subjects created yet for {qTab === 'entrance' ? 'Entrance Exams' : 'Competitive Exams'}.</p>
             <p className="text-xs text-slate-400 mt-1">Create subjects in the "Subjects & Chapters" tab first.</p>
           </div>
         ) : (
@@ -566,11 +564,7 @@ export default function QuestionBankTab({
                       <div>
                         <div className="flex items-center gap-2">
                           <h5 className="font-bold text-slate-800 text-sm">{sub.name}</h5>
-                          {qTab === 'entrance' && (
-                            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                              {sub.state || selectedState}
-                            </span>
-                          )}
+
                         </div>
                         <p className="text-xs text-slate-500 font-medium mt-0.5">
                           {subQuestions.length} Question{subQuestions.length !== 1 ? 's' : ''} available

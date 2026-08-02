@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { UserCheck, Shield, Sparkles, CheckCircle2, Search } from 'lucide-react';
+import { useAdminContext } from '../../../context/AdminContext';
 
-export default function StudentsTab({ students = [], studentTypes = [], allPlans = [] }: any) {
+export default function StudentsTab() {
+  const { students, studentTypes, allPlans } = useAdminContext();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredStudents = students.filter((s: any) =>

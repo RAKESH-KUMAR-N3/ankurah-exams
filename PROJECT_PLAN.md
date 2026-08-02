@@ -1,4 +1,4 @@
-﻿# ANKURAH EXAMS - Project Plan & Discussion Document
+# ANKURAH EXAMS - Project Plan & Discussion Document
 Last Updated: 25 Jul 2026
 
 ---
@@ -9,10 +9,10 @@ Category (e.g., "Entrance" / "Competitive")
   └── Exam (e.g., "TG EAPCET Engineering", "NDA")
           └── Plan (Fee linked to Exam, e.g. Rs.15000)
                   └── Student buys Plan gets access to:
-                          - Subjects + Chapters (linked by examId)
-                          - Study Materials (linked by subjectId/chapterId)
-                          - Tests (linked by examIds[])
+                          - Subjects + Chapters + Topics (Syllabus Hierarchy)
+                          - Tests (linked by examIds[], also shown chapter-wise in Syllabus)
                           - Questions (global, pulled by test config)
+                          - (Note: No Study Materials module needed. Students use their own books based on the Topics list)
 
 ### WHAT ALREADY WORKS:
 1. Multiple Plan Purchase - Student can buy EAPCET + NDA together. purchasedPlans[] array. Both unlock automatically.
@@ -39,9 +39,12 @@ Fix Options:
   Option A: Subject form lo "For which Exam?" multi-select dropdown add cheyali.
   Option B: Continue with applicableFor (StudentType) but ensure competitive exams have their own studentType or open access.
 
-### Issue 3: Study Material - Only PDF supported
-Current: PDF upload only.
-Fix: Add YouTube URL / Video link support. Material type: pdf | video | notes.
+### Issue 3: Missing Topic Hierarchy & Redundant Study Materials
+Current: Only Subjects & Chapters exist. Study Material PDF upload is present but not needed.
+Fix: 
+  - Remove Study Material functionality completely from Admin & Student panels.
+  - Introduce "Topics" under Chapters (e.g., 1.1 What is Physics?).
+  - Create a unified "My Syllabus" view for students displaying Subject -> Chapter -> Topic, along with Chapter-wise Tests.
 
 ---
 
@@ -59,12 +62,10 @@ Step 3: Create Plan (linked to Exam)
   - Set price (Rs.) + link to exam
   - Students will buy this plan
 
-Step 4: Create Subjects + Chapters
+Step 4: Create Subjects + Chapters + Topics
   - Link subject to exam(s) [NEEDS FIX - currently no exam field in subject form]
-  - Add chapters under each subject
-
-Step 5: Upload Study Materials
-  - Select Subject -> Chapter -> Upload PDF (or add video URL)
+  - Add Chapters under each Subject
+  - Add Topics (e.g. 1.1, 1.2) under each Chapter
 
 Step 6: Upload Questions (Bulk CSV)
   - Select Subject + Chapter
@@ -86,9 +87,8 @@ Student registers
 -> Browses available plans
 -> Buys Plan(s) - can buy multiple (EAPCET + NDA at same time)
 -> Dashboard shows all content from ALL purchased plans in ONE place:
-      - Subjects/Chapters for each purchased exam
-      - Study Materials per subject/chapter
-      - Published Tests assigned to purchased exams
+      - "My Syllabus": Interactive tree of Subjects -> Chapters -> Topics for each purchased exam
+      - Published Tests assigned to purchased exams (visible in Exams page AND under the specific Chapter in My Syllabus)
       - Leaderboard (rank across all test attempts combined)
 -> Attempts Test -> Immediate Scorecard shows score + question review
 -> Can raise doubt on any question from scorecard
@@ -100,7 +100,7 @@ Student registers
 
 1. [HIGH - PENDING]   Hide "Eligible Student Groups" for Competitive Exams in admin UI
 2. [MEDIUM - PENDING] Subject form - add Exam linkage field
-3. [MEDIUM - PENDING] Study Material - add YouTube/video URL support
+3. [HIGH - PENDING]   Syllabus Update: Remove Study Materials, Add Topics hierarchy, create "My Syllabus" view.
 4. [HIGH - DONE]      0% score bug fix - "Option A" now resolved to actual option text
 5. [HIGH - DONE]      Backend TypeScript - 0 errors
 6. [HIGH - DONE]      Frontend TypeScript - 0 errors
@@ -114,7 +114,7 @@ Student registers
 ## OPEN DISCUSSIONS
 
 Q1: Subject - Exam linkage: Option A (add exam field to subject form) vs Option B (keep studentType-based)?
-Q2: Study Material video support - YouTube embed or external URL?
+Q2: [RESOLVED] Study Materials module is completely removed. Topics list is sufficient.
 Q3: Payments - Real Razorpay integration for production?
 
 ---
@@ -133,7 +133,6 @@ Frontend (admin tabs):
   ExamsAndPlansTab.tsx        - Exam & Plan creation UI
   SubjectsAndChaptersTab.tsx  - Subject/Chapter management
   TestConfiguratorTab.tsx     - Test creation UI
-  StudyMaterialTab.tsx        - PDF/Material upload
   QuestionBankTab.tsx         - CSV bulk question upload
 
 Frontend (student):

@@ -61,6 +61,7 @@ export interface EntranceExam {
   description: string;
   state?: 'AP' | 'TG' | 'Both';
   allowedStudentTypes?: any[];
+  subjects?: any[];
 }
 
 export interface CompetitiveExam {
@@ -71,12 +72,26 @@ export interface CompetitiveExam {
   description: string;
   state?: 'AP' | 'TG' | 'Both';
   allowedStudentTypes?: any[];
+  subjects?: any[];
+}
+
+export interface StudyMaterial {
+  id: string;
+  title: string;
+  subjectId: string;
+  chapterId?: string;
+  examId?: string;
+  type: 'pdf' | 'video' | 'link' | 'note' | 'notes';
+  url?: string;
+  content?: string;
+  description?: string;
+  createdAt?: string;
 }
 
 export interface Subject {
   id: string;
   name: string;
-  state?: 'AP' | 'TG' | 'Both';
+  subjectCategory?: 'entrance' | 'competitive'; // entrance or competitive
   examIds: string[]; // Can map to multiple exams
   applicableFor?: string[];
   description: string;
@@ -104,15 +119,12 @@ export interface Timetable {
   assignment?: string;
 }
 
-export interface StudyMaterial {
-  id: string;
-  examId: string;
-  subjectId: string;
+export interface Topic {
+  _id?: string;
+  id?: string;
   chapterId: string;
-  type: 'pdf' | 'notes' | 'link' | 'video';
   title: string;
-  url: string;
-  description: string;
+  order?: number;
 }
 
 export interface Question {

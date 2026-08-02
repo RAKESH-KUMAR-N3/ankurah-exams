@@ -1,20 +1,96 @@
 import React from 'react';
 import { Trash2 } from 'lucide-react';
 import { Timetable, Subject } from '../../../types';
+import { useState } from 'react';
+import { useAdminContext } from '../../../context/AdminContext';
+import { Check, AlertCircle } from 'lucide-react';
 
-export default function TimetableTab({
-  timetableForm,
-  setTimetableForm,
-  handleCreateTimetable,
-  handleDeleteTimetable,
-  entranceExams,
-  competitiveExams,
-  subjects,
-  timetables,
-  loading
-}: any) {
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getToken = () => localStorage.getItem('token');
+const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
+
+
+export default function TimetableTab() {
+  const { entranceExams, competitiveExams, subjects, timetables, refreshAdminData } = useAdminContext();
+  const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [timetableForm, setTimetableForm] = useState({ id: '', examId: '', studentType: 'long_term', studyPlan: 'yearly', subjectId: '', chapterId: '', date: '', title: '', studyTopic: '', practiceMCQsCount: 10, revisionTopic: '', assignment: '' });
+
+  const showSuccess = (msg: string) => {
+    setSuccessMsg(msg);
+    setErrorMsg(null);
+    refreshAdminData();
+    setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  const showError = (msg: string) => {
+    setErrorMsg(msg);
+    setSuccessMsg(null);
+    setTimeout(() => setErrorMsg(null), 5000);
+  };
+
+  const handleCreateTimetable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const cleanId = timetableForm.id.toLowerCase().replace(/\s+/g, '-');
+    try {
+      const res = await fetch(`${API_URL}/api/timetables`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          id: cleanId,
+          examId: timetableForm.examId,
+          studentTypeId: timetableForm.studentType,
+          subjectId: timetableForm.subjectId,
+          chapterId: timetableForm.chapterId,
+          date: timetableForm.date,
+          studyTopic: timetableForm.title,
+          practiceMCQs: timetableForm.practiceMCQsCount.toString(),
+          revision: timetableForm.revisionTopic,
+          assignment: timetableForm.assignment
+        })
+      });
+      if (!res.ok) throw new Error('Failed to create timetable');
+      setTimetableForm(prev => ({ ...prev, id: '', title: '', studyTopic: '', revisionTopic: '', assignment: '' }));
+      showSuccess("Timetable schedule published successfully!");
+    } catch (err: any) {
+      showError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteTimetable = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this timetable entry?")) return;
+    try {
+      const res = await fetch(`${API_URL}/api/timetables/${id}`, {
+        method: 'DELETE',
+        headers: authHeaders()
+      });
+      if (!res.ok) throw new Error('Failed to delete timetable entry');
+      showSuccess("Timetable slot deleted successfully.");
+    } catch (err: any) {
+      showError(err.message);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="flex flex-col gap-6 w-full">
+      {errorMsg && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5" />
+          <span className="font-bold">{errorMsg}</span>
+        </div>
+      )}
+      {successMsg && (
+        <div className="bg-emerald-50 text-emerald-600 p-4 rounded-xl border border-emerald-100 flex items-center gap-3">
+          <Check className="w-5 h-5" />
+          <span className="font-bold">{successMsg}</span>
+        </div>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       <div className="space-y-4">
         <h3 className="text-lg font-bold text-slate-800">Define Academic Daily Slot</h3>
         <form onSubmit={handleCreateTimetable} className="space-y-4 text-xs">
@@ -88,7 +164,8 @@ export default function TimetableTab({
             </div>
           ))}
         </div>
-      </div>
+          </div>
+    </div>
     </div>
   );
 }

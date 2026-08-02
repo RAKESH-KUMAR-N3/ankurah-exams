@@ -3,7 +3,9 @@ import { AuthRequest as Request } from '../middlewares/authMiddleware';
 import User from '../models/User';
 import Subject from '../models/Subject';
 import Chapter from '../models/Chapter';
-import StudyMaterial from '../models/StudyMaterial';
+import Exam from '../models/Exam';
+import CompetitiveSubject from '../models/CompetitiveSubject';
+
 import Timetable from '../models/Timetable';
 import Test from '../models/Test';
 import Notification from '../models/Notification';
@@ -57,30 +59,49 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
 export const getMySubjects = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    const purchasedExamIds = user?.purchasedPlans
-      ?.filter((p: any) => p.isActive)
+    if (!user) { res.json([]); return; }
+
+    // Only active (non-expired) plans
+    const activePlans = user.purchasedPlans?.filter((p: any) => {
+      if (!p.isActive) return false;
+      if (p.expiryDate && new Date(p.expiryDate) < new Date()) return false;
+      return true;
+    }) || [];
+
+    const purchasedExamIds = activePlans
       .map((p: any) => (p.examId?._id || p.examId)?.toString())
-      .filter(Boolean) || [];
+      .filter(Boolean);
 
-    if (!user || purchasedExamIds.length === 0) {
-      res.json([]);
-      return;
+    if (purchasedExamIds.length === 0) { res.json([]); return; }
+
+    // Fetch exams with their attached subjects
+    const purchasedExams = await Exam.find({ _id: { $in: purchasedExamIds } });
+
+    // Collect all subject IDs from course subjects arrays
+    const allSubjectIds: string[] = [];
+    for (const exam of purchasedExams) {
+      if (exam.subjects && exam.subjects.length > 0) {
+        exam.subjects.forEach((sid: any) => allSubjectIds.push(sid.toString()));
+      }
     }
 
-    let query: any = { examId: { $in: purchasedExamIds } };
-    if (user.studentType) {
-      query.$and = [
-        {
-          $or: [
-            { applicableFor: user.studentType },
-            { applicableFor: { $exists: false } },
-            { applicableFor: { $size: 0 } }
-          ]
-        }
-      ];
-    }
+    if (allSubjectIds.length === 0) { res.json([]); return; }
 
-    const subjects = await Subject.find(query).populate('examId', 'name');
+    // Fetch from both Subject and CompetitiveSubject collections
+    const [entranceSubjects, compSubjects] = await Promise.all([
+      Subject.find({ _id: { $in: allSubjectIds } }),
+      CompetitiveSubject.find({ _id: { $in: allSubjectIds } })
+    ]);
+
+    // Deduplicate by ID (in case same subject attached to multiple courses)
+    const seen = new Set();
+    const subjects = [...entranceSubjects, ...compSubjects].filter(s => {
+      const id = s._id.toString();
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
     res.json(subjects);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -90,15 +111,20 @@ export const getMySubjects = async (req: Request, res: Response): Promise<void> 
 export const getMyChapters = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    const purchasedExamIds = user?.purchasedPlans
-      ?.filter((p: any) => p.isActive)
-      .map((p: any) => (p.examId?._id || p.examId)?.toString())
-      .filter(Boolean) || [];
+    if (!user) { res.json([]); return; }
 
-    if (!user || purchasedExamIds.length === 0) {
-      res.json([]);
-      return;
-    }
+    // Only active (non-expired) plans
+    const activePlans = user.purchasedPlans?.filter((p: any) => {
+      if (!p.isActive) return false;
+      if (p.expiryDate && new Date(p.expiryDate) < new Date()) return false;
+      return true;
+    }) || [];
+
+    const purchasedExamIds = activePlans
+      .map((p: any) => (p.examId?._id || p.examId)?.toString())
+      .filter(Boolean);
+
+    if (purchasedExamIds.length === 0) { res.json([]); return; }
 
     const subjectId = req.query.subjectId;
     if (subjectId) {
@@ -107,63 +133,25 @@ export const getMyChapters = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    let subjectQuery: any = { examId: { $in: purchasedExamIds } };
-    if (user.studentType) {
-      subjectQuery.$and = [
-        {
-          $or: [
-            { applicableFor: user.studentType },
-            { applicableFor: { $exists: false } },
-            { applicableFor: { $size: 0 } }
-          ]
-        }
-      ];
+    // Get all subject IDs from purchased exam courses
+    const purchasedExams = await Exam.find({ _id: { $in: purchasedExamIds } });
+    const allSubjectIds: string[] = [];
+    for (const exam of purchasedExams) {
+      if (exam.subjects && exam.subjects.length > 0) {
+        exam.subjects.forEach((sid: any) => allSubjectIds.push(sid.toString()));
+      }
     }
 
-    const subjects = await Subject.find(subjectQuery).select('_id');
-    const subjectIds = subjects.map(s => s._id);
+    if (allSubjectIds.length === 0) { res.json([]); return; }
 
-    const chapters = await Chapter.find({ subjectId: { $in: subjectIds } }).populate('subjectId', 'name');
+    const chapters = await Chapter.find({ subjectId: { $in: allSubjectIds } }).populate('subjectId', 'name');
     res.json(chapters);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 };
 
-export const getMyMaterials = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const user = await User.findById(req.user?._id);
-    const purchasedExamIds = user?.purchasedPlans
-      ?.filter((p: any) => p.isActive)
-      .map((p: any) => (p.examId?._id || p.examId)?.toString())
-      .filter(Boolean) || [];
 
-    if (!user || purchasedExamIds.length === 0) {
-      res.json([]);
-      return;
-    }
-
-    let query: any = { examId: { $in: purchasedExamIds } };
-    if (user.studentType) {
-      query.$and = [
-        {
-          $or: [
-            { studentTypeId: user.studentType },
-            { studentTypeId: { $exists: false } },
-            { studentTypeId: null }
-          ]
-        }
-      ];
-    }
-
-    const materials = await StudyMaterial.find(query)
-      .populate('subjectId', 'name')
-      .populate('chapterId', 'title');
-    res.json(materials);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
-  }
-};
 
 export const getMyTimetables = async (req: Request, res: Response): Promise<void> => {
   try {

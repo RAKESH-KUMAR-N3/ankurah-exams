@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema(
         planId: { type: mongoose.Schema.Types.ObjectId, ref: 'Plan' },
         examId: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam' },
         purchasedAt: { type: Date, default: Date.now },
+        expiryDate: { type: Date },
         isActive: { type: Boolean, default: true }
       }
     ],

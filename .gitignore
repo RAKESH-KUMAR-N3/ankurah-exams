@@ -3,3 +3,5 @@ dist/
 .env
 .DS_Store
 docs/assets/.aistudio/
+scratch/
+frontend/scratch/

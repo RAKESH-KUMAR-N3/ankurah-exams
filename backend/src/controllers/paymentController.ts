@@ -3,6 +3,7 @@ import { AuthRequest as Request } from '../middlewares/authMiddleware';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import Plan from '../models/Plan';
+import Exam from '../models/Exam';
 import Transaction from '../models/Transaction';
 import User from '../models/User';
 
@@ -62,13 +63,20 @@ export const verifyPayment = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Plan not found' });
     }
 
+    const exam = plan.examId ? await Exam.findById(plan.examId) : null;
+    const validityMonths = (exam as any)?.validityMonths || 12;
+    const purchasedAt = new Date();
+    const expiryDate = new Date(purchasedAt);
+    expiryDate.setMonth(expiryDate.getMonth() + validityMonths);
+
     const updateFields: any = {
       $push: {
         purchasedPlans: {
           planId,
           examId: plan.examId,
           isActive: true,
-          purchasedAt: new Date()
+          purchasedAt,
+          expiryDate
         }
       }
     };

@@ -6,7 +6,6 @@ import {
   updateProfile,
   getMySubjects,
   getMyChapters,
-  getMyMaterials,
   getMyTimetables,
   getMyTests,
   getMyNotifications,
@@ -26,7 +25,6 @@ router.post('/change-password', changePassword);
 
 router.get('/subjects', getMySubjects);
 router.get('/chapters', getMyChapters);
-router.get('/materials', getMyMaterials);
 router.get('/timetables', getMyTimetables);
 router.get('/tests', getMyTests);
 router.get('/notifications', getMyNotifications);

@@ -3,20 +3,21 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import {
   fetchAdminDashboard, fetchStudentDashboard,
   fetchExams, fetchStudentTypes, fetchSubjects, fetchChapters, fetchQuestions,
-  fetchTests, fetchStudyMaterials, fetchTimetables, fetchNotifications,
+  fetchTests, fetchTimetables, fetchNotifications,
   fetchStudentList, fetchMyProfile
 } from './lib/api';
-import { User, EntranceExam, CompetitiveExam, StudentType, Subject, Chapter, Question, Test, Timetable, StudyMaterial, TestAttempt, Announcement, Notification } from './types';
+import { User, EntranceExam, CompetitiveExam, StudentType, Subject, Chapter, Question, Test, Timetable, TestAttempt, Announcement, Notification } from './types';
 import Auth from './pages/public/Auth';
 import LandingPage from './pages/public/LandingPage';
 import StudentDashboard from './pages/student/StudentDashboard';
 import AnalyticsSection from './components/admin/AnalyticsSection';
 import TimetableSection from './components/student/TimetableSection';
-import StudyMaterialSection from './components/student/StudyMaterialSection';
+import SyllabusSection from './components/student/SyllabusSection';
 import TestSection from './components/student/TestSection';
 import PlanStore from './pages/student/PlanStore';
 import StudentDoubts from './components/student/StudentDoubts';
 import AdminManagement from './pages/admin/AdminDashboard';
+import { AdminProvider } from './context/AdminContext';
 import AboutPage from './pages/public/AboutPage';
 import EntranceExamsPage from './pages/public/EntranceExamsPage';
 import CompetitiveExamsPage from './pages/public/CompetitiveExamsPage';
@@ -57,7 +58,6 @@ const mapExam = (e: any): EntranceExam => ({ id: e._id, name: e.name, descriptio
 const mapSubject = (s: any): Subject => ({
   id: s._id,
   name: s.name,
-  state: s.state || 'Both',
   examIds: s.examId ? [s.examId._id || s.examId] : [],
   applicableFor: s.applicableFor ? s.applicableFor.map((x: any) => x._id || x) : [],
   description: '',
@@ -126,18 +126,6 @@ const mapTimetable = (t: any): Timetable => ({
   assignment: t.assignment,
 });
 
-// Map backend StudyMaterial to frontend StudyMaterial
-const mapMaterial = (m: any): StudyMaterial => ({
-  id: m._id,
-  examId: m.examId?._id || m.examId || '',
-  subjectId: m.subjectId?._id || m.subjectId || '',
-  chapterId: m.chapterId?._id || m.chapterId || '',
-  type: (m.type === 'PDF' ? 'pdf' : m.type === 'Notes' ? 'notes' : m.type === 'Video URL' ? 'video' : 'link') as any,
-  title: m.title,
-  url: m.url,
-  description: '',
-});
-
 // Map backend Notification to frontend Notification
 const mapNotification = (n: any): Notification => ({
   id: n._id,
@@ -160,6 +148,7 @@ export default function App() {
   const navigate = useNavigate();
   const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   // App-wide Academic Data
   const [entranceExams, setEntranceExams] = useState<EntranceExam[]>([]);
@@ -170,7 +159,7 @@ export default function App() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [tests, setTests] = useState<Test[]>([]);
   const [timetables, setTimetables] = useState<Timetable[]>([]);
-  const [materials, setMaterials] = useState<StudyMaterial[]>([]);
+
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -182,12 +171,10 @@ export default function App() {
     { id: 'admin_dashboard', label: 'Dashboard Overview', icon: Flame, color: 'text-emerald-300' },
     { id: 'admin_payments', label: 'Payments', icon: Database, color: 'text-emerald-350' },
     { id: 'admin_students', label: 'Students', icon: Users, color: 'text-emerald-350' },
-    { id: 'admin_student_types', label: 'Student Groups', icon: Users, color: 'text-emerald-300' },
     { id: 'admin_exams', label: 'Courses / Plans', icon: Award, color: 'text-emerald-300' },
     { id: 'admin_subjects', label: 'Subjects & Chapters', icon: Layers, color: 'text-emerald-300' },
     { id: 'admin_questions', label: 'Question Bank', icon: Database, color: 'text-emerald-300' },
     { id: 'admin_tests', label: 'Create Tests', icon: FileText, color: 'text-emerald-300' },
-    { id: 'admin_materials', label: 'Study Material', icon: BookOpen, color: 'text-emerald-300' },
     { id: 'admin_timetables', label: 'Timetable', icon: Calendar, color: 'text-emerald-300' },
   ], []);
 
@@ -278,17 +265,18 @@ export default function App() {
 
   // ─── Load all data when authenticated ───────────────────────────────────────
   const loadAllData = useCallback(async (user: User) => {
+    setIsDataLoading(true);
     try {
       if (user.role === 'admin') {
         // Admin fetches all data
-        const [examsRes, studentTypesRes, subjectsRes, chaptersRes, questionsRes, testsRes, materialsRes, timetablesRes, notifsRes, studentsRes] = await Promise.allSettled([
+        const [examsRes, studentTypesRes, subjectsRes, chaptersRes, questionsRes, testsRes, timetablesRes, notifsRes, studentsRes] = await Promise.allSettled([
           fetchExams({ limit: '1000' }),
           fetchStudentTypes({ limit: '1000' }),
           fetchSubjects({ limit: '1000' }),
           fetchChapters({ limit: '1000' }),
           fetchQuestions({ limit: '1000' }),
           fetchTests({ limit: '1000' }),
-          fetchStudyMaterials({ limit: '1000' }),
+
           fetchTimetables({ limit: '1000' }),
           fetchNotifications({ limit: '1000' }),
           fetchStudentList({ limit: '1000' }),
@@ -314,7 +302,7 @@ export default function App() {
         if (chaptersRes.status === 'fulfilled') setChapters((Array.isArray(chaptersRes.value) ? chaptersRes.value : chaptersRes.value?.data || []).map(mapChapter));
         if (questionsRes.status === 'fulfilled') setQuestions((Array.isArray(questionsRes.value) ? questionsRes.value : questionsRes.value?.data || []).map(mapQuestion));
         if (testsRes.status === 'fulfilled') setTests((Array.isArray(testsRes.value) ? testsRes.value : testsRes.value?.data || []).map(mapTest));
-        if (materialsRes.status === 'fulfilled') setMaterials((Array.isArray(materialsRes.value) ? materialsRes.value : materialsRes.value?.data || []).map(mapMaterial));
+
         if (timetablesRes.status === 'fulfilled') setTimetables((Array.isArray(timetablesRes.value) ? timetablesRes.value : timetablesRes.value?.data || []).map(mapTimetable));
         if (notifsRes.status === 'fulfilled') setNotifications((Array.isArray(notifsRes.value) ? notifsRes.value : notifsRes.value?.data || []).map(mapNotification));
         if (studentsRes.status === 'fulfilled') {
@@ -323,12 +311,12 @@ export default function App() {
         }
       } else {
         // Student fetches their personalized data
-        const { fetchMySubjects, fetchMyChapters, fetchMyMaterials, fetchMyTimetables, fetchMyTests, fetchMyNotifications, fetchMyAttempts, fetchExams } = await import('./lib/api');
-        const [examsRes, subjectsRes, chaptersRes, materialsRes, timetablesRes, testsRes, notifsRes, attemptsRes] = await Promise.allSettled([
+        const { fetchMySubjects, fetchMyChapters, fetchMyTimetables, fetchMyTests, fetchMyNotifications, fetchMyAttempts, fetchExams } = await import('./lib/api');
+        const [examsRes, subjectsRes, chaptersRes, timetablesRes, testsRes, notifsRes, attemptsRes] = await Promise.allSettled([
           fetchExams({ limit: '1000' }),
           fetchMySubjects(),
           fetchMyChapters(),
-          fetchMyMaterials(),
+
           fetchMyTimetables(),
           fetchMyTests(),
           fetchMyNotifications(),
@@ -344,7 +332,7 @@ export default function App() {
         }
         if (subjectsRes.status === 'fulfilled') setSubjects((subjectsRes.value || []).map(mapSubject));
         if (chaptersRes.status === 'fulfilled') setChapters((chaptersRes.value || []).map(mapChapter));
-        if (materialsRes.status === 'fulfilled') setMaterials((materialsRes.value || []).map(mapMaterial));
+
         if (timetablesRes.status === 'fulfilled') setTimetables((timetablesRes.value || []).map(mapTimetable));
         if (testsRes.status === 'fulfilled') setTests((testsRes.value || []).map(mapTest));
         if (notifsRes.status === 'fulfilled') setNotifications((notifsRes.value || []).map(mapNotification));
@@ -352,6 +340,8 @@ export default function App() {
       }
     } catch (err) {
       console.error('Data load error:', err);
+    } finally {
+      setIsDataLoading(false);
     }
   }, []);
 
@@ -380,7 +370,7 @@ export default function App() {
     setQuestions([]);
     setTests([]);
     setTimetables([]);
-    setMaterials([]);
+
     setAttempts([]);
     setNotifications([]);
     setStudentsList([]);
@@ -392,7 +382,7 @@ export default function App() {
   };
 
   // After purchase: re-fetch user profile first so purchasedPlans is up-to-date,
-  // then reload all student data (subjects, materials, tests, etc.)
+  // then reload all student data (subjects, tests, etc.)
   const handlePurchaseSuccess = async () => {
     try {
       const freshData = await fetchMyProfile();
@@ -447,14 +437,14 @@ export default function App() {
           />
         );
       case 'subjects':
-      case 'study_materials':
+      case 'syllabus':
         return (
-          <StudyMaterialSection
+          <SyllabusSection
             user={currentUser}
-            materials={materials}
             subjects={subjects}
             chapters={chapters}
             studentTypes={studentTypes}
+            tests={tests}
           />
         );
       case 'doubts':
@@ -496,7 +486,6 @@ export default function App() {
       case 'admin_exams':
       case 'admin_subjects':
       case 'admin_questions':
-      case 'admin_materials':
       case 'admin_timetables':
       case 'admin_tests':
         if (currentUser.role !== 'admin') {
@@ -504,18 +493,6 @@ export default function App() {
         }
         return (
           <AdminManagement
-            user={currentUser}
-            students={studentsList}
-            entranceExams={entranceExams}
-            competitiveExams={competitiveExams}
-            studentTypes={studentTypes}
-            subjects={subjects}
-            chapters={chapters}
-            questions={questions}
-            tests={tests}
-            timetables={timetables}
-            materials={materials}
-            announcements={announcements}
             onRefresh={handleForceAdminReload}
             activeTab={activeTab.startsWith('admin_') ? activeTab.replace('admin_', '') : 'dashboard'}
           />
@@ -599,10 +576,10 @@ export default function App() {
                   <MessageCircle className={`w-4 h-4 ${activeTab === 'doubts' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Doubts
                 </button>
                 <button
-                  onClick={() => handleTabChange('study_materials')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'study_materials' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
+                  onClick={() => handleTabChange('syllabus')}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'syllabus' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
-                  <BookOpen className={`w-4 h-4 ${activeTab === 'study_materials' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Study Material
+                  <BookOpen className={`w-4 h-4 ${activeTab === 'syllabus' ? 'text-emerald-600' : 'text-emerald-300'}`} /> My Syllabus
                 </button>
                 <button
                   onClick={() => handleTabChange('analytics')}
@@ -753,7 +730,13 @@ export default function App() {
         />
         <Route
           path="/dashboard/*"
-          element={(authState === 'unauthenticated' || !currentUser) ? <Navigate to="/login" replace /> : <DashboardShell />}
+          element={(authState === 'unauthenticated' || !currentUser) ? <Navigate to="/login" replace /> : (
+            currentUser?.role === 'admin' ? (
+              <AdminProvider>
+                <DashboardShell />
+              </AdminProvider>
+            ) : <DashboardShell />
+          )}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -1,6 +1,8 @@
 import React from 'react';
+import { useAdminContext } from '../../../context/AdminContext';
 
-export default function PaymentsTab({ allTransactions }: any) {
+export default function PaymentsTab() {
+  const { allTransactions } = useAdminContext();
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-bold text-slate-800">Student Transaction History</h3>

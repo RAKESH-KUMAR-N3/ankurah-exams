@@ -58,22 +58,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
   
-  const [availableExams, setAvailableExams] = useState<any[]>([]);
-  const [availableStudentTypes, setAvailableStudentTypes] = useState<any[]>([]);
-  const [selectedExams, setSelectedExams] = useState<string[]>([]);
   const [studentType, setStudentType] = useState('');
-  const [studentState, setStudentState] = useState<'AP' | 'TG' | ''>('');
-
-  // Fetch metadata for registration
-  useEffect(() => {
-    fetch(`${API_URL}/api/auth/metadata`)
-      .then(res => res.json())
-      .then(data => {
-        setAvailableExams(data.exams || []);
-        setAvailableStudentTypes(data.studentTypes || []);
-      })
-      .catch(console.error);
-  }, []);
 
   // Sync mode with URL
   useEffect(() => {
@@ -102,7 +87,6 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
         if (view === 'register') {
         if (!name.trim()) { setError('Please enter your full name.'); setLoading(false); return; }
         if (!mobile.trim() || mobile.length < 10) { setError('Please enter a valid mobile number.'); setLoading(false); return; }
-        if (!studentState) { setError('Please select your state (AP or TG).'); setLoading(false); return; }
         if (password.length < 6) { setError('Password must be at least 6 characters.'); setLoading(false); return; }
 
         const payload: any = {
@@ -113,7 +97,6 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
           role: 'student',
         };
         if (studentType) payload.studentType = studentType;
-        if (studentState) payload.state = studentState;
 
         const res = await fetch(`${API_URL}/api/auth/register`, {
           method: 'POST',
@@ -154,9 +137,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
     setPassword('');
     setName('');
     setMobile('');
-    setSelectedExams([]);
     setStudentType('');
-    setStudentState('');
     if (mode === 'register') navigate('/register', { replace: true });
     else if (mode === 'login') navigate('/login', { replace: true });
   };
@@ -290,32 +271,6 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
                     )}
                   </AnimatePresence>
 
-                  {/* Target Exams & Student Type Selection */}
-                  <AnimatePresence initial={false}>
-                    {view === 'register' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}
-                        className="overflow-hidden relative sm:col-span-2"
-                      >
-                        <div className="relative">
-                          <Target className={`${iconClasses} ${focusedField === 'studentState' ? 'text-emerald-500' : 'text-slate-400'}`} />
-                          <select
-                            id="auth_state"
-                            value={studentState}
-                            onChange={(e) => setStudentState(e.target.value as any)}
-                            onFocus={() => setFocusedField('studentState')}
-                            onBlur={() => setFocusedField(null)}
-                            className={inputClasses}
-                            required
-                          >
-                            <option value="" disabled>Select your State</option>
-                            <option value="AP">Andhra Pradesh (AP)</option>
-                            <option value="TG">Telangana (TG)</option>
-                          </select>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
 
                 <AnimatePresence>

@@ -44,7 +44,7 @@ export const categorySchema = Joi.object({
 
 // ─── Exam ─────────────────────────────────────────────────────────────────────
 export const examSchema = Joi.object({
-  id: Joi.string().required(),
+  id: Joi.string().allow('', null).optional(),
   name: Joi.string().min(2).max(100).required(),
   description: Joi.string().allow('', null).optional(),
   type: Joi.string().valid('entrance', 'competitive').required(),
@@ -70,18 +70,6 @@ export const subjectSchema = Joi.object({
 export const chapterSchema = Joi.object({
   title: Joi.string().min(2).max(200).required(),
   subjectId: Joi.string().required(),
-}).unknown(true);
-
-// ─── StudyMaterial ────────────────────────────────────────────────────────────
-export const studyMaterialSchema = Joi.object({
-  categoryId: Joi.string().optional(),
-  examId: Joi.string().allow('', null).optional(),
-  studentTypeId: Joi.string().allow('', null).optional(),
-  subjectId: Joi.string().required(),
-  chapterId: Joi.string().allow('', null).optional(),
-  title: Joi.string().min(2).max(200).required(),
-  type: Joi.string().valid('PDF', 'Notes', 'External Link', 'Video URL').required(),
-  url: Joi.string().required(),
 }).unknown(true);
 
 // ─── Timetable ────────────────────────────────────────────────────────────────

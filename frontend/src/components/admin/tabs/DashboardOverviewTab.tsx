@@ -2,14 +2,13 @@ import React from 'react';
 import { Shield, Database, TrendingUp, DollarSign, Check, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 
+import { useAdminContext } from '../../../context/AdminContext';
+
 export default function DashboardOverviewTab({ 
-  dashboardStats, 
-  students, 
-  questions, 
-  materials,
   successMsg,
   errorMsg
 }: any) {
+  const { dashboardStats, students, questions, tests, timetables } = useAdminContext();
   return (
     <>
       {/* Header Info */}
@@ -50,10 +49,7 @@ export default function DashboardOverviewTab({
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Question Bank</span>
           <span className="text-4xl font-black text-slate-800">{dashboardStats?.totalQuestions || questions.length} <span className="text-xs font-semibold text-slate-400">items</span></span>
         </div>
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Study Catalog</span>
-          <span className="text-4xl font-black text-slate-800">{dashboardStats?.totalMaterials || materials.length} <span className="text-xs font-semibold text-slate-400">PDFs</span></span>
-        </div>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">

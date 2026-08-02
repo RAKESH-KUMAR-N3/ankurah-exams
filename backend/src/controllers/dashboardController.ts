@@ -4,7 +4,7 @@ import User from '../models/User';
 import Exam from '../models/Exam';
 import Subject from '../models/Subject';
 import Chapter from '../models/Chapter';
-import StudyMaterial from '../models/StudyMaterial';
+import Topic from '../models/Topic';
 import Test from '../models/Test';
 import TestAttempt from '../models/TestAttempt';
 import Notification from '../models/Notification';
@@ -32,7 +32,7 @@ export const getAdminDashboardSummary = async (req: Request, res: Response): Pro
       Exam.countDocuments(),
       Subject.countDocuments(),
       Chapter.countDocuments(),
-      StudyMaterial.countDocuments(),
+      Topic.countDocuments(),
       Test.countDocuments(),
       TestAttempt.countDocuments(),
       Notification.find().sort({ createdAt: -1 }).limit(5).lean(),

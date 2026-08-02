@@ -9,6 +9,8 @@ const examSchema = new mongoose.Schema(
     state: { type: String, enum: ['AP', 'TG', 'Both'], default: 'Both' },
     categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
     allowedStudentTypes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'StudentType' }],
+    subjects: [{ type: mongoose.Schema.Types.ObjectId }],
+    validityMonths: { type: Number, default: 12 },
   },
   { timestamps: true }
 );
