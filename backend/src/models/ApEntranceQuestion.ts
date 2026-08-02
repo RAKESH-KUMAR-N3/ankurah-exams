@@ -8,7 +8,7 @@ const apEntranceQuestionSchema = new mongoose.Schema(
     options: [{ type: String, required: true }],
     correctAnswer: { type: String, required: true },
     explanation: { type: String },
-    difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard', 'easy', 'medium', 'hard'], default: 'Medium' },
+    difficulty: { type: String, enum: ['Easy', 'Medium', 'Hard', 'easy', 'medium', 'hard', 'EASY', 'MEDIUM', 'HARD'], default: 'Medium' },
     marks: { type: Number },
     negativeMarks: { type: Number },
   },

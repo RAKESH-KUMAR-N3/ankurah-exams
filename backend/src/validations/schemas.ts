@@ -97,7 +97,7 @@ export const questionSchema = Joi.object({
   options: Joi.array().items(Joi.string()).min(2).required(),
   correctAnswer: Joi.string().required(),
   explanation: Joi.string().allow('', null).optional(),
-  difficulty: Joi.string().valid('Easy', 'Medium', 'Hard', 'easy', 'medium', 'hard').optional(),
+  difficulty: Joi.string().valid('Easy', 'Medium', 'Hard', 'easy', 'medium', 'hard', 'EASY', 'MEDIUM', 'HARD').optional(),
   marks: Joi.number().min(0).optional(),
   negativeMarks: Joi.number().min(0).optional(),
 }).unknown(true);

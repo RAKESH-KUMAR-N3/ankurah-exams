@@ -28,30 +28,55 @@ export default function QuestionBankTab() {
 
   const handleCreateQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!questionForm.subjectId) {
+      showError('Please select a Subject before adding a question');
+      return;
+    }
+
+    if (!questionForm.questionText || !questionForm.questionText.trim()) {
+      showError('Please enter Question Content');
+      return;
+    }
+
+    const options = [questionForm.oA?.trim(), questionForm.oB?.trim(), questionForm.oC?.trim(), questionForm.oD?.trim()].filter(Boolean) as string[];
+    if (options.length < 2) {
+      showError('Please enter at least Option A and Option B');
+      return;
+    }
+
+    const correctAnswer = options[questionForm.correctAnswerIndex] || options[0] || '';
+    if (!correctAnswer) {
+      showError('Please select a valid Correct Answer');
+      return;
+    }
+
+    // Capitalize properly: 'Easy', 'Medium', 'Hard'
+    const rawDiff = (questionForm.difficulty || 'medium').toLowerCase();
+    const formattedDiff = rawDiff.charAt(0).toUpperCase() + rawDiff.slice(1);
+
     setLoading(true);
-    const options = [questionForm.oA, questionForm.oB, questionForm.oC, questionForm.oD].filter(Boolean);
-    const correctAnswer = options[questionForm.correctAnswerIndex] || '';
 
     try {
       const res = await fetch(`${API_URL}/api/questions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
         body: JSON.stringify({
-          content: questionForm.questionText,
+          content: questionForm.questionText.trim(),
           options,
           correctAnswer,
-          explanation: questionForm.explanation,
-          difficulty: questionForm.difficulty.toUpperCase(),
-          marks: questionForm.marks,
-          negativeMarks: questionForm.negativeMarks,
+          explanation: questionForm.explanation ? questionForm.explanation.trim() : '',
+          difficulty: formattedDiff,
+          marks: questionForm.marks || 4,
+          negativeMarks: questionForm.negativeMarks || 1,
           subjectId: questionForm.subjectId,
-          chapterId: questionForm.chapterId
+          chapterId: questionForm.chapterId || undefined
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to create question');
       setQuestionForm(prev => ({ ...prev, id: '', questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, explanation: '' }));
-      showSuccess('Question item linked in Central Bank!');
+      showSuccess('Question successfully added to Question Bank!');
     } catch (err: any) {
       showError(err.message);
     } finally {
@@ -156,15 +181,24 @@ export default function QuestionBankTab() {
   const handleSingleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingQuestionId) {
+      const options = [questionForm.oA?.trim(), questionForm.oB?.trim(), questionForm.oC?.trim(), questionForm.oD?.trim()].filter(Boolean) as string[];
+      if (options.length < 2) {
+        showError('Please enter at least Option A and Option B');
+        return;
+      }
+      const rawDiff = (questionForm.difficulty || 'medium').toLowerCase();
+      const formattedDiff = rawDiff.charAt(0).toUpperCase() + rawDiff.slice(1);
+      const correctAnswer = options[questionForm.correctAnswerIndex] || options[0] || '';
+
       try {
         const payload = {
           subjectId: questionForm.subjectId,
-          chapterId: questionForm.chapterId,
-          content: questionForm.questionText,
-          options: [questionForm.oA, questionForm.oB, questionForm.oC, questionForm.oD],
-          correctAnswer: `Option ${String.fromCharCode(65 + questionForm.correctAnswerIndex)}`,
-          explanation: questionForm.explanation,
-          difficulty: questionForm.difficulty
+          chapterId: questionForm.chapterId || undefined,
+          content: questionForm.questionText.trim(),
+          options,
+          correctAnswer,
+          explanation: questionForm.explanation ? questionForm.explanation.trim() : '',
+          difficulty: formattedDiff
         };
         const res = await fetch(`${API_URL}/api/questions/${editingQuestionId}`, {
           method: 'PUT',
@@ -174,13 +208,16 @@ export default function QuestionBankTab() {
           },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Failed to update question');
-        alert('Question updated successfully!');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || 'Failed to update question');
+        }
+        showSuccess('Question updated successfully!');
         setEditingQuestionId(null);
         setQuestionForm({ id: '', subjectId: questionForm.subjectId, chapterId: questionForm.chapterId, questionText: '', oA: '', oB: '', oC: '', oD: '', correctAnswerIndex: 0, difficulty: 'medium', marks: 4, negativeMarks: 1, tags: '', explanation: '' });
         fetchQuestions();
       } catch (err: any) {
-        alert(err.message);
+        showError(err.message);
       }
     } else {
       await handleCreateQuestion(e);
