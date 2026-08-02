@@ -99,30 +99,40 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] font-sans flex flex-col justify-between">
+    <div className="min-h-screen font-sans selection:bg-emerald-500/30 bg-slate-50 flex flex-col justify-between">
       <style>{`
         @keyframes scan-down {
           0% { transform: translateY(-100%); }
           100% { transform: translateY(100vh); }
         }
+        @keyframes float-up {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-120vh); }
+        }
       `}</style>
       {/* Navigation Header */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
-          scrolled ? 'bg-white shadow-md py-2' : 'bg-white/95 backdrop-blur-md border-b border-slate-105 py-4'
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${scrolled
+            ? 'bg-white shadow-md py-1.5 border-b border-slate-100/50'
+            : 'bg-transparent py-5'
+          }`}
       >
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between relative z-10">
           <Link to="/" className="flex items-center gap-3 cursor-pointer">
-            <img src={logo} alt="Ankurah Exams Logo" className="w-36 md:w-40 object-contain" />
+            <img
+              src={logo}
+              alt="Ankurah Exams Logo"
+              className={`object-contain transition-all duration-300 ${scrolled ? 'w-32 md:w-36' : 'w-40 md:w-48'}`}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-650">
+          <nav className={`hidden lg:flex items-center gap-8 text-sm font-semibold transition-colors duration-300 ${scrolled ? 'text-slate-650 hover:text-emerald-600' : 'text-white hover:text-emerald-300'}`}>
             {navLinks.map((link) => (
               <Link
                 key={link.label}
                 to={link.path}
-                className="hover:text-emerald-600 transition-colors duration-200 cursor-pointer font-bold text-[15px]"
+                className={`hover:text-emerald-400 transition-colors duration-200 cursor-pointer font-semibold text-sm ${scrolled ? 'text-slate-600 hover:text-emerald-600' : 'text-white/90 hover:text-white'}`}
               >
                 {link.label}
               </Link>
@@ -130,15 +140,27 @@ export default function ContactPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-slate-700 hover:bg-slate-100 text-[15px] font-extrabold transition-all px-4 py-2.5 rounded-full">
+            <Link
+              to="/login"
+              className={`text-[15px] font-bold transition-all px-4 py-2.5 rounded-full ${scrolled
+                  ? 'text-slate-700 hover:bg-slate-100'
+                  : 'text-white hover:bg-white/20'
+                }`}
+            >
               Login
             </Link>
-            <Link to="/register" className="bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-extrabold py-2.5 px-7 rounded-full shadow-sm hover:shadow-md transition-all">
+            <Link
+              to="/register"
+              className={`text-[15px] font-bold py-2.5 px-7 rounded-full shadow-sm hover:shadow-md transition-all ${scrolled
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-white text-emerald-900 hover:bg-emerald-50'
+                }`}
+            >
               Register
             </Link>
             {/* Mobile menu button */}
             <button
-              className="lg:hidden p-2 rounded-lg transition-colors text-slate-700 hover:bg-slate-100"
+              className={`lg:hidden p-2 rounded-lg transition-colors ${scrolled ? 'text-slate-700 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,125 +174,158 @@ export default function ContactPage() {
 
         {/* Mobile Nav Dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t bg-white border-slate-100">
+          <div className={`lg:hidden border-t ${scrolled ? 'bg-white border-slate-100' : 'bg-emerald-950/95 backdrop-blur-md border-white/10'}`}>
             <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-left py-3 px-4 rounded-lg text-[15px] font-semibold transition-colors cursor-pointer text-slate-700 hover:bg-slate-55 hover:text-emerald-600"
+                  className={`text-left py-3 px-4 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${scrolled ? 'text-slate-700 hover:bg-slate-50 hover:text-emerald-600' : 'text-white/90 hover:bg-white/10'}`}
                 >
                   {link.label}
                 </Link>
               ))}
               <div className="mt-2 pt-3 border-t border-slate-100/20 flex gap-3">
-                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors">Login</Link>
-                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">Register</Link>
+                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors">Login</Link>
+                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold bg-white text-emerald-900 hover:bg-emerald-50 transition-colors">Register</Link>
               </div>
             </div>
           </div>
         )}
       </header>
 
-      {/* Main Content */}
-      <main className="flex-grow pt-24">
+      {/* Main Content Area */}
+      <main className="flex-grow">
         {/* Hero Banner */}
-        <section className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white py-20 px-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-emerald-400/10 blur-[80px] rounded-full translate-y-10"></div>
-          <div className="max-w-4xl mx-auto text-center relative z-10 space-y-4">
-            <motion.h1 
-              initial={{ opacity: 0, y: -20 }}
+        <section className="relative flex flex-col items-center pt-32 md:pt-36 pb-12 overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 text-white text-center">
+          <BackgroundAnimations />
+
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center text-center space-y-4">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-2 text-white flex flex-wrap justify-center items-center gap-3">
+              {"Contact & Support".split(" ").map((word, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.5, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  transition={{
+                    duration: 0.6,
+                    delay: index * 0.12,
+                    ease: "easeOut"
+                  }}
+                  className="inline-block hover:text-emerald-300 transition-colors duration-300 cursor-default"
+                >
+                  {word}
+                </motion.span>
+              ))}
+            </h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-black tracking-tight"
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-medium"
             >
-              Contact & Support
-            </motion.h1>
-            <p className="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
               Have questions about student registration, timetables, or syllabus tracks? Get in touch with our academic coordinators.
-            </p>
+            </motion.p>
           </div>
         </section>
 
         {/* Contact Form and Details */}
-        <section className="py-20 max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="py-16 md:py-20 max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
             
-            {/* Details & Image Slot */}
-            <div className="lg:col-span-1 space-y-8">
-              <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm space-y-8">
-                <h3 className="text-2xl font-black text-slate-900">Academic Office</h3>
-                <div className="space-y-4">
-                  <div className="flex gap-3 text-slate-650">
-                    <MapPin className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-                    <span className="text-sm font-bold">Ankurah Educational Society, Central Campus, Hyderabad, India</span>
+            {/* Details & Campus Info Card */}
+            <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-8">
+              <div className="space-y-6">
+                <div className="inline-block p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <MapPin className="w-8 h-8" />
+                </div>
+                <h3 className="text-2xl font-extrabold text-slate-900">Academic Headquarters</h3>
+                <p className="text-slate-600 text-sm leading-relaxed font-medium">
+                  Have questions regarding online entrance test syllabus, registration fees, or timetable tracking? Reach out to our campus office.
+                </p>
+                <div className="space-y-4 pt-2 border-t border-slate-100">
+                  <div className="flex items-start gap-3 text-slate-700">
+                    <MapPin className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span className="text-sm font-semibold">Ankurah Educational Society, Central Campus, Hyderabad, TS, India</span>
                   </div>
-                  <div className="flex gap-3 text-slate-650">
-                    <Phone className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-                    <span className="text-sm font-bold">+91 98765 43210</span>
+                  <div className="flex items-center gap-3 text-slate-700">
+                    <Phone className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span className="text-sm font-semibold">+91 98765 43210</span>
                   </div>
-                  <div className="flex gap-3 text-slate-650">
-                    <Mail className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-                    <span className="text-sm font-bold">support@ankurah.com</span>
+                  <div className="flex items-center gap-3 text-slate-700">
+                    <Mail className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <span className="text-sm font-semibold">support@ankurah.com</span>
                   </div>
                 </div>
               </div>
 
-              {/* Image Placeholder */}
-              <div className="relative group overflow-hidden rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 aspect-video flex flex-col items-center justify-center text-slate-400 p-6">
-                <ImageIcon className="w-12 h-12 mb-3 text-slate-350" />
-                <p className="text-sm font-bold uppercase tracking-wider">[ Campus Office Image ]</p>
-                <p className="text-xs mt-1 text-slate-400">Resolution: 600 x 400 pixels</p>
+              {/* Office Image */}
+              <div className="relative group overflow-hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 aspect-video flex flex-col items-center justify-center text-slate-400 p-4">
+                <ImageIcon className="w-8 h-8 mb-2 text-slate-400" />
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">[ Campus Office Image ]</p>
               </div>
             </div>
 
             {/* Form */}
-            <div className="lg:col-span-2 bg-white p-8 rounded-2xl border border-slate-100 shadow-sm space-y-6">
-              <h3 className="text-2xl font-black text-slate-900">Send an Enquiry</h3>
+            <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6">
+              <div>
+                <h3 className="text-2xl font-extrabold text-slate-900 mb-1">Send an Enquiry</h3>
+                <p className="text-xs text-slate-500 font-medium">Fill out the form below and our coordinators will contact you.</p>
+              </div>
+
               {submitted && (
-                <div className="p-4 bg-emerald-50 border border-emerald-250 rounded-md text-emerald-805 text-sm font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Thank you! Your message has been received. Our coordinator will contact you shortly.</span>
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>Thank you! Your message has been received. Our team will get back to you shortly.</span>
                 </div>
               )}
-              <form onSubmit={handleSubmit} className="space-y-4 text-sm">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Full Name</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-semibold focus:outline-none focus:border-emerald-600"
-                    required
-                  />
+
+              <form onSubmit={handleSubmit} className="space-y-4 text-sm flex-grow flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Rakesh Kumar"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Email Address</label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="e.g. rakesh@example.com"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">Message / Query</label>
+                    <textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="How can we help you?"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-medium focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors h-28 resize-none"
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email Address</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-semibold focus:outline-none focus:border-emerald-600"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Message / Details</label>
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md text-slate-900 font-semibold focus:outline-none focus:border-emerald-600 h-32 resize-none"
-                    required
-                  />
-                </div>
+
                 <button
                   type="submit"
-                  className="w-full py-3 bg-emerald-655 hover:bg-emerald-700 text-white rounded-md font-extrabold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm text-sm"
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm mt-2 cursor-pointer"
                 >
                   <Send className="w-4 h-4" /> Send Message
                 </button>
               </form>
             </div>
+
           </div>
         </section>
       </main>

@@ -12,36 +12,55 @@ interface AuthProps {
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Animated background blobs
+// Animated background blobs & particles
 const AnimatedBackground = () => (
-  <div className="absolute inset-0 overflow-hidden pointer-events-none bg-slate-950">
-    <motion.div
-      animate={{
-        scale: [1, 1.2, 1],
-        x: [0, 100, 0],
-        y: [0, 50, 0],
-      }}
-      transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-      className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-emerald-600/30 rounded-full blur-[120px]"
-    />
-    <motion.div
-      animate={{
-        scale: [1, 1.5, 1],
-        x: [0, -100, 0],
-        y: [0, -50, 0],
-      }}
-      transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-      className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] bg-teal-600/20 rounded-full blur-[120px]"
-    />
-    <motion.div
-      animate={{
-        scale: [1, 1.3, 1],
-        x: [0, 50, 0],
-        y: [0, 100, 0],
-      }}
-      transition={{ duration: 18, repeat: Infinity, ease: "linear" }}
-      className="absolute top-[20%] right-[10%] w-[40vw] h-[40vw] bg-indigo-500/20 rounded-full blur-[100px]"
-    />
+  <div className="absolute inset-0 overflow-hidden pointer-events-none bg-gradient-to-br from-emerald-950 via-slate-950 to-emerald-950">
+    <style>{`
+      @keyframes scan-down {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100vh); }
+      }
+      @keyframes float-up {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(-120vh); }
+      }
+    `}</style>
+    <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[120px]"></div>
+    <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-teal-500/20 rounded-full blur-[140px]"></div>
+    <div className="absolute top-[30%] right-[20%] w-[350px] h-[350px] bg-emerald-400/10 rounded-full blur-[100px]"></div>
+
+    <div className="absolute inset-0 flex justify-between px-8 md:px-24 opacity-15">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="h-full w-[1px] bg-emerald-400 relative overflow-hidden">
+          <div
+            className="absolute top-0 left-0 w-full h-48 bg-gradient-to-b from-transparent via-emerald-300 to-transparent opacity-80"
+            style={{
+              animation: `scan-down ${6 + i * 2}s linear infinite`,
+              animationDelay: `${i * 1.2}s`
+            }}
+          ></div>
+        </div>
+      ))}
+    </div>
+
+    {[...Array(12)].map((_, i) => {
+      const size = Math.random() * 80 + 30;
+      return (
+        <div
+          key={`particle-${i}`}
+          className="absolute rounded-full bg-emerald-400"
+          style={{
+            width: size,
+            height: size,
+            left: `${(i * 8.3) + Math.random() * 4}%`,
+            bottom: '-20%',
+            opacity: Math.random() * 0.08 + 0.03,
+            animation: `float-up ${18 + Math.random() * 10}s linear infinite`,
+            animationDelay: `${Math.random() * -15}s`
+          }}
+        />
+      );
+    })}
   </div>
 );
 
@@ -84,7 +103,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
         return;
       }
 
-        if (view === 'register') {
+      if (view === 'register') {
         if (!name.trim()) { setError('Please enter your full name.'); setLoading(false); return; }
         if (!mobile.trim() || mobile.length < 10) { setError('Please enter a valid mobile number.'); setLoading(false); return; }
         if (password.length < 6) { setError('Password must be at least 6 characters.'); setLoading(false); return; }
@@ -142,85 +161,92 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
     else if (mode === 'login') navigate('/login', { replace: true });
   };
 
-  const inputClasses = "w-full pl-11 pr-4 py-3.5 bg-slate-50/50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium transition-all focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none placeholder:text-slate-400";
+  const inputClasses = "w-full pl-11 pr-4 py-3 sm:py-3.5 md:py-2.5 bg-slate-900/90 border border-emerald-500/30 rounded-xl text-white text-sm font-medium transition-all focus:bg-slate-900 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/20 shadow-[0_4px_20px_rgba(0,0,0,0.4)] outline-none placeholder:text-slate-400";
   const iconClasses = "absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200";
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden font-sans selection:bg-emerald-500/30">
+    <div className="min-h-screen md:h-screen relative flex flex-col justify-center items-center p-4 sm:p-6 md:p-6 md:overflow-hidden font-sans selection:bg-emerald-500/30 text-white bg-gradient-to-b from-emerald-950 via-slate-950 to-emerald-950">
       <AnimatedBackground />
 
-      <motion.div
-        layout
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className={`relative z-10 w-full transition-all duration-500 ${view === 'register' ? 'max-w-[650px]' : 'max-w-[440px]'}`}
-      >
-        <div className="bg-white/95 backdrop-blur-2xl rounded-xl p-6 sm:p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-white/60">
-          
-          <div className="flex flex-col items-center mb-8">
-            <Link to="/" className="mb-6 block cursor-pointer transition-transform hover:scale-105">
-              <img src={logo} alt="Ankurah Exams" className="w-44 sm:w-48 object-contain drop-shadow-sm" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            </Link>
+      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col justify-between md:justify-center min-h-[85vh] md:min-h-0 py-2 md:py-0 md:gap-3">
 
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={view}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-                className="text-center"
-              >
-                <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-                  {view === 'register' ? 'Create an Account' : view === 'forgot-password' ? 'Reset Password' : 'Welcome Back'}
-                </h2>
-                <p className="text-slate-500 text-sm mt-2 font-medium">
-                  {view === 'register'
-                    ? 'Start your exam preparation journey today'
-                    : view === 'forgot-password'
-                    ? 'Enter your email to receive a secure reset link'
-                    : 'Sign in to continue your preparation'}
-                </p>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+        {/* Top Branding Section with HIGHLY ELEVATED LOGO BADGE */}
+        <div className="flex flex-col items-center pt-1 md:pt-0 pb-3 md:pb-1">
+          <Link to="/" className="group relative mb-4 md:mb-2.5 cursor-pointer flex flex-col items-center">
+            {/* Multi-layered glow behind logo */}
+            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-400/40 via-teal-400/50 to-emerald-400/40 blur-2xl rounded-full opacity-80 group-hover:opacity-100 transition-opacity animate-pulse"></div>
+            
+            {/* Elevated Illuminated Card Plate for Logo */}
+            <div className="relative z-10 bg-white/95 px-6 py-2.5 md:py-2 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.6)] border-2 border-emerald-400/50 transform group-hover:scale-105 transition-transform duration-300">
+              <img
+                src={logo}
+                alt="Ankurah Exams"
+                className="w-40 sm:w-48 md:w-36 object-contain drop-shadow-md"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+            </div>
+          </Link>
 
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="text-center mt-1"
+            >
+              <h2 className="text-xl sm:text-2xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-emerald-300 tracking-tight">
+                {view === 'register' ? 'Create an Account' : view === 'forgot-password' ? 'Reset Password' : 'Welcome Back'}
+              </h2>
+              <p className="text-emerald-200/80 text-xs sm:text-sm mt-1 font-medium">
+                {view === 'register'
+                  ? 'Start your exam preparation journey today'
+                  : view === 'forgot-password'
+                  ? 'Enter your email to receive a secure reset link'
+                  : 'Sign in to continue your preparation'}
+              </p>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Middle Section: Form Fields Seamlessly Integrated */}
+        <div className="w-full my-auto md:my-0 py-1 md:py-0">
           <AnimatePresence>
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginBottom: 20 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 className="overflow-hidden"
               >
-                <div className="p-3.5 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                  <p className="text-red-700 text-sm font-semibold leading-relaxed">{error}</p>
+                <div className="p-3 rounded-xl bg-red-950/80 border border-red-500/40 flex items-start gap-3 backdrop-blur-md shadow-lg">
+                  <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                  <p className="text-red-200 text-xs sm:text-sm font-semibold leading-relaxed">{error}</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3 md:gap-2.5">
             {view === 'forgot-password' && resetSent ? (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                className="p-6 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col items-center justify-center gap-4 text-center mb-4"
+                className="p-6 rounded-xl bg-emerald-950/80 border border-emerald-500/40 backdrop-blur-xl flex flex-col items-center justify-center gap-4 text-center my-4 shadow-xl"
               >
-                <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center mb-1">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-400" />
                 </div>
-                <p className="text-emerald-800 text-sm font-semibold leading-relaxed">
-                  Reset link sent to <span className="text-emerald-900 font-bold">{email}</span>. <br/>Please check your inbox.
+                <p className="text-emerald-200 text-xs sm:text-sm font-semibold leading-relaxed">
+                  Reset link sent to <span className="text-white font-bold">{email}</span>. <br/>Please check your inbox.
                 </p>
-                <button type="button" onClick={() => switchMode('login')} className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-full text-sm font-bold shadow-md hover:bg-emerald-700 transition-colors">
+                <button type="button" onClick={() => switchMode('login')} className="mt-2 px-6 py-3 bg-emerald-400 text-slate-950 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg transition-colors cursor-pointer">
                   Return to Sign In
                 </button>
               </motion.div>
             ) : (
               <>
-                <div className={`grid grid-cols-1 ${view === 'register' ? 'sm:grid-cols-2' : ''} gap-4`}>
+                <div className="flex flex-col gap-3 md:gap-2.5">
                   <AnimatePresence initial={false}>
                     {view === 'register' && (
                       <motion.div
@@ -228,7 +254,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
                         className="overflow-hidden relative"
                       >
                         <div className="relative">
-                          <UserPlus className={`${iconClasses} ${focusedField === 'name' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                          <UserPlus className={`${iconClasses} ${focusedField === 'name' ? 'text-emerald-300' : 'text-slate-400'}`} />
                           <input id="auth_name" type="text" value={name} onChange={(e) => setName(e.target.value)} onFocus={() => setFocusedField('name')} onBlur={() => setFocusedField(null)} placeholder="Full Name" className={inputClasses} required autoComplete="name" />
                         </div>
                       </motion.div>
@@ -236,7 +262,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
                   </AnimatePresence>
 
                   <motion.div layout className="relative">
-                    <Mail className={`${iconClasses} ${focusedField === 'email' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                    <Mail className={`${iconClasses} ${focusedField === 'email' ? 'text-emerald-300' : 'text-slate-400'}`} />
                     <input id="auth_email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)} placeholder="Email Address" className={inputClasses} required autoComplete="email" />
                   </motion.div>
 
@@ -247,7 +273,7 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
                         className="overflow-hidden relative"
                       >
                         <div className="relative">
-                          <Phone className={`${iconClasses} ${focusedField === 'mobile' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                          <Phone className={`${iconClasses} ${focusedField === 'mobile' ? 'text-emerald-300' : 'text-slate-400'}`} />
                           <input id="auth_mobile" type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)} onFocus={() => setFocusedField('mobile')} onBlur={() => setFocusedField(null)} placeholder="Mobile Number" className={inputClasses} required minLength={10} maxLength={15} />
                         </div>
                       </motion.div>
@@ -261,74 +287,74 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
                         className="overflow-hidden relative"
                       >
                         <div className="relative">
-                          <Key className={`${iconClasses} ${focusedField === 'password' ? 'text-emerald-500' : 'text-slate-400'}`} />
+                          <Key className={`${iconClasses} ${focusedField === 'password' ? 'text-emerald-300' : 'text-slate-400'}`} />
                           <input id="auth_password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} onFocus={() => setFocusedField('password')} onBlur={() => setFocusedField(null)} placeholder={view === 'register' ? 'Password (min 6 chars)' : 'Password'} style={{ paddingRight: '44px' }} className={inputClasses} required autoComplete={view === 'register' ? 'new-password' : 'current-password'} />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer">
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-300 transition-colors cursor-pointer">
                             {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
-
                 </div>
 
                 <AnimatePresence>
                   {view === 'login' && (
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-end pt-1">
-                      <button type="button" onClick={() => switchMode('forgot-password')} className="text-[13px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex justify-end pt-0.5">
+                      <button type="button" onClick={() => switchMode('forgot-password')} className="text-xs font-bold text-emerald-300 hover:text-white transition-colors cursor-pointer">
                         Forgot Password?
                       </button>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <motion.div layout className="pt-4 flex justify-center">
+                <motion.div layout className="pt-1.5 flex justify-center">
                   <button
                     id="auth_submit"
                     type="submit"
                     disabled={loading}
-                    className="w-full sm:w-[280px] flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl font-bold text-sm shadow-[0_8px_20px_rgba(16,185,129,0.3)] hover:shadow-[0_12px_25px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed"
+                    className="w-full py-3.5 md:py-2.5 bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 hover:from-emerald-300 hover:to-teal-200 text-slate-950 font-black text-sm sm:text-base uppercase tracking-wider rounded-xl shadow-[0_12px_35px_rgba(16,185,129,0.4)] active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {loading ? (
-                      <span className="w-5 h-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      <span className="w-5 h-5 border-2 border-slate-950/40 border-t-slate-950 rounded-full animate-spin" />
                     ) : view === 'register' ? (
-                      <>Create Account <ArrowRight className="w-4.5 h-4.5" /></>
+                      <>Create Account <ArrowRight className="w-5 h-5" /></>
                     ) : view === 'forgot-password' ? (
-                      <>Send Reset Link <ArrowRight className="w-4.5 h-4.5" /></>
+                      <>Send Reset Link <ArrowRight className="w-5 h-5" /></>
                     ) : (
-                      <>Sign In <ArrowRight className="w-4.5 h-4.5" /></>
+                      <>Sign In <ArrowRight className="w-5 h-5" /></>
                     )}
                   </button>
                 </motion.div>
               </>
             )}
           </form>
-
-          {!resetSent && (
-            <motion.div layout className="text-center mt-8 pt-6 border-t border-slate-100">
-              <p className="text-sm font-medium text-slate-500">
-                {view === 'register' ? (
-                  <>
-                    Already have an account?{' '}
-                    <button type="button" onClick={() => switchMode('login')} className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors">Sign In</button>
-                  </>
-                ) : view === 'login' ? (
-                  <>
-                    Don't have an account?{' '}
-                    <button type="button" onClick={() => switchMode('register')} className="text-emerald-600 font-bold hover:text-emerald-700 transition-colors">Register Free</button>
-                  </>
-                ) : (
-                  <button type="button" onClick={() => switchMode('login')} className="text-slate-500 font-bold hover:text-emerald-600 transition-colors flex items-center justify-center gap-1.5 mx-auto">
-                    <ArrowLeft className="w-4 h-4" /> Back to Sign In
-                  </button>
-                )}
-              </p>
-            </motion.div>
-          )}
-
         </div>
-      </motion.div>
+
+        {/* Bottom Switch Links */}
+        {!resetSent && (
+          <motion.div layout className="text-center pt-3 md:pt-2 pb-1 border-t border-emerald-500/20 mt-2 md:mt-1">
+            <p className="text-xs sm:text-sm font-medium text-emerald-200/80">
+              {view === 'register' ? (
+                <>
+                  Already have an account?{' '}
+                  <button type="button" onClick={() => switchMode('login')} className="text-white font-black hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-4 ml-1">Sign In</button>
+                </>
+              ) : view === 'login' ? (
+                <>
+                  Don't have an account?{' '}
+                  <button type="button" onClick={() => switchMode('register')} className="text-white font-black hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-4 ml-1">Register Free</button>
+                </>
+              ) : (
+                <button type="button" onClick={() => switchMode('login')} className="text-emerald-200 font-bold hover:text-white transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer">
+                  <ArrowLeft className="w-4 h-4" /> Back to Sign In
+                </button>
+              )}
+            </p>
+          </motion.div>
+        )}
+
+      </div>
     </div>
   );
 }

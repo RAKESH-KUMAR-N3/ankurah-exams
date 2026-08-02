@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, Award, TrendingUp, CheckCircle2, ShieldCheck, Calculator, Cpu, Activity, Microscope, Atom, Globe, Briefcase, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { BookOpen, Award, TrendingUp, CheckCircle2, ShieldCheck, Calculator, Cpu, Activity, Microscope, Atom, Globe, Briefcase, ArrowRight, Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import heroImage from '../../assets/hero-image.png';
 import cardsBg from '../../assets/cards-bg.jpg';
@@ -74,6 +74,16 @@ const TypewriterEffect = () => {
 const BackgroundAnimations = () => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+      <style>{`
+        @keyframes scan-down {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+        @keyframes float-up {
+          0% { transform: translateY(0); }
+          100% { transform: translateY(-120vh); }
+        }
+      `}</style>
 
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-emerald-400/20 rounded-full blur-[100px]"></div>
       <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-teal-500/20 rounded-full blur-[120px]"></div>
@@ -171,10 +181,92 @@ const smoothScroll = (id: string) => {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+const MobileSplashScreen = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="fixed inset-0 z-[100] flex flex-col justify-between items-center p-6 bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 overflow-hidden font-sans select-none">
+      <BackgroundAnimations />
+
+      {/* Top Header / Badge */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="relative z-10 pt-6 flex flex-col items-center"
+      >
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 backdrop-blur-md rounded-xl text-emerald-200 text-xs font-bold border border-emerald-400/30 shadow-lg">
+          <Sparkles className="w-4 h-4 text-emerald-300 animate-pulse" />
+          <span className="tracking-wider uppercase">Welcome to Ankurah Exams</span>
+        </div>
+      </motion.div>
+
+      {/* Center Section: Big Logo with Multi-Layer Glow & Illuminated Badge */}
+      <div className="relative z-10 flex flex-col items-center justify-center my-auto w-full max-w-sm px-4">
+        {/* Multi-layered animated glow behind logo */}
+        <div className="absolute w-80 h-80 bg-gradient-to-r from-emerald-400/40 via-teal-300/50 to-emerald-400/40 rounded-full blur-3xl animate-pulse pointer-events-none"></div>
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.85, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.9, type: 'spring', stiffness: 120 }}
+          className="relative z-10 flex flex-col items-center text-center"
+        >
+          {/* Elevated Light Card Plate for Logo */}
+          <div className="bg-white/95 px-8 py-4.5 rounded-2xl shadow-[0_20px_45px_rgba(0,0,0,0.6)] border-2 border-emerald-400/50 backdrop-blur-md">
+            <img
+              src={logo}
+              alt="Ankurah Exams Logo"
+              className="w-56 sm:w-64 max-w-full object-contain drop-shadow-md"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Bottom Section: Continue Button ONLY (rounded-xl, NOT rounded-full) */}
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-xs pb-6 flex flex-col items-center"
+      >
+        <button
+          onClick={() => navigate('/login')}
+          className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-extrabold text-base py-4 px-8 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.4)] flex items-center justify-center gap-3 tracking-wider uppercase transition-all duration-300 active:scale-95 group cursor-pointer"
+        >
+          <span>Continue</span>
+          <ArrowRight className="w-5 h-5 text-emerald-700 group-hover:translate-x-1 transition-transform" />
+        </button>
+      </motion.div>
+    </div>
+  );
+};
+
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [startTyping, setStartTyping] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+  const [showMobileSplash, setShowMobileSplash] = useState(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  if (isMobile) {
+    return <MobileSplashScreen />;
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -248,7 +340,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <Link
               to="/login"
-              className={`text-sm font-bold transition-all px-4 py-2.5 rounded-full ${scrolled
+              className={`text-sm font-bold transition-all px-4 py-2.5 rounded-xl ${scrolled
                   ? 'text-slate-700 hover:bg-slate-100'
                   : 'text-white hover:bg-white/20'
                 }`}
@@ -257,7 +349,7 @@ export default function LandingPage() {
             </Link>
             <Link
               to="/register"
-              className={`text-sm font-bold py-2.5 px-7 rounded-full shadow-sm hover:shadow-md transition-all ${scrolled
+              className={`text-sm font-bold py-2.5 px-7 rounded-xl shadow-sm hover:shadow-md transition-all ${scrolled
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   : 'bg-white text-emerald-900 hover:bg-emerald-50'
                 }`}
@@ -293,8 +385,8 @@ export default function LandingPage() {
                 </Link>
               ))}
               <div className="mt-2 pt-3 border-t border-slate-100/20 flex gap-3">
-                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors">Login</Link>
-                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold bg-white text-emerald-900 hover:bg-emerald-50 transition-colors">Register</Link>
+                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors">Login</Link>
+                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-xl text-sm font-bold bg-white text-emerald-900 hover:bg-emerald-50 transition-colors">Register</Link>
               </div>
             </div>
           </div>
@@ -610,7 +702,7 @@ export default function LandingPage() {
                   <span className="text-2xl font-bold tracking-wide">Exams</span>
                 </div>
                 
-                <button className="bg-white hover:bg-slate-50 text-emerald-500 px-8 py-3 rounded-full font-bold uppercase tracking-wider text-sm shadow-md transition-transform hover:-translate-y-1">
+                <button className="bg-white hover:bg-slate-50 text-emerald-500 px-8 py-3 rounded-xl font-bold uppercase tracking-wider text-sm shadow-md transition-transform hover:-translate-y-1">
                   Get Started
                 </button>
               </div>

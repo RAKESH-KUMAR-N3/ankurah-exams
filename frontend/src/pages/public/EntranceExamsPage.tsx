@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calculator, Cpu, Activity, Microscope, Atom, CheckCircle2, Image as ImageIcon } from 'lucide-react';
+import { Calculator, Cpu, Activity, Microscope, Atom, CheckCircle2, Award } from 'lucide-react';
 import { motion } from 'motion/react';
 import logo from '../../assets/logo.png';
 import examsCardBg from '../../assets/exams-card-bg.jpg';
@@ -87,44 +87,44 @@ export default function EntranceExamsPage() {
 
   const ENTRANCE_DETAILS = [
     {
+      name: 'TG EAPCET (Telangana EAPCET)',
+      desc: 'Telangana state engineering & agriculture entrance aligned with Telangana state board intermediate education guidelines.',
+      icon: <Atom className="w-9 h-9 text-emerald-650" />,
+      features: ['TG state syllabus alignment', 'Mock exam report cards', 'Formula sheets library', 'Active coordinators chat'],
+      gradient: "from-teal-500/10 to-emerald-500/10 hover:border-teal-500"
+    },
+    {
+      name: 'AP EAPCET (Andhra Pradesh EAPCET)',
+      desc: 'Andhra Pradesh state entrance exam mapping engineering, agriculture, and pharmacy intermediate textbooks syllabus.',
+      icon: <Microscope className="w-9 h-9 text-emerald-650" />,
+      features: ['State-specific mock papers', 'Intermediate textbook references', 'Timed practice sessions', 'Chapter wise test tracking'],
+      gradient: "from-emerald-500/10 to-green-500/10 hover:border-emerald-500"
+    },
+    {
+      name: 'NEET UG (Medical Entrance)',
+      desc: 'National Entrance Test for Medical (MBBS/BDS). Detailed Zoology and Botany chapter coverage and NCERT mocks.',
+      icon: <Activity className="w-9 h-9 text-emerald-650" />,
+      features: ['180 Questions timed tests', 'Complete botany/zoology coverage', 'Interactive mock review reports', 'Biology diagram worksheets'],
+      gradient: "from-rose-500/10 to-emerald-500/10 hover:border-rose-500"
+    },
+    {
       name: 'JEE Main (Joint Entrance Examination)',
-      desc: 'National-level engineering screening test. Ankurah covers complete Class 11 and Class 12 Syllabus across Physics, Chemistry, and Mathematics. Focus on high-yield sections like coordinate geometry, kinematics, thermodynamics, and organic compounds.',
-      icon: <Calculator className="w-10 h-10 text-emerald-650" />,
+      desc: 'National-level engineering screening test. Complete Class 11 & 12 Physics, Chemistry, and Mathematics coverage.',
+      icon: <Calculator className="w-9 h-9 text-emerald-650" />,
       features: ['Full Syllabus Mock Exams', 'Daily MCQ goals of 25+ items', 'Negative marking simulators (-1 mark)', 'Formula sheet pdf catalogs'],
       gradient: "from-emerald-500/10 to-teal-500/10 hover:border-emerald-500"
     },
     {
       name: 'JEE Advanced',
-      desc: 'Highly demanding examination targeting Indian Institutes of Technology (IITs). High emphasis on multivariable calculus, rigid body dynamics, complex coordinate vectors, and inorganic analysis mechanisms.',
-      icon: <Cpu className="w-10 h-10 text-emerald-650" />,
+      desc: 'Demanding examination targeting IITs. High emphasis on multivariable calculus, dynamics, and advanced problem solving.',
+      icon: <Cpu className="w-9 h-9 text-emerald-650" />,
       features: ['Multi-correct option tests', 'Numerical value questions support', 'Detailed question step explanations', 'Advanced difficulty tagging'],
       gradient: "from-teal-500/10 to-cyan-500/10 hover:border-teal-500"
-    },
-    {
-      name: 'NEET UG (Medical Entrance)',
-      desc: 'National Eligibility cum Entrance Test for Medical (MBBS/BDS) programs. Detailed Zoology and Botany chapters coverage. Visual diagrams based practice quizzes and NCERT-aligned mock assessments.',
-      icon: <Activity className="w-10 h-10 text-emerald-650" />,
-      features: ['180 Questions timed tests', 'Complete botany/zoology coverage', 'Interactive mock review reports', 'Biology diagram worksheets'],
-      gradient: "from-rose-500/10 to-emerald-500/10 hover:border-rose-500"
-    },
-    {
-      name: 'AP EAPCET',
-      desc: 'Andhra Pradesh state entrance exam mapping engineering, agricultural, and pharmacy streams. Focuses on AP state intermediate textbooks syllabus and previous year question banks.',
-      icon: <Microscope className="w-10 h-10 text-emerald-650" />,
-      features: ['State-specific mock papers', 'Intermediate textbook references', 'Timed practice sessions', 'Chapter wise test tracking'],
-      gradient: "from-emerald-500/10 to-green-500/10 hover:border-emerald-500"
-    },
-    {
-      name: 'TG EAPCET',
-      desc: 'Telangana state engineering, agricultural, and medical common entrance. Highly aligned with Telangana state board intermediate education guidelines and weightage schemas.',
-      icon: <Atom className="w-10 h-10 text-emerald-650" />,
-      features: ['TG state syllabus alignment', 'Mock exam report cards', 'Formula sheets library', 'Active coordinators chat'],
-      gradient: "from-teal-500/10 to-emerald-500/10 hover:border-teal-500"
     }
   ];
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] font-sans flex flex-col justify-between">
+    <div className="min-h-screen font-sans selection:bg-emerald-500/30 bg-slate-50 flex flex-col justify-between">
       <style>{`
         @keyframes scan-down {
           0% { transform: translateY(-100%); }
@@ -137,21 +137,27 @@ export default function EntranceExamsPage() {
       `}</style>
       {/* Navigation Header */}
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${
-          scrolled ? 'bg-white shadow-md py-2' : 'bg-white/95 backdrop-blur-md border-b border-slate-105 py-4'
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out ${scrolled
+            ? 'bg-white shadow-md py-1.5 border-b border-slate-100/50'
+            : 'bg-transparent py-5'
+          }`}
       >
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between relative z-10">
           <Link to="/" className="flex items-center gap-3 cursor-pointer">
-            <img src={logo} alt="Ankurah Exams Logo" className="w-36 md:w-40 object-contain" />
+            <img
+              src={logo}
+              alt="Ankurah Exams Logo"
+              className={`object-contain transition-all duration-300 ${scrolled ? 'w-32 md:w-36' : 'w-40 md:w-48'}`}
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-650">
+          <nav className={`hidden lg:flex items-center gap-8 text-sm font-semibold transition-colors duration-300 ${scrolled ? 'text-slate-650 hover:text-emerald-600' : 'text-white hover:text-emerald-300'}`}>
             {navLinks.map((link) => (
               <Link
                 key={link.label}
                 to={link.path}
-                className="hover:text-emerald-600 transition-colors duration-200 cursor-pointer font-bold text-[15px]"
+                className={`hover:text-emerald-400 transition-colors duration-200 cursor-pointer font-semibold text-sm ${scrolled ? 'text-slate-600 hover:text-emerald-600' : 'text-white/90 hover:text-white'}`}
               >
                 {link.label}
               </Link>
@@ -159,15 +165,27 @@ export default function EntranceExamsPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link to="/login" className="text-slate-700 hover:bg-slate-100 text-[15px] font-extrabold transition-all px-4 py-2.5 rounded-full">
+            <Link
+              to="/login"
+              className={`text-[15px] font-bold transition-all px-4 py-2.5 rounded-full ${scrolled
+                  ? 'text-slate-700 hover:bg-slate-100'
+                  : 'text-white hover:bg-white/20'
+                }`}
+            >
               Login
             </Link>
-            <Link to="/register" className="bg-emerald-600 hover:bg-emerald-700 text-white text-[15px] font-extrabold py-2.5 px-7 rounded-full shadow-sm hover:shadow-md transition-all">
+            <Link
+              to="/register"
+              className={`text-[15px] font-bold py-2.5 px-7 rounded-full shadow-sm hover:shadow-md transition-all ${scrolled
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-white text-emerald-900 hover:bg-emerald-50'
+                }`}
+            >
               Register
             </Link>
             {/* Mobile menu button */}
             <button
-              className="lg:hidden p-2 rounded-lg transition-colors text-slate-700 hover:bg-slate-100"
+              className={`lg:hidden p-2 rounded-lg transition-colors ${scrolled ? 'text-slate-700 hover:bg-slate-100' : 'text-white hover:bg-white/10'}`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,55 +199,74 @@ export default function EntranceExamsPage() {
 
         {/* Mobile Nav Dropdown */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t bg-white border-slate-100">
+          <div className={`lg:hidden border-t ${scrolled ? 'bg-white border-slate-100' : 'bg-emerald-950/95 backdrop-blur-md border-white/10'}`}>
             <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.label}
                   to={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="text-left py-3 px-4 rounded-lg text-[15px] font-semibold transition-colors cursor-pointer text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                  className={`text-left py-3 px-4 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${scrolled ? 'text-slate-700 hover:bg-slate-50 hover:text-emerald-600' : 'text-white/90 hover:bg-white/10'}`}
                 >
                   {link.label}
                 </Link>
               ))}
               <div className="mt-2 pt-3 border-t border-slate-100/20 flex gap-3">
-                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors">Login</Link>
-                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">Register</Link>
+                <Link to="/login" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold text-white bg-white/20 hover:bg-white/30 transition-colors">Login</Link>
+                <Link to="/register" className="flex-1 text-center py-2.5 px-4 rounded-full text-sm font-bold bg-white text-emerald-900 hover:bg-emerald-50 transition-colors">Register</Link>
               </div>
             </div>
           </div>
         )}
       </header>
 
-      {/* Main Content */}
-      <main className="flex-grow pt-24">
+      {/* Main Content Area */}
+      <main className="flex-grow">
         {/* Hero Banner */}
-        <section className="bg-gradient-to-br from-emerald-800 to-emerald-950 text-white py-20 px-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-emerald-400/10 blur-[80px] rounded-full translate-y-10"></div>
-          <div className="max-w-4xl mx-auto text-center relative z-10 space-y-4">
-            <motion.h1 
-              initial={{ opacity: 0, y: -20 }}
+        <section className="relative flex flex-col items-center pt-32 md:pt-36 pb-12 overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 text-white text-center">
+          <BackgroundAnimations />
+
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-6 flex flex-col items-center text-center space-y-4">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-2 text-white flex flex-wrap justify-center items-center gap-3">
+              {"Entrance Examinations".split(" ").map((word, index) => (
+                <motion.span
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.5, filter: "blur(8px)" }}
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  transition={{
+                    duration: 0.6,
+                    delay: index * 0.12,
+                    ease: "easeOut"
+                  }}
+                  className="inline-block hover:text-emerald-300 transition-colors duration-300 cursor-default"
+                >
+                  {word}
+                </motion.span>
+              ))}
+            </h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-black tracking-tight"
+              transition={{ duration: 0.8, delay: 0.5 }}
+              className="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-medium"
             >
-              Entrance Examinations
-            </motion.h1>
-            <p className="text-emerald-100 text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
               Gain comprehensive coverage, detailed mock evaluations, and subject sheets designed specifically for target engineering and medical entrance tests.
-            </p>
+            </motion.p>
           </div>
         </section>
 
         {/* Exam Grid */}
-        <section className="py-20 max-w-7xl mx-auto px-6 space-y-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <section className="py-16 md:py-20 max-w-7xl mx-auto px-6 space-y-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {ENTRANCE_DETAILS.map((exam, idx) => (
               <motion.div
-                whileHover={{ y: -8, scale: 1.01 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: idx * 0.08 }}
+                whileHover={{ y: -8, scale: 1.015 }}
                 key={idx}
-                className={`bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6 relative group overflow-hidden cursor-pointer ${exam.gradient}`}
+                className={`bg-white p-7 rounded-2xl border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-6 relative group overflow-hidden cursor-pointer ${exam.gradient}`}
               >
                 <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0">
                   <img src={examsCardBg} alt="Bg" className="w-full h-full object-cover" />
@@ -240,13 +277,13 @@ export default function EntranceExamsPage() {
                   <div className="p-3 bg-emerald-50 rounded-xl w-fit group-hover:bg-white/20 transition-colors duration-300">
                     {exam.icon}
                   </div>
-                  <h3 className="text-2xl font-black text-slate-900 group-hover:text-white transition-colors duration-300">
+                  <h3 className="text-xl font-extrabold text-slate-900 group-hover:text-white transition-colors duration-300">
                     {exam.name}
                   </h3>
-                  <p className="text-slate-650 group-hover:text-emerald-50 text-sm leading-relaxed font-semibold transition-colors duration-300">
+                  <p className="text-slate-650 group-hover:text-emerald-50 text-sm leading-relaxed font-medium transition-colors duration-300">
                     {exam.desc}
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-4">
+                  <div className="grid grid-cols-1 gap-2 pt-2">
                     {exam.features.map((feat, fIdx) => (
                       <div key={fIdx} className="flex items-center gap-2 text-xs text-slate-600 group-hover:text-emerald-100 font-bold transition-colors duration-300">
                         <CheckCircle2 className="w-4 h-4 text-emerald-500 group-hover:text-emerald-300 shrink-0" />
@@ -255,10 +292,10 @@ export default function EntranceExamsPage() {
                     ))}
                   </div>
                 </div>
-                
-                <div className="relative z-10 pt-6 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-xs text-slate-400 group-hover:text-emerald-200 transition-colors duration-300">
+
+                <div className="relative z-10 pt-5 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-xs text-slate-400 group-hover:text-emerald-200 transition-colors duration-300">
                   <span className="flex items-center gap-1 font-bold text-emerald-600 group-hover:text-emerald-300">
-                    <CheckCircle2 className="w-4 h-4" /> Live Syllabus Integration
+                    <CheckCircle2 className="w-4 h-4" /> Live Syllabus
                   </span>
                   <Link to="/register" className="font-extrabold text-slate-700 group-hover:text-white transition-colors uppercase tracking-wider">
                     Start Prep &rarr;
@@ -314,3 +351,4 @@ export default function EntranceExamsPage() {
     </div>
   );
 }
+
