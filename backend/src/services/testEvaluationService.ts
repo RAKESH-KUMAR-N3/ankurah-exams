@@ -65,20 +65,26 @@ export const evaluateTestAttempt = async (attemptId: string) => {
   let totalMarks = 0;
 
   // Get all questions for this attempt (queries apentrancequestions, tgentrancequestions, competitivequestionsbysubjects)
-  const questionIds = attempt.responses.map((r: any) => r.questionId);
-  const apQuestions = await ApEntranceQuestion.find({ _id: { $in: questionIds } });
-  const tgQuestions = await TgEntranceQuestion.find({ _id: { $in: questionIds } });
-  const compQuestions = await CompetitiveQuestionBySubject.find({ _id: { $in: questionIds } });
-  const legacyQuestions = await Question.find({ _id: { $in: questionIds } });
+  const questionIds = attempt.responses
+    .map((r: any) => (r.questionId?._id || r.questionId))
+    .filter((id: any) => id && mongoose.isValidObjectId(id));
+
+  const [apQuestions, tgQuestions, compQuestions, legacyQuestions] = await Promise.all([
+    ApEntranceQuestion.find({ _id: { $in: questionIds } }).lean(),
+    TgEntranceQuestion.find({ _id: { $in: questionIds } }).lean(),
+    CompetitiveQuestionBySubject.find({ _id: { $in: questionIds } }).lean(),
+    Question.find({ _id: { $in: questionIds } }).lean()
+  ]);
   const questions = [...apQuestions, ...tgQuestions, ...compQuestions, ...legacyQuestions];
   const questionMap = new Map();
   questions.forEach(q => questionMap.set(q._id.toString(), q));
 
-  totalMarks = questions.length * marksPerQuestion;
+  totalMarks = attempt.responses.length * marksPerQuestion;
 
   // Evaluate each response using global marks scheme
   const evaluatedResponses = attempt.responses.map((resp: any) => {
-    const questionIdStr = resp.questionId.toString();
+    const rawQId = resp.questionId?._id || resp.questionId;
+    const questionIdStr = rawQId ? rawQId.toString() : '';
     const q: any = questionMap.get(questionIdStr);
     
     let isCorrect = false;
@@ -107,11 +113,17 @@ export const evaluateTestAttempt = async (attemptId: string) => {
   attempt.submittedAt = attempt.submittedAt || new Date();
   await attempt.save();
 
-  // Update performance metrics
+  // Update performance metrics safely without breaking submission flow
   if (test.examIds && test.examIds.length > 0) {
-    // Update metrics for each exam this test belongs to
     for (const examId of test.examIds) {
-      await updatePerformanceMetrics(attempt.studentId.toString(), examId.toString(), questions, evaluatedResponses);
+      try {
+        const rawExamId = examId?._id || examId;
+        if (rawExamId && mongoose.isValidObjectId(rawExamId)) {
+          await updatePerformanceMetrics(attempt.studentId.toString(), rawExamId.toString(), questions, evaluatedResponses);
+        }
+      } catch (metricsErr) {
+        console.warn('Non-blocking metrics update warning:', metricsErr);
+      }
     }
   }
 
@@ -124,12 +136,14 @@ const updatePerformanceMetrics = async (
   questions: any[], 
   evaluatedResponses: any[]
 ) => {
+  if (!studentId || !examId || !mongoose.isValidObjectId(studentId) || !mongoose.isValidObjectId(examId)) return;
+
   let metric = await PerformanceMetric.findOne({ studentId, examId });
   
   if (!metric) {
     metric = new PerformanceMetric({
-      studentId,
-      examId,
+      studentId: new mongoose.Types.ObjectId(studentId),
+      examId: new mongoose.Types.ObjectId(examId),
       overallAccuracy: 0,
       chapterWiseStats: []
     });
@@ -140,7 +154,11 @@ const updatePerformanceMetrics = async (
   
   questions.forEach(q => {
     if (!q || !q.chapterId) return;
-    const chapterIdStr = (q.chapterId?._id || q.chapterId).toString();
+    const rawChap = q.chapterId?._id || q.chapterId;
+    if (!rawChap) return;
+    const chapterIdStr = rawChap.toString();
+    if (!mongoose.isValidObjectId(chapterIdStr)) return;
+
     const response = evaluatedResponses.find(r => {
       const rqId = r.questionId?._id || r.questionId;
       return rqId && rqId.toString() === q._id.toString();

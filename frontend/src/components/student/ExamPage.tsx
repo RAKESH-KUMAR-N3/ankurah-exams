@@ -175,24 +175,33 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
     clearInterval(autoSaveRef.current!);
 
     setLoading(true);
+    setError('');
     try {
       // Save final responses first
       const responseArray = buildResponseArray();
-      await saveExamProgress(attempt._id, responseArray);
+      try {
+        await saveExamProgress(attempt._id, responseArray);
+      } catch (saveErr) {
+        console.warn('Auto-save progress before submit notice:', saveErr);
+      }
 
-      const timeTaken = Math.floor((Date.now() - startTimeRef.current) / 1000);
+      const timeTaken = Math.floor((Date.now() - (startTimeRef.current || Date.now())) / 1000);
       const data = await submitExam(attempt._id, timeTaken);
-      setResult(data.result);
+      
+      const evalResult = data.result || data;
+      setResult(evalResult);
       setPhase('scorecard');
-      onComplete?.(data.result);
+      setLoading(false);
+      onComplete?.(evalResult);
 
       // Exit fullscreen
       if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
     } catch (e: any) {
+      console.error('Submit error:', e);
       setError(e.message || 'Submit failed');
       setLoading(false);
     }
-  }, [attempt, phase, responses]);
+  }, [attempt, phase, buildResponseArray, onComplete]);
 
   const handleResumeAfterWarning = () => {
     setPhase('running');
@@ -240,8 +249,9 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
     const wrong = responses.filter((r: any) => !r.isCorrect && r.selectedOption).length;
     const unattempted = responses.filter((r: any) => !r.selectedOption).length;
     const total = responses.length;
-    const score = result.score || 0;
-    const totalMarks = result.totalMarks || total * ((test as any).marksPerQuestion || 4);
+    const score = result.score ?? 0;
+    const marksPerQ = (test as any)?.marksPerQuestion ?? (result?.testId?.marksPerQuestion ?? 4);
+    const totalMarks = result.totalMarks || (total * marksPerQ) || 100;
     const percentage = totalMarks > 0 ? Math.round((score / totalMarks) * 100) : 0;
     return { correct, wrong, unattempted, total, score, totalMarks, percentage };
   })();
@@ -330,12 +340,36 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
   // ════════════════════════════════════════════════════════════
   //  RENDER — Scorecard
   // ════════════════════════════════════════════════════════════
-  if (phase === 'scorecard' && result) {
-    const stats = scorecardStats!;
+  if (phase === 'scorecard') {
+    if (loading && !result) {
+      return (
+        <div className="exam-page scorecard-screen flex items-center justify-center p-8">
+          <div className="text-center space-y-3">
+            <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-slate-600 font-bold text-base">Loading scorecard & analysis...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (!result) {
+      return (
+        <div className="exam-page scorecard-screen flex items-center justify-center p-8">
+          <div className="text-center space-y-4 max-w-md bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <XCircle size={48} className="text-red-500 mx-auto" />
+            <h3 className="font-bold text-slate-800 text-lg">Unable to load scorecard</h3>
+            <p className="text-slate-500 text-sm">{error || 'Test result could not be retrieved.'}</p>
+            <button className="exam-btn-primary mx-auto" onClick={onClose}>Back to Tests</button>
+          </div>
+        </div>
+      );
+    }
+
+    const stats = scorecardStats || { correct: 0, wrong: 0, unattempted: 0, total: 0, score: 0, totalMarks: 0, percentage: 0 };
     const resultResponses = result.responses || [];
     const currentReviewResp = resultResponses[reviewIndex] || {};
     const currentQ = typeof currentReviewResp.questionId === 'object' ? currentReviewResp.questionId : null;
-    const isCorrect = currentReviewResp.isCorrect;
+    const isCorrect = !!currentReviewResp.isCorrect;
     const attempted = !!currentReviewResp.selectedOption;
 
     return (
@@ -500,7 +534,21 @@ export default function ExamPage({ test, attemptId, initialPhase, onClose, onCom
                     )}
                   </div>
                 ) : (
-                  <div className="text-center py-12 text-slate-400">Loading question review...</div>
+                  <div className="space-y-4 py-6">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                      <span className="font-bold text-slate-800 text-sm">Question {reviewIndex + 1} of {resultResponses.length}</span>
+                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                        isCorrect ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        attempted ? 'bg-red-50 text-red-700 border-red-200' :
+                        'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>
+                        {isCorrect ? '✓ Correct' : attempted ? '✗ Wrong' : '— Skipped'}
+                      </span>
+                    </div>
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+                      <p className="text-slate-700"><strong>Selected Answer:</strong> {currentReviewResp.selectedOption || 'None (Skipped)'}</p>
+                    </div>
+                  </div>
                 )}
 
                 {/* Bottom Navigation (Prev / Next) */}

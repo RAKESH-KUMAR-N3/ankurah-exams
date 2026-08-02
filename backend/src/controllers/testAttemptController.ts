@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Response } from 'express';
 import { AuthRequest as Request } from '../middlewares/authMiddleware';
 import TestAttempt from '../models/TestAttempt';
@@ -23,7 +24,9 @@ export const populateAttemptQuestions = async (attempt: any, selectFields: strin
   const attemptObj = attempt.toObject ? attempt.toObject() : attempt;
   if (!attemptObj.responses || attemptObj.responses.length === 0) return attemptObj;
 
-  const qIds = attemptObj.responses.map((r: any) => r.questionId).filter(Boolean);
+  const qIds = attemptObj.responses
+    .map((r: any) => (r.questionId?._id || r.questionId))
+    .filter((id: any) => id && mongoose.isValidObjectId(id));
   if (qIds.length === 0) return attemptObj;
 
   const [ap, tg, comp, legacy] = await Promise.all([
@@ -39,8 +42,9 @@ export const populateAttemptQuestions = async (attempt: any, selectFields: strin
   });
 
   attemptObj.responses.forEach((r: any) => {
-    if (r.questionId && qMap.has(r.questionId.toString())) {
-      r.questionId = qMap.get(r.questionId.toString());
+    const rawId = (r.questionId?._id || r.questionId)?.toString();
+    if (rawId && qMap.has(rawId)) {
+      r.questionId = qMap.get(rawId);
     }
   });
 
@@ -267,14 +271,17 @@ export const submitTest = async (req: Request, res: Response): Promise<void> => 
     const { attemptId } = req.params;
     const { timeTakenSeconds } = req.body;
     
-    const attempt = await TestAttempt.findOne({ _id: attemptId, studentId: req.user?._id });
+    let attempt = await TestAttempt.findOne({ _id: attemptId, studentId: req.user?._id });
     if (!attempt) {
       res.status(404).json({ message: 'Attempt not found' });
       return;
     }
 
-    if (attempt.status !== 'In-Progress') {
-      res.status(400).json({ message: 'This attempt has already been submitted' });
+    if (attempt.status === 'Completed' || attempt.status === 'Force-Submitted') {
+      let result = await TestAttempt.findById(attempt._id)
+        .populate({ path: 'testId', select: 'title testType duration marksPerQuestion negativeMarksPerQuestion' });
+      result = await populateAttemptQuestions(result, 'content options correctAnswer explanation difficulty');
+      res.json({ message: 'Test already submitted', result });
       return;
     }
 
@@ -296,7 +303,8 @@ export const submitTest = async (req: Request, res: Response): Promise<void> => 
     
     res.json({ message: 'Test submitted successfully', result });
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    console.error('submitTest error:', error);
+    res.status(500).json({ message: error.message || 'Failed to submit test' });
   }
 };
 
