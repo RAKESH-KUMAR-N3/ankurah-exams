@@ -12,12 +12,13 @@ import AnnouncementsTab from '../../components/admin/tabs/AnnouncementsTab';
 interface AdminManagementProps {
   onRefresh: () => void;
   activeTab: string;
+  onNavigate?: (tab: string) => void;
 }
 
-export default function AdminManagement({ activeTab }: AdminManagementProps) {
+export default function AdminManagement({ activeTab, onNavigate }: AdminManagementProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 md:p-8 space-y-8">
-      {activeTab === 'dashboard' && <DashboardOverviewTab />}
+    <div className="bg-transparent space-y-6 text-slate-100">
+      {activeTab === 'dashboard' && <DashboardOverviewTab onNavigate={onNavigate} />}
 
       {/* --- SUBTAB PANELS --- */}
       <div className="grid grid-cols-1 gap-8 pt-4">

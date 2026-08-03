@@ -6,19 +6,40 @@ import Timetable from '../models/Timetable';
 // @route   POST /api/timetables
 // @access  Admin
 export const createTimetable = asyncHandler(async (req: Request, res: Response) => {
-  const { categoryId, examId, studentTypeId, subjectId, chapterId, date, startTime, endTime, studyTopic, revision, practiceMCQs, assignment } = req.body;
+  const { 
+    planId, examId, studentTypeId, subjectIds, subjectId, chapterName, 
+    chapterId, date, scheduleType, dayOfWeek, startTime, endTime, 
+    studyTopic, imageUrl, revision, practiceMCQs, assignment 
+  } = req.body;
+
   const timetable = await Timetable.create({
-    categoryId, examId, studentTypeId, subjectId, chapterId, date, startTime, endTime, studyTopic, revision, practiceMCQs, assignment
+    planId: planId || examId,
+    examId: examId || planId,
+    studentTypeId,
+    subjectIds: subjectIds || (subjectId ? [subjectId] : []),
+    subjectId,
+    chapterName,
+    chapterId,
+    date,
+    scheduleType: scheduleType || 'daily',
+    dayOfWeek,
+    startTime,
+    endTime,
+    studyTopic,
+    imageUrl,
+    revision,
+    practiceMCQs,
+    assignment
   });
+
   res.status(201).json(timetable);
 });
 
 // @desc    Get all Timetable entries
 // @route   GET /api/timetables
-// @access  Admin
+// @access  Admin / Student
 export const getTimetables = asyncHandler(async (req: Request, res: Response) => {
-  const timetables = await Timetable.find({})
-    .populate('categoryId examId studentTypeId subjectId chapterId');
+  const timetables = await Timetable.find({}).sort({ createdAt: -1 });
   res.json(timetables);
 });
 
@@ -26,23 +47,10 @@ export const getTimetables = asyncHandler(async (req: Request, res: Response) =>
 // @route   PUT /api/timetables/:id
 // @access  Admin
 export const updateTimetable = asyncHandler(async (req: Request, res: Response) => {
-  const { categoryId, examId, studentTypeId, subjectId, chapterId, date, startTime, endTime, studyTopic, revision, practiceMCQs, assignment } = req.body;
   const timetable = await Timetable.findById(req.params.id);
   
   if (timetable) {
-    timetable.categoryId = categoryId || timetable.categoryId;
-    timetable.examId = examId || timetable.examId;
-    timetable.studentTypeId = studentTypeId || timetable.studentTypeId;
-    timetable.subjectId = subjectId || timetable.subjectId;
-    timetable.chapterId = chapterId || timetable.chapterId;
-    timetable.date = date || timetable.date;
-    timetable.startTime = startTime || timetable.startTime;
-    timetable.endTime = endTime || timetable.endTime;
-    timetable.studyTopic = studyTopic || timetable.studyTopic;
-    timetable.revision = revision || timetable.revision;
-    timetable.practiceMCQs = practiceMCQs || timetable.practiceMCQs;
-    timetable.assignment = assignment || timetable.assignment;
-
+    Object.assign(timetable, req.body);
     const updatedTimetable = await timetable.save();
     res.json(updatedTimetable);
   } else {

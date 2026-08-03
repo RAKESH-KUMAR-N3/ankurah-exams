@@ -4,12 +4,12 @@ import { useAdminContext } from '../../../context/AdminContext';
 export default function PaymentsTab() {
   const { allTransactions } = useAdminContext();
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-bold text-slate-800">Student Transaction History</h3>
-      <div className="overflow-x-auto rounded-xl border border-slate-100">
-        <table className="w-full text-left border-collapse text-xs">
+    <div className="space-y-6 text-slate-100">
+      <h3 className="text-lg font-black text-white uppercase tracking-wider">Student Transaction History</h3>
+      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/90 shadow-xl">
+        <table className="w-full text-left border-collapse text-xs text-slate-200">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase">
+            <tr className="bg-slate-800/80 border-b border-slate-700/80 text-slate-300 font-bold uppercase tracking-wider">
               <th className="p-4">Transaction ID</th>
               <th className="p-4">Student</th>
               <th className="p-4">Plan & Exam</th>
@@ -18,16 +18,16 @@ export default function PaymentsTab() {
               <th className="p-4">Status</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-800/80">
             {allTransactions.map((txn: any) => (
-              <tr key={txn._id} className="border-b border-slate-100 hover:bg-slate-50 font-semibold text-slate-700">
-                <td className="p-4 font-mono text-emerald-600">{txn.transactionId}</td>
-                <td className="p-4 font-bold text-slate-900">{txn.studentId?.name}<br /><span className="text-xs font-normal text-slate-500">{txn.studentId?.email}</span></td>
-                <td className="p-4 text-slate-700">{txn.planId?.name}<br /><span className="text-[10px] uppercase text-emerald-500 font-bold">Exam ID: {txn.planId?.examId}</span></td>
-                <td className="p-4 font-black text-slate-800">₹{txn.amount}</td>
-                <td className="p-4">{new Date(txn.createdAt).toLocaleDateString()}</td>
+              <tr key={txn._id} className="hover:bg-slate-800/50 font-semibold text-slate-200 transition-colors">
+                <td className="p-4 font-mono text-emerald-400 font-bold">{txn.transactionId}</td>
+                <td className="p-4 font-bold text-white">{txn.studentId?.name}<br /><span className="text-xs font-normal text-slate-400">{txn.studentId?.email}</span></td>
+                <td className="p-4 text-slate-300">{txn.planId?.name}<br /><span className="text-[10px] uppercase text-emerald-400 font-bold">Exam ID: {txn.planId?.examId}</span></td>
+                <td className="p-4 font-black text-white font-mono">₹{txn.amount}</td>
+                <td className="p-4 text-slate-400">{new Date(txn.createdAt).toLocaleDateString()}</td>
                 <td className="p-4">
-                  <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${txn.status === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${txn.status === 'success' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
                     {txn.status}
                   </span>
                 </td>

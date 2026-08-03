@@ -41,6 +41,8 @@ export default function ExamPage({
   const [markedForReview, setMarkedForReview] = useState<Record<string, boolean>>({});
   const [visitedQuestions, setVisitedQuestions] = useState<Set<number>>(new Set([0]));
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showMobilePalette, setShowMobilePalette] = useState(false);
+  const [showMobileReviewPalette, setShowMobileReviewPalette] = useState(false);
 
   useEffect(() => {
     if (phase === 'running') {
@@ -331,141 +333,136 @@ export default function ExamPage({
     const totalQuestions = test?.questions?.length || test?.dynamicTotalQuestions || 30;
 
     return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-emerald-950/90 to-slate-900 flex items-center justify-center p-4 overflow-y-auto font-sans">
-        <div className="w-full max-w-2xl bg-slate-900/80 backdrop-blur-xl border-2 border-emerald-500/80 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 text-white relative overflow-hidden my-auto">
+      <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-sans">
+        <div className="w-full max-w-2xl bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-8 shadow-2xl space-y-5 text-slate-900 relative overflow-hidden my-auto">
           
           {/* Glowing Spine Accent */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600"></div>
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600"></div>
 
           {/* Top Ribbon & Header */}
-          <div className="flex items-center justify-between pb-4 border-b border-emerald-800/40 flex-wrap gap-2">
+          <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <span className="p-2.5 bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 rounded-xl">
+              <span className="p-2.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl shadow-xs">
                 <BookOpen className="w-6 h-6" />
               </span>
               <div>
-                <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-widest block">
+                <span className="text-[10px] font-mono font-black uppercase text-emerald-700 tracking-widest block">
                   OFFICIAL MOCK EXAM BRIEFING
                 </span>
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
                   {test.title}
                 </h2>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-mono font-black text-xs rounded-lg uppercase tracking-wider">
+              <span className="px-3 py-1 bg-slate-100 border border-slate-200 text-slate-800 font-mono font-black text-xs rounded-lg uppercase tracking-wider">
                 {test.testType || 'CHAPTER TEST'}
               </span>
-              <span className="px-3 py-1 bg-amber-500/20 border border-amber-400/40 text-amber-300 font-mono font-black text-xs rounded-lg uppercase tracking-wider">
+              <span className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-900 font-mono font-black text-xs rounded-lg uppercase tracking-wider">
                 {test.targetDifficulty || 'Mixed Level'}
               </span>
             </div>
           </div>
 
-          {/* Specs Bar Grid (4 Sharp Cards) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                <Clock className="w-3 h-3 text-emerald-400" /> Duration
+          {/* Specs Bar Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                <Clock className="w-3 h-3 text-emerald-600" /> Duration
               </span>
-              <span className="text-base font-black text-white font-mono">{test.duration || 60} Mins</span>
+              <span className="text-sm sm:text-base font-black text-slate-900 font-mono">{test.duration || 60} Mins</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                <Flag className="w-3 h-3 text-emerald-400" /> Questions
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                <Flag className="w-3 h-3 text-emerald-600" /> Questions
               </span>
-              <span className="text-base font-black text-white font-mono">{totalQuestions} Qs</span>
+              <span className="text-sm sm:text-base font-black text-slate-900 font-mono">{totalQuestions} Qs</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Marking
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Marking
               </span>
-              <span className="text-base font-black text-emerald-400 font-mono">+{(test as any).marksPerQuestion || 4} pts / Q</span>
+              <span className="text-sm sm:text-base font-black text-emerald-700 font-mono">+{(test as any).marksPerQuestion || 4} pts / Q</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center gap-1">
-                <XCircle className="w-3 h-3 text-rose-400" /> Negative
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1">
+                <XCircle className="w-3 h-3 text-rose-600" /> Negative
               </span>
-              <span className="text-base font-black text-rose-400 font-mono">-{(test as any).negativeMarksPerQuestion || 1} wrong</span>
+              <span className="text-sm sm:text-base font-black text-rose-700 font-mono">-{(test as any).negativeMarksPerQuestion || 1} wrong</span>
             </div>
           </div>
 
-          {/* Academic Scope Breakdown (Subject, Chapter & Target Exam) */}
-          <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/60 space-y-2.5">
-            <h4 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
-              <Trophy className="w-3.5 h-3.5 text-amber-400" /> Academic Scope & Syllabus
+          {/* Academic Scope Breakdown */}
+          <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 space-y-3 shadow-2xs">
+            <h4 className="text-xs font-black uppercase text-emerald-900 tracking-wider flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5 text-amber-600" /> Academic Scope & Syllabus
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-0.5">
-                <span className="text-[9px] font-mono text-slate-400 uppercase block">Target Exam</span>
-                <span className="font-bold text-white line-clamp-1">{examName}</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+              <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
+                <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Target Exam</span>
+                <span className="font-black text-slate-900 line-clamp-1">{examName}</span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-0.5">
-                <span className="text-[9px] font-mono text-slate-400 uppercase block">Subject Involved</span>
-                <span className="font-bold text-emerald-300 line-clamp-1">{subjectName}</span>
+              <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
+                <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Subject Involved</span>
+                <span className="font-black text-emerald-800 line-clamp-1">{subjectName}</span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 space-y-0.5">
-                <span className="text-[9px] font-mono text-slate-400 uppercase block">Chapter Covered</span>
-                <span className="font-bold text-amber-300 line-clamp-1">{chapterName}</span>
+              <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
+                <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Chapter Covered</span>
+                <span className="font-black text-amber-800 line-clamp-1">{chapterName}</span>
               </div>
             </div>
           </div>
 
           {/* Instructions text if provided */}
           {test.instructions && (
-            <div className="p-3.5 rounded-xl bg-slate-800/50 border border-slate-700/60 space-y-1">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">Special Instructions</span>
-              <p className="text-xs text-slate-300 font-medium leading-relaxed">{test.instructions}</p>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider block">Special Instructions</span>
+              <p className="text-xs text-slate-700 font-medium leading-relaxed">{test.instructions}</p>
             </div>
           )}
 
           {/* Exam Rules & Security Warnings */}
           <div className="space-y-2 pt-1">
-            <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Strict Anti-Cheating & Exam Regulations
+            <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Strict Anti-Cheating & Exam Regulations
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-slate-300">
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/40 border border-slate-700/40">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-bold text-slate-700">
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>Full screen mandatory during exam</span>
               </div>
 
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/40 border border-slate-700/40">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                 <span>1st tab switch = Strike Warning</span>
               </div>
 
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/40 border border-slate-700/40">
-                <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 border border-slate-200">
+                <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>2nd tab switch = Auto Submit</span>
-              </div>
-
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-800/40 border border-slate-700/40">
-                <Clock className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>Auto-submits when time expires</span>
               </div>
             </div>
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs font-bold">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold">
               {error}
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200">
             <button 
               onClick={onClose}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer border border-slate-200"
             >
               ← Cancel & Exit
             </button>
@@ -473,7 +470,7 @@ export default function ExamPage({
             <button 
               onClick={handleStart} 
               disabled={loading}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
             >
               {loading ? 'Starting Exam Environment...' : '🚀 START OFFICIAL EXAM NOW'}
             </button>
@@ -575,61 +572,74 @@ export default function ExamPage({
     const attempted = !!currentReviewResp.selectedOption;
 
     return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-emerald-950/90 to-slate-900 flex flex-col font-sans text-white overflow-hidden">
+      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
         
         {/* TOP COMPACT SCORE & METRICS BAR */}
-        <header className="px-4 py-3 bg-slate-900/90 border-b border-emerald-800/40 flex items-center justify-between shrink-0 shadow-lg backdrop-blur-md gap-4 flex-wrap">
-          
-          {/* Left: Test Info */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold shadow-xs">
-              <Trophy className="w-4 h-4 text-amber-400" />
+        <header className="p-3 bg-white border-b border-slate-200 shrink-0 shadow-2xs space-y-2.5">
+          {/* Top Row: Icon + Scorecard Analysis + Exit Button Top Right */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center font-bold shadow-2xs shrink-0">
+                <Trophy className="w-3.5 h-3.5 text-amber-600" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-[9px] font-mono font-black uppercase text-amber-700 tracking-widest block leading-tight">
+                  SCORECARD ANALYSIS
+                </span>
+                <h3 className="text-xs font-black text-slate-900 truncate max-w-[180px] sm:max-w-md">
+                  {test?.title || result?.testId?.title || 'Practice Test'}
+                </h3>
+              </div>
             </div>
-            <div>
-              <span className="text-[9px] font-mono font-black uppercase text-amber-400 tracking-widest block">
-                CBT SCORECARD ANALYSIS
-              </span>
-              <h3 className="text-xs sm:text-sm font-black text-white truncate max-w-xs sm:max-w-md">
-                {test?.title || result?.testId?.title || 'Practice Test'}
-              </h3>
-            </div>
+
+            {/* Exit Action Top Right */}
+            <button
+              onClick={onClose}
+              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1 border border-slate-200 shrink-0"
+            >
+              <X className="w-3.5 h-3.5" /> <span>EXIT</span>
+            </button>
           </div>
 
-          {/* Center: Integrated Score & Breakdown Pills */}
-          <div className="flex items-center gap-3 text-xs font-mono font-black">
-            <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 rounded-lg flex items-center gap-2 shadow-xs">
-              <span>SCORE: {netScore} / {maxMarks}</span>
-              <span className="px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px]">{percentage}%</span>
+          {/* Row 2: Marks Score Pill, Palette Drawer Button, and Correct/Wrong Breakdown */}
+          <div className="flex items-center justify-between gap-2 text-xs font-mono font-black flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg flex items-center gap-1.5 shadow-2xs">
+                <span>SCORE: {netScore} / {maxMarks}</span>
+                <span className="px-1.5 py-0.2 bg-emerald-600 text-white rounded text-[10px]">{percentage}%</span>
+              </div>
+
+              {/* Mobile Question Palette Toggle */}
+              <button
+                onClick={() => setShowMobileReviewPalette(true)}
+                className="md:hidden px-2 py-1 bg-slate-100 border border-slate-200 text-slate-800 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-200"
+              >
+                <span>Palette ({reviewIndex + 1}/{totalCount})</span>
+                <span className="text-[10px]">▾</span>
+              </button>
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 text-[11px]">
-              <span className="px-2 py-0.5 bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 rounded">
+            {/* Correct, Wrong & Skipped Breakdown Pills */}
+            <div className="flex items-center gap-1.5 text-[10px] flex-wrap">
+              <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded font-bold">
                 ✓ {correctCount} Correct (+{gainedMarks})
               </span>
-              <span className="px-2 py-0.5 bg-rose-950/80 border border-rose-500/40 text-rose-400 rounded">
+              <span className="px-2 py-0.5 bg-rose-50 border border-rose-200 text-rose-700 rounded font-bold">
                 ✗ {wrongCount} Wrong (-{lostMarks})
               </span>
-              <span className="px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-400 rounded">
+              <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-600 rounded font-bold">
                 — {unattemptedCount} Skipped
               </span>
             </div>
           </div>
-
-          {/* Right: Exit Action */}
-          <button
-            onClick={onClose}
-            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 border border-slate-700 shrink-0"
-          >
-            <X className="w-4 h-4" /> Return to Dashboard
-          </button>
         </header>
 
         {/* MAIN VIEWPORT BODY (NO PAGE SCROLLBAR) */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
           
-          {/* Left Sidebar Question Review Palette */}
-          <aside className="w-full md:w-64 bg-slate-900/80 border-b md:border-b-0 md:border-r border-slate-800 p-4 flex flex-col shrink-0 overflow-y-auto space-y-4 backdrop-blur-md">
-            <h4 className="font-mono text-[10px] font-black uppercase tracking-wider text-slate-400">
+          {/* Left Sidebar Question Review Palette (Desktop Only) */}
+          <aside className="hidden md:flex md:w-64 bg-white border-r border-slate-200 p-4 flex-col shrink-0 overflow-y-auto space-y-4 shadow-2xs">
+            <h4 className="font-mono text-[10px] font-black uppercase tracking-wider text-slate-500">
               Question Palette ({totalCount})
             </h4>
 
@@ -639,12 +649,12 @@ export default function ExamPage({
                 const rAttempted = !!r.selectedOption;
                 const isActive = idx === reviewIndex;
 
-                let pillStyle = 'bg-slate-800/60 border border-slate-700 text-slate-400';
-                if (rCorrect) pillStyle = 'bg-emerald-600 border border-emerald-400 text-white font-black';
-                else if (rAttempted) pillStyle = 'bg-rose-600 border border-rose-400 text-white font-black';
+                let pillStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                if (rCorrect) pillStyle = 'bg-emerald-600 border border-emerald-500 text-white font-black';
+                else if (rAttempted) pillStyle = 'bg-rose-600 border border-rose-500 text-white font-black';
 
                 if (isActive) {
-                  pillStyle += ' ring-2 ring-emerald-400 scale-105 shadow-md shadow-emerald-500/30';
+                  pillStyle += ' ring-2 ring-emerald-500 scale-105 shadow-sm';
                 }
 
                 return (
@@ -659,49 +669,111 @@ export default function ExamPage({
               })}
             </div>
 
-            <div className="pt-3 border-t border-slate-800/80 space-y-2 text-[11px] font-bold text-slate-400">
+            <div className="pt-3 border-t border-slate-200 space-y-2 text-[11px] font-bold text-slate-600">
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-md bg-emerald-500 shrink-0" /> Correct (+{marksPerQ})
+                <span className="w-3 h-3 rounded-md bg-emerald-600 shrink-0" /> Correct (+{marksPerQ})
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-md bg-rose-500 shrink-0" /> Incorrect (-{negMarksPerQ})
+                <span className="w-3 h-3 rounded-md bg-rose-600 shrink-0" /> Incorrect (-{negMarksPerQ})
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-md bg-slate-700 shrink-0" /> Skipped (0)
+                <span className="w-3 h-3 rounded-md bg-slate-300 shrink-0" /> Skipped (0)
               </div>
             </div>
           </aside>
 
+          {/* Mobile Review Palette Drawer Overlay */}
+          {showMobileReviewPalette && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 sm:p-4 md:hidden">
+              <div className="w-full max-w-lg bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl space-y-4 text-slate-900 max-h-[85vh] overflow-y-auto my-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-amber-600" />
+                    <h3 className="text-sm font-black text-slate-900">Question Palette ({totalCount})</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowMobileReviewPalette(false)}
+                    className="p-1 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 cursor-pointer border border-slate-200"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-5 gap-2">
+                  {resultResponses.map((r: any, idx: number) => {
+                    const rCorrect = r.isCorrect;
+                    const rAttempted = !!r.selectedOption;
+                    const isActive = idx === reviewIndex;
+
+                    let pillStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                    if (rCorrect) pillStyle = 'bg-emerald-600 border border-emerald-500 text-white font-black';
+                    else if (rAttempted) pillStyle = 'bg-rose-600 border border-rose-500 text-white font-black';
+
+                    if (isActive) {
+                      pillStyle += ' ring-2 ring-emerald-500 scale-105 shadow-sm';
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setReviewIndex(idx);
+                          setShowMobileReviewPalette(false);
+                        }}
+                        className={`h-10 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${pillStyle}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-3 border-t border-slate-200 space-y-2 text-[11px] font-bold text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-emerald-600 shrink-0" /> Correct (+{marksPerQ})
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-rose-600 shrink-0" /> Incorrect (-{negMarksPerQ})
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-md bg-slate-300 shrink-0" /> Skipped (0)
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {/* Right Question Main Review Panel */}
-          <main className="flex-1 flex flex-col min-h-0 bg-slate-950/40 p-4 sm:p-6 overflow-y-auto space-y-5">
+          <main className="flex-1 flex flex-col min-h-0 bg-slate-50 p-2.5 sm:p-6 overflow-y-auto space-y-3">
             {currentQ ? (
-              <div className="flex-1 space-y-5 max-w-4xl mx-auto w-full flex flex-col justify-between">
+              <div className="space-y-3 max-w-4xl mx-auto w-full flex flex-col justify-start sm:justify-between">
                 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {/* Question Header & Status Badge */}
-                  <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono font-black text-white text-base">Question {reviewIndex + 1} of {resultResponses.length}</span>
-                      <span className={`text-xs font-mono font-black px-3 py-1 rounded-lg border uppercase tracking-wider ${
-                        isCorrect ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
-                        attempted ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
-                        'bg-slate-800 text-slate-400 border-slate-700'
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-black text-slate-900 text-xs sm:text-sm">Question {reviewIndex + 1} of {resultResponses.length}</span>
+                      <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-md border uppercase tracking-wider ${
+                        isCorrect ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                        attempted ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                        'bg-slate-100 text-slate-600 border-slate-200'
                       }`}>
-                        {isCorrect ? `✓ Correct (+${marksPerQ} Marks)` : attempted ? `✗ Incorrect (-${negMarksPerQ} Mark)` : '— Skipped (0 Marks)'}
+                        {isCorrect ? `✓ Correct (+${marksPerQ})` : attempted ? `✗ Incorrect (-${negMarksPerQ})` : '— Skipped (0)'}
                       </span>
                     </div>
 
                     <button
                       onClick={() => setDoubtModal({ open: true, questionId: currentQ._id || currentQ.id, questionText: currentQ.content })}
-                      className="px-3 py-1.5 bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-500/40 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5"
+                      className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-black transition-all cursor-pointer flex items-center gap-1 shrink-0"
                     >
-                      <MessageSquarePlus className="w-3.5 h-3.5 text-purple-400" /> Raise a Doubt
+                      <MessageSquarePlus className="w-3 h-3 text-indigo-600" /> Raise Doubt
                     </button>
                   </div>
 
                   {/* Question Text */}
-                  <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 shadow-md">
-                    <p className="text-sm sm:text-base font-bold text-white leading-relaxed">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/10 border border-slate-300/80 backdrop-blur-md shadow-xs">
+                    <p className="text-sm sm:text-base font-black text-slate-900 leading-relaxed">
                       {currentQ.content}
                     </p>
                   </div>
@@ -713,38 +785,38 @@ export default function ExamPage({
                       const isStudentChoice = opt === currentReviewResp.selectedOption;
                       const letter = String.fromCharCode(65 + oi);
 
-                      let containerStyle = 'bg-slate-900/70 border-slate-800 text-slate-300';
-                      let letterStyle = 'bg-slate-800 text-slate-400';
+                      let containerStyle = 'bg-slate-900/10 border-slate-300/80 backdrop-blur-md text-slate-800 hover:border-slate-400';
+                      let letterStyle = 'bg-slate-800 text-white font-mono font-black';
 
                       if (isAnswerKey) {
-                        containerStyle = 'bg-emerald-950/80 border-2 border-emerald-500 text-white font-bold shadow-md shadow-emerald-500/10';
-                        letterStyle = 'bg-emerald-500 text-white';
+                        containerStyle = 'bg-emerald-500/20 border-2 border-emerald-500 text-emerald-950 font-black shadow-xs';
+                        letterStyle = 'bg-emerald-600 text-white';
                       } else if (isStudentChoice && !isAnswerKey) {
-                        containerStyle = 'bg-rose-950/80 border-2 border-rose-500 text-white font-bold shadow-md shadow-rose-500/10';
+                        containerStyle = 'bg-rose-500/20 border-2 border-rose-500 text-rose-950 font-black shadow-xs';
                         letterStyle = 'bg-rose-600 text-white';
                       }
 
                       return (
                         <div
                           key={oi}
-                          className={`p-3.5 rounded-xl border text-sm font-semibold flex items-center justify-between gap-4 transition-all ${containerStyle}`}
+                          className={`p-3.5 sm:p-4 rounded-2xl border text-xs sm:text-sm font-bold flex items-center justify-between gap-3 transition-all ${containerStyle}`}
                         >
                           <div className="flex items-center gap-3">
-                            <span className={`w-7 h-7 rounded-lg font-mono font-black text-xs flex items-center justify-center shrink-0 ${letterStyle}`}>
+                            <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl text-xs flex items-center justify-center shrink-0 ${letterStyle}`}>
                               {letter}
                             </span>
                             <span className="leading-snug text-xs sm:text-sm">{opt}</span>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             {isAnswerKey && (
-                              <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Correct Answer
+                              <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-300 flex items-center gap-1 uppercase tracking-wider">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Correct
                               </span>
                             )}
                             {isStudentChoice && !isAnswerKey && (
-                              <span className="text-xs font-bold text-rose-400 flex items-center gap-1">
-                                <XCircle className="w-4 h-4 text-rose-400" /> Your Choice
+                              <span className="text-[10px] font-black text-rose-800 bg-rose-100 px-2 py-0.5 rounded-lg border border-rose-300 flex items-center gap-1 uppercase tracking-wider">
+                                <XCircle className="w-3.5 h-3.5 text-rose-600" /> Your Choice
                               </span>
                             )}
                           </div>
@@ -755,41 +827,43 @@ export default function ExamPage({
 
                   {/* Solution / Explanation */}
                   {currentQ.explanation && (
-                    <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 space-y-1">
-                      <span className="text-[10px] font-mono font-black uppercase text-amber-400 tracking-wider block">
+                    <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/15 via-amber-900/10 to-slate-900/20 border-2 border-amber-400/80 backdrop-blur-md space-y-1 shadow-xs">
+                      <span className="text-[10px] font-mono font-black uppercase text-amber-900 tracking-wider block">
                         Detailed Solution & Explanation
                       </span>
-                      <p className="text-xs text-amber-200 font-medium leading-relaxed">{currentQ.explanation}</p>
+                      <p className="text-xs text-slate-800 font-bold leading-relaxed">{currentQ.explanation}</p>
                     </div>
                   )}
 
                 </div>
 
                 {/* Bottom Nav Prev / Next */}
-                <div className="pt-4 border-t border-slate-800 flex items-center justify-between shrink-0">
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between shrink-0 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                   <button
                     onClick={() => setReviewIndex(i => Math.max(0, i - 1))}
                     disabled={reviewIndex === 0}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-black uppercase tracking-wider transition-all disabled:opacity-40 border border-slate-200 cursor-pointer flex items-center gap-1"
                   >
-                    <ChevronLeft className="w-4 h-4" /> Previous Question
+                    <ChevronLeft className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Previous Question</span><span className="sm:hidden">Prev</span>
                   </button>
 
-                  <span className="text-xs font-mono font-bold text-slate-400">
+                  <span className="text-xs font-mono font-bold text-slate-600">
                     {reviewIndex + 1} / {resultResponses.length}
                   </span>
 
                   <button
                     onClick={() => setReviewIndex(i => Math.min(resultResponses.length - 1, i + 1))}
                     disabled={reviewIndex === resultResponses.length - 1}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1 shadow-sm"
                   >
-                    Next Question <ChevronRight className="w-4 h-4" />
+                    <span className="hidden sm:inline">Next Question</span><span className="sm:hidden">Next</span> <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
               </div>
             ) : (
+
+
               <div className="p-6 text-slate-400 text-xs font-bold">No question data available for review.</div>
             )}
           </main>
@@ -798,34 +872,34 @@ export default function ExamPage({
 
         {/* Doubt Modal Overlay */}
         {doubtModal.open && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4 text-white">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <h3 className="text-base font-black">Raise a Doubt</h3>
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl space-y-4 text-slate-900">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                <h3 className="text-base font-black text-slate-900">Raise a Doubt</h3>
                 <button 
                   onClick={() => setDoubtModal({ open: false, questionId: '', questionText: '' })}
-                  className="text-slate-400 hover:text-white cursor-pointer"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-900 cursor-pointer border border-slate-200"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 italic line-clamp-3">
+              <p className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 italic line-clamp-3">
                 "{doubtModal.questionText}"
               </p>
               <textarea
-                className="w-full p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
+                className="w-full p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 font-medium shadow-2xs"
                 rows={4}
                 placeholder="Describe your doubt about this question..."
                 value={doubtContent}
                 onChange={e => setDoubtContent(e.target.value)}
               />
               {doubtSent ? (
-                <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Doubt submitted successfully!
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Doubt submitted successfully!
                 </div>
               ) : (
                 <button 
-                  className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:from-emerald-500 hover:to-teal-500 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md hover:from-emerald-700 hover:to-teal-700 transition-all cursor-pointer flex items-center justify-center gap-2"
                   onClick={handleRaiseDoubt}
                 >
                   <Send className="w-4 h-4" /> Submit Doubt
@@ -834,6 +908,7 @@ export default function ExamPage({
             </div>
           </div>
         )}
+
 
       </div>
     );
@@ -867,38 +942,47 @@ export default function ExamPage({
     };
 
     return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-emerald-950/80 to-slate-900 flex flex-col font-sans text-white overflow-hidden">
+      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
         
         {/* TOP BAR */}
-        <header className="h-16 px-4 sm:px-6 bg-slate-900/90 border-b border-emerald-800/40 flex items-center justify-between shrink-0 shadow-lg backdrop-blur-md">
+        <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center font-bold shadow-xs">
-              <BookOpen className="w-5 h-5" />
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold shadow-xs">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
             </div>
             <div>
-              <span className="text-[10px] font-mono font-black uppercase text-emerald-400 tracking-widest block">
-                CBT ONLINE MOCK EXAM ENVIRONMENT
+              <span className="text-[9px] font-mono font-black uppercase text-emerald-700 tracking-widest block">
+                CBT ONLINE MOCK EXAM
               </span>
-              <h3 className="text-sm sm:text-base font-black text-white truncate max-w-xs sm:max-w-md">
+              <h3 className="text-xs sm:text-base font-black text-slate-900 truncate max-w-[160px] sm:max-w-md">
                 {test.title}
               </h3>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Mobile Question Palette Toggle */}
+            <button
+              onClick={() => setShowMobilePalette(true)}
+              className="md:hidden px-2.5 py-1.5 bg-slate-100 border border-slate-200 text-slate-800 rounded-xl text-xs font-mono font-bold flex items-center gap-1 cursor-pointer hover:bg-slate-200"
+            >
+              <span>Questions ({currentIndex + 1}/{total})</span>
+              <span className="text-[10px]">▾</span>
+            </button>
+
             {/* Real-time Timer */}
-            <div className={`px-4 py-2 rounded-xl border flex items-center gap-2 font-mono font-black text-sm shadow-md ${
+            <div className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border flex items-center gap-1.5 sm:gap-2 font-mono font-black text-xs sm:text-sm shadow-xs ${
               timeWarning 
-                ? 'bg-rose-500/20 border-rose-500/50 text-rose-300 animate-pulse' 
-                : 'bg-emerald-500/20 border-emerald-400/40 text-emerald-300'
+                ? 'bg-rose-50 border-rose-200 text-rose-700 animate-pulse' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
             }`}>
-              <Clock className="w-4 h-4 text-emerald-400" />
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600" />
               <span>{formatTime(timeLeft)}</span>
             </div>
 
             {/* Answer Progress Pill */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 border border-slate-700 rounded-xl text-xs font-mono font-bold">
-              <span className="text-emerald-400">{answeredCount}</span> / <span>{total} Answered</span>
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-700">
+              <span className="text-emerald-700 font-bold">{answeredCount}</span> / <span>{total} Answered</span>
             </div>
           </div>
         </header>
@@ -906,33 +990,33 @@ export default function ExamPage({
         {/* MAIN EXAM BODY (Side Panel + Question Area) */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
           
-          {/* LEFT SIDEBAR: STYLISH CBT QUESTION PALETTE */}
-          <aside className="w-full md:w-72 bg-slate-900/80 border-b md:border-b-0 md:border-r border-slate-800 p-4 flex flex-col shrink-0 overflow-y-auto space-y-4 backdrop-blur-md">
+          {/* LEFT SIDEBAR: STYLISH CBT QUESTION PALETTE (Desktop Only) */}
+          <aside className="hidden md:flex md:w-72 bg-white border-r border-slate-200 p-4 flex-col shrink-0 overflow-y-auto space-y-4 shadow-2xs">
             
             {/* Palette Legend */}
             <div className="space-y-2">
-              <h4 className="text-[10px] font-mono font-black uppercase text-slate-400 tracking-wider">
+              <h4 className="text-[10px] font-mono font-black uppercase text-slate-500 tracking-wider">
                 Question Status Legend
               </h4>
 
               <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
-                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
-                  <span className="w-3 h-3 rounded-md bg-emerald-500 shrink-0" />
+                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800">
+                  <span className="w-3 h-3 rounded-md bg-emerald-600 shrink-0" />
                   <span>Answered ({answeredCount})</span>
                 </div>
 
-                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-purple-950/60 border border-purple-500/40 text-purple-300">
-                  <span className="w-3 h-3 rounded-md bg-purple-500 shrink-0" />
+                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800">
+                  <span className="w-3 h-3 rounded-md bg-indigo-600 shrink-0" />
                   <span>Review ({reviewCount})</span>
                 </div>
 
-                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300">
+                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
                   <span className="w-3 h-3 rounded-md bg-amber-500 shrink-0" />
                   <span>Skipped ({unansweredCount})</span>
                 </div>
 
-                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-400">
-                  <span className="w-3 h-3 rounded-md bg-slate-700 shrink-0" />
+                <div className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-600">
+                  <span className="w-3 h-3 rounded-md bg-slate-300 shrink-0" />
                   <span>Not Visited ({notVisitedCount})</span>
                 </div>
               </div>
@@ -940,7 +1024,7 @@ export default function ExamPage({
 
             {/* Grid of Number Pills */}
             <div className="space-y-2 flex-1">
-              <h4 className="text-[10px] font-mono font-black uppercase text-slate-400 tracking-wider">
+              <h4 className="text-[10px] font-mono font-black uppercase text-slate-500 tracking-wider">
                 Question Palette ({total} Questions)
               </h4>
 
@@ -955,18 +1039,18 @@ export default function ExamPage({
                   const isRev = !!markedForReview[qId];
                   const isVis = visitedQuestions.has(idx);
 
-                  let colorStyle = 'bg-slate-800/60 border border-slate-700 text-slate-400';
+                  let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
 
                   if (isCurrent) {
-                    colorStyle = 'ring-2 ring-emerald-400 bg-emerald-600 text-white font-black scale-105 shadow-md shadow-emerald-500/30';
+                    colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
                   } else if (isAns && isRev) {
-                    colorStyle = 'bg-purple-600 border border-purple-400 text-white font-black';
+                    colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
                   } else if (isRev) {
-                    colorStyle = 'bg-purple-950/80 border border-purple-500 text-purple-300 font-black';
+                    colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
                   } else if (isAns) {
-                    colorStyle = 'bg-emerald-950/90 border border-emerald-500 text-emerald-400 font-black';
+                    colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
                   } else if (isVis) {
-                    colorStyle = 'bg-amber-950/80 border border-amber-500/80 text-amber-300 font-black';
+                    colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
                   }
 
                   return (
@@ -985,46 +1069,124 @@ export default function ExamPage({
             </div>
           </aside>
 
+          {/* MOBILE PALETTE DRAWER OVERLAY */}
+          {showMobilePalette && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 sm:p-4 md:hidden">
+              <div className="w-full max-w-lg bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl space-y-4 text-slate-900 max-h-[85vh] overflow-y-auto my-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-emerald-600" />
+                    <h3 className="text-sm font-black text-slate-900">Question Palette ({total} Questions)</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowMobilePalette(false)}
+                    className="p-1 rounded-lg bg-slate-100 text-slate-500 hover:text-slate-900 cursor-pointer border border-slate-200"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800">
+                    <span className="w-3 h-3 rounded-md bg-emerald-600 shrink-0" />
+                    <span>Answered ({answeredCount})</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-800">
+                    <span className="w-3 h-3 rounded-md bg-indigo-600 shrink-0" />
+                    <span>Review ({reviewCount})</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800">
+                    <span className="w-3 h-3 rounded-md bg-amber-500 shrink-0" />
+                    <span>Skipped ({unansweredCount})</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-600">
+                    <span className="w-3 h-3 rounded-md bg-slate-300 shrink-0" />
+                    <span>Not Visited ({notVisitedCount})</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-5 gap-2 pt-2">
+                  {attempt.responses.map((_: any, idx: number) => {
+                    const qId = typeof attempt.responses[idx].questionId === 'object'
+                      ? attempt.responses[idx].questionId._id
+                      : attempt.responses[idx].questionId;
+
+                    const isCurrent = idx === currentIndex;
+                    const isAns = !!responses[qId];
+                    const isRev = !!markedForReview[qId];
+                    const isVis = visitedQuestions.has(idx);
+
+                    let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                    if (isCurrent) {
+                      colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
+                    } else if (isAns && isRev) {
+                      colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
+                    } else if (isRev) {
+                      colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
+                    } else if (isAns) {
+                      colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
+                    } else if (isVis) {
+                      colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setCurrentIndex(idx);
+                          setShowMobilePalette(false);
+                        }}
+                        className={`h-10 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${colorStyle}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* RIGHT AREA: QUESTION & OPTIONS DISPLAY */}
-          <main className="flex-1 flex flex-col min-h-0 bg-slate-950/40 p-4 sm:p-6 overflow-y-auto space-y-6">
+          <main className="flex-1 flex flex-col min-h-0 bg-slate-50 p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6">
             
             {currentQ ? (
-              <div className="flex-1 space-y-6 max-w-4xl mx-auto w-full flex flex-col justify-between">
+              <div className="space-y-4 sm:space-y-6 max-w-4xl mx-auto w-full flex flex-col justify-start sm:justify-between">
                 
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Question Header & Specs */}
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800 gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <span className="px-3 py-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 font-mono font-black text-xs rounded-lg">
-                        Question {currentIndex + 1} of {total}
+                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono font-black text-xs rounded-lg">
+                        Q{currentIndex + 1} / {total}
                       </span>
 
                       {markedForReview[currentQId] && (
-                        <span className="px-2.5 py-0.5 bg-purple-500/20 border border-purple-400/40 text-purple-300 font-mono font-bold text-[10px] rounded-md uppercase flex items-center gap-1">
-                          ★ Marked for Review
+                        <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-[10px] rounded-md uppercase flex items-center gap-1">
+                          ★ Review
                         </span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2 text-xs font-mono font-bold">
-                      <span className="text-emerald-400">+{(test as any).marksPerQuestion || 4} Marks</span>
-                      <span className="text-slate-600">•</span>
-                      <span className="text-rose-400">-{(test as any).negativeMarksPerQuestion || 1} Neg</span>
-                      <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-md text-[10px] uppercase ml-1">
+                      <span className="text-emerald-700">+{(test as any).marksPerQuestion || 4} Marks</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-rose-600">-{(test as any).negativeMarksPerQuestion || 1} Neg</span>
+                      <span className="hidden sm:inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] uppercase ml-1">
                         {currentQ.difficulty || 'Medium'}
                       </span>
                     </div>
                   </div>
 
                   {/* Question Content */}
-                  <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-lg space-y-3">
-                    <h3 className="text-base sm:text-lg font-black text-white leading-relaxed" id={`question-text-${currentIndex}`}>
+                  <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/10 border border-slate-300/80 backdrop-blur-md shadow-xs space-y-3">
+                    <h3 className="text-sm sm:text-lg font-black text-slate-900 leading-relaxed" id={`question-text-${currentIndex}`}>
                       {currentQ.content}
                     </h3>
                   </div>
 
                   {/* Multiple Choice Options List */}
-                  <div className="space-y-3">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {(currentQ.options || []).map((opt: string, oi: number) => {
                       const isSelected = responses[currentQId] === opt;
                       const letter = String.fromCharCode(65 + oi);
@@ -1034,25 +1196,25 @@ export default function ExamPage({
                           key={oi}
                           id={`option-${currentIndex}-${oi}`}
                           onClick={() => handleSelectOption(currentQId, opt)}
-                          className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-4 group ${
+                          className={`p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 group ${
                             isSelected
-                              ? 'bg-emerald-950/80 border-2 border-emerald-500 shadow-md shadow-emerald-500/10 text-white'
-                              : 'bg-slate-900/70 border-slate-800 hover:border-slate-700 text-slate-200'
+                              ? 'bg-emerald-500/20 border-2 border-emerald-500 shadow-md text-emerald-950 font-black'
+                              : 'bg-slate-900/10 border-slate-300/80 backdrop-blur-md hover:border-emerald-500 text-slate-900 font-bold'
                           }`}
                         >
-                          <div className="flex items-center gap-3.5">
-                            <span className={`w-8 h-8 rounded-lg font-mono font-black text-xs flex items-center justify-center shrink-0 transition-colors ${
+                          <div className="flex items-center gap-3">
+                            <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl font-mono font-black text-xs flex items-center justify-center shrink-0 transition-colors ${
                               isSelected 
-                                ? 'bg-emerald-500 text-white' 
-                                : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'
+                                ? 'bg-emerald-600 text-white' 
+                                : 'bg-slate-800 text-white group-hover:bg-emerald-600'
                             }`}>
                               {letter}
                             </span>
-                            <span className="text-sm font-bold leading-snug">{opt}</span>
+                            <span className="text-xs sm:text-sm font-bold leading-snug">{opt}</span>
                           </div>
 
                           {isSelected && (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 shrink-0" />
                           )}
                         </div>
                       );
@@ -1060,65 +1222,66 @@ export default function ExamPage({
                   </div>
                 </div>
 
-                {/* ─── BOTTOM ACTION BAR (PREVIOUS & NEXT PAKKA PAKKANA + SUBMIT) ─── */}
-                <div className="pt-6 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                {/* ─── BOTTOM ACTION BAR ─── */}
+                <div className="pt-3 sm:pt-4 border-t border-slate-200 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
                   
-                  {/* Previous & Next Side-by-Side (Pakka Pakkana) */}
-                  <div className="flex items-center gap-2">
+                  {/* Controls Row 1 on Mobile: Prev, Next, Mark & Clear */}
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
                     <button
                       id="prev-question-btn"
                       onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
                       disabled={currentIndex === 0}
-                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                      className="flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-black uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1 border border-slate-200"
                     >
-                      <ChevronLeft className="w-4 h-4" /> Previous
+                      <ChevronLeft className="w-4 h-4" /> <span className="hidden sm:inline">Previous</span><span className="sm:hidden">Prev</span>
                     </button>
 
                     <button
                       id="next-question-btn"
                       onClick={() => setCurrentIndex(i => Math.min(total - 1, i + 1))}
                       disabled={currentIndex === total - 1}
-                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                      className="flex-1 sm:flex-initial px-3.5 sm:px-5 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center justify-center gap-1"
                     >
                       Next <ChevronRight className="w-4 h-4" />
                     </button>
-                  </div>
 
-                  {/* Middle Controls: Mark for Review & Clear Response */}
-                  <div className="flex items-center gap-2">
                     <button
                       onClick={handleMarkAndNext}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`flex-1 sm:flex-initial px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 ${
                         markedForReview[currentQId]
-                          ? 'bg-purple-600 text-white border border-purple-400 shadow-md'
-                          : 'bg-purple-950/60 hover:bg-purple-900/80 text-purple-300 border border-purple-500/40'
+                          ? 'bg-indigo-600 text-white border border-indigo-500 shadow-sm'
+                          : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
                       }`}
                     >
                       <Flag className="w-3.5 h-3.5" />
-                      {markedForReview[currentQId] ? '★ Marked for Review' : 'Mark for Review & Next'}
+                      {markedForReview[currentQId] ? '★ Marked' : 'Review'}
                     </button>
 
                     {responses[currentQId] && (
                       <button
                         onClick={() => setResponses(prev => { const n = { ...prev }; delete n[currentQId]; return n; })}
-                        className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 border border-slate-700"
+                        className="px-2.5 py-2 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1 border border-slate-200"
+                        title="Clear Response"
                       >
-                        <RotateCcw className="w-3.5 h-3.5 text-slate-400" /> Clear Choice
+                        <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
                       </button>
                     )}
                   </div>
 
-                  {/* Right: FINISH & SUBMIT EXAM Button right next to options/next */}
+                  {/* Submit Exam Button */}
                   <button
                     id="exam-submit-btn"
                     onClick={() => setShowConfirmModal(true)}
                     disabled={loading}
-                    className="px-6 py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                    className="w-full sm:w-auto px-5 py-2 sm:py-2.5 bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" /> {loading ? 'Submitting...' : 'Finish & Submit Exam 🏁'}
                   </button>
 
                 </div>
+
+
+
 
               </div>
             ) : (
@@ -1131,46 +1294,46 @@ export default function ExamPage({
 
         {/* SUBMISSION CONFIRMATION MODAL OVERLAY */}
         {showConfirmModal && (
-          <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="w-full max-w-lg bg-slate-900 border-2 border-emerald-500/80 rounded-2xl p-6 shadow-2xl space-y-5 text-white my-auto">
-              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center font-bold shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-400" />
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl space-y-5 text-slate-900 my-auto">
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center font-bold shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black text-white">Confirm Exam Submission</h3>
-                  <p className="text-xs text-slate-400 font-medium">Are you sure you want to finish and submit your exam now?</p>
+                  <h3 className="text-lg font-black text-slate-900">Confirm Exam Submission</h3>
+                  <p className="text-xs text-slate-500 font-medium">Are you sure you want to finish and submit your exam now?</p>
                 </div>
               </div>
 
               {/* Summary Stats Table */}
-              <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold">
+              <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold">
                 <div className="space-y-1">
                   <span className="text-[10px] uppercase font-mono text-slate-500 block">Total Questions</span>
-                  <span className="text-base font-mono font-black text-white">{total} Qs</span>
+                  <span className="text-base font-mono font-black text-slate-900">{total} Qs</span>
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-emerald-400 block">Answered</span>
-                  <span className="text-base font-mono font-black text-emerald-400">{answeredCount} Qs</span>
+                  <span className="text-[10px] uppercase font-mono text-emerald-700 block">Answered</span>
+                  <span className="text-base font-mono font-black text-emerald-700">{answeredCount} Qs</span>
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-purple-400 block">Marked for Review</span>
-                  <span className="text-base font-mono font-black text-purple-400">{reviewCount} Qs</span>
+                  <span className="text-[10px] uppercase font-mono text-indigo-700 block">Marked for Review</span>
+                  <span className="text-base font-mono font-black text-indigo-700">{reviewCount} Qs</span>
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-mono text-amber-400 block">Unanswered / Skipped</span>
-                  <span className="text-base font-mono font-black text-amber-400">{unansweredCount + notVisitedCount} Qs</span>
+                  <span className="text-[10px] uppercase font-mono text-amber-700 block">Unanswered / Skipped</span>
+                  <span className="text-base font-mono font-black text-amber-700">{unansweredCount + notVisitedCount} Qs</span>
                 </div>
               </div>
 
               {/* Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-200">
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all border border-slate-200 cursor-pointer"
                 >
                   ← Resume Exam
                 </button>
@@ -1181,7 +1344,7 @@ export default function ExamPage({
                     handleSubmit(false);
                   }}
                   disabled={loading}
-                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-lg transition-all cursor-pointer flex items-center gap-2"
+                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-black uppercase tracking-wider text-xs shadow-md transition-all cursor-pointer flex items-center gap-2"
                 >
                   <CheckCircle2 className="w-4 h-4" /> Yes, Final Submit Exam
                 </button>
@@ -1189,6 +1352,7 @@ export default function ExamPage({
             </div>
           </div>
         )}
+
 
         {error && <div className="p-3 bg-rose-600 text-white font-bold text-xs text-center">{error}</div>}
       </div>

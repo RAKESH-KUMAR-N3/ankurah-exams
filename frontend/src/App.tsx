@@ -519,6 +519,7 @@ export default function App() {
           <AdminManagement
             onRefresh={handleForceAdminReload}
             activeTab={activeTab.startsWith('admin_') ? activeTab.replace('admin_', '') : 'dashboard'}
+            onNavigate={(tab) => handleTabChange(tab.startsWith('admin_') ? tab : `admin_${tab}`)}
           />
         );
       default:
@@ -638,32 +639,32 @@ export default function App() {
 
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden">
-        <header className="bg-transparent border-b border-slate-200/60 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0 relative z-20">
+      <div className={`flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden ${isUserAdmin ? 'bg-[#070A11] text-slate-100' : ''}`}>
+        <header className="bg-transparent px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0 relative z-20">
           <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 bg-white/80 rounded-xl border border-slate-200 shadow-xs cursor-pointer active:scale-95"
+              className="lg:hidden p-2 text-white hover:text-white bg-emerald-800/90 rounded-xl border border-emerald-700 shadow-xs cursor-pointer active:scale-95"
               title="Open Navigation Menu"
             >
-              <Menu className="w-5 h-5 text-slate-700" />
+              <Menu className="w-5 h-5" />
             </button>
 
-            {/* Desktop Welcome Title — Hidden on Mobile for clean responsive layout */}
-            <div className="hidden sm:flex items-center">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Welcome, <span className="text-emerald-700">{currentUser?.name}</span>
-              </h1>
+            {/* Header Title */}
+            <div className="flex items-center">
+              {isUserAdmin ? (
+                <h1 className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-widest uppercase drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]">
+                  ADMIN
+                </h1>
+              ) : (
+                <h1 className="hidden sm:block text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  Welcome, <span className="text-emerald-700">{currentUser?.name}</span>
+                </h1>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {isUserAdmin && (
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-black rounded-lg border border-emerald-300">
-                SYSTEM ADMIN
-              </span>
-            )}
-            
             {/* User Profile Avatar Icon Button */}
             <button
               onClick={() => handleTabChange('profile')}
@@ -685,7 +686,7 @@ export default function App() {
           </div>
         </header>
 
-        <main ref={mainRef} className="flex-grow overflow-y-auto p-6 md:p-8 max-w-7xl w-full mx-auto geom-grid-pattern">
+        <main ref={mainRef} className={`flex-grow overflow-y-auto p-4 md:p-6 max-w-7xl w-full mx-auto ${isUserAdmin ? 'geom-grid-pattern-dark bg-[#06090F]' : 'geom-grid-pattern'}`}>
           {renderActiveView()}
         </main>
 

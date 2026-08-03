@@ -139,13 +139,13 @@ export default function TestSection({
   }
 
   return (
-    <div id="test_section" className="space-y-6 font-sans pb-10">
+    <div id="test_section" className="space-y-6 font-sans pb-10 max-w-full overflow-x-hidden">
 
       {/* Header & Sub-tabs Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-            <Award className="w-7 h-7 text-emerald-600 animate-spin" style={{ animationDuration: '10s' }} />
+            <Award className="w-7 h-7 text-emerald-600 shrink-0 animate-spin" style={{ animationDuration: '10s' }} />
             Test Center & Exam Suite
           </h1>
           <p className="text-slate-600 text-xs sm:text-sm font-medium mt-1">
@@ -154,41 +154,47 @@ export default function TestSection({
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center p-1 bg-slate-200/70 backdrop-blur-md rounded-xl border border-slate-300/80 shrink-0 self-start md:self-auto shadow-xs">
+        <div className="w-full md:w-auto flex items-center p-1 bg-emerald-50/80 backdrop-blur-md rounded-2xl border border-emerald-200/80 shrink-0 shadow-xs">
           <button
             onClick={() => setTab('available')}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 md:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === 'available'
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'text-slate-700 hover:text-slate-900'
+                ? 'bg-emerald-700 text-white shadow-md'
+                : 'text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" /> Available Tests ({filteredTests.length})
+            <FileText className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Available Tests ({filteredTests.length})</span>
+            <span className="sm:hidden">Available ({filteredTests.length})</span>
           </button>
 
           <button
             onClick={() => setTab('history')}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 md:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === 'history'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'text-slate-700 hover:text-emerald-700'
+                ? 'bg-emerald-700 text-white shadow-md'
+                : 'text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100'
             }`}
           >
-            <CheckCircle className="w-3.5 h-3.5" /> My Results ({attempts.length})
+            <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">My Results ({attempts.length})</span>
+            <span className="sm:hidden">Results ({attempts.length})</span>
           </button>
 
           <button
             onClick={() => setTab('leaderboard')}
-            className={`px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`flex-1 md:flex-initial px-3 sm:px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               tab === 'leaderboard'
-                ? 'bg-amber-600 text-white shadow-md'
-                : 'text-slate-700 hover:text-amber-700'
+                ? 'bg-emerald-700 text-white shadow-md'
+                : 'text-emerald-800 hover:text-emerald-900 hover:bg-emerald-100'
             }`}
           >
-            <Trophy className="w-3.5 h-3.5" /> Leaderboard
+            <Trophy className="w-3.5 h-3.5 shrink-0" />
+            <span>Leaderboard</span>
           </button>
         </div>
       </div>
+
 
       {/* ══════════ AVAILABLE TESTS ══════════ */}
       {tab === 'available' && (
@@ -203,10 +209,10 @@ export default function TestSection({
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => setFilterType('all')}
-                  className={`px-3 py-1 rounded-md text-xs font-extrabold transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     filterType === 'all'
-                      ? 'bg-slate-800 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                   }`}
                 >
                   All ({publishedTests.length})
@@ -215,7 +221,7 @@ export default function TestSection({
                   <button
                     key={type}
                     onClick={() => setFilterType(type || '')}
-                    className={`px-3 py-1 rounded-md text-xs font-extrabold transition-all cursor-pointer capitalize ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer capitalize ${
                       filterType === type
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -229,9 +235,9 @@ export default function TestSection({
           )}
 
           {filteredTests.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-slate-900/10 border border-slate-300/80 backdrop-blur-md space-y-2">
+            <div className="p-10 text-center rounded-2xl bg-white border border-slate-200 space-y-2 shadow-2xs">
               <FileText className="w-10 h-10 mx-auto text-slate-400 opacity-60" />
-              <p className="font-black text-sm text-slate-700">No tests published yet.</p>
+              <p className="font-black text-sm text-slate-800">No tests published yet.</p>
               <p className="text-xs text-slate-500 font-medium">Check back later or subscribe to a plan to unlock tests.</p>
             </div>
           ) : (
@@ -247,31 +253,31 @@ export default function TestSection({
                   <div
                     key={tid}
                     id={`test-card-${tid}`}
-                    className="p-5 rounded-2xl border border-slate-300/80 hover:border-emerald-500 bg-slate-900/10 backdrop-blur-md flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all shadow-xs hover:shadow-md group relative overflow-hidden"
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 bg-white flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all shadow-2xs hover:shadow-md group relative overflow-hidden"
                   >
                     {/* Icon + Main Details */}
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 flex items-center justify-center shrink-0 shadow-xs mt-0.5">
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
                         {getTypeIcon(test)}
                       </div>
 
-                      <div className="space-y-2 flex-1">
+                      <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base font-black text-slate-900 tracking-tight">
+                          <h3 className="text-base font-black text-slate-900 tracking-tight leading-snug">
                             {test.title}
                           </h3>
 
-                          <span className="px-2.5 py-0.5 bg-slate-800 text-white font-mono font-extrabold text-[9px] rounded-md uppercase tracking-wider">
+                          <span className="px-2.5 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono font-bold text-[10px] rounded-md uppercase tracking-wider">
                             {test.testType || 'CHAPTER TEST'}
                           </span>
 
                           {percentage !== null && (
-                            <span className={`px-2 py-0.5 font-mono font-black text-[10px] rounded-md border flex items-center gap-1 uppercase tracking-wider ${
+                            <span className={`px-2.5 py-0.5 font-mono font-bold text-[10px] rounded-md border flex items-center gap-1 uppercase tracking-wider ${
                               percentage >= 70
-                                ? "bg-emerald-100 border-emerald-300 text-emerald-800"
+                                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                                 : percentage >= 40
-                                ? "bg-amber-100 border-amber-300 text-amber-900"
-                                : "bg-rose-100 border-rose-300 text-rose-800"
+                                ? "bg-amber-50 border-amber-200 text-amber-900"
+                                : "bg-rose-50 border-rose-200 text-rose-800"
                             }`}>
                               📊 Last Score: {percentage}%
                             </span>
@@ -279,23 +285,23 @@ export default function TestSection({
                         </div>
 
                         {test.instructions && (
-                          <p className="text-xs text-slate-600 font-medium line-clamp-1">
+                          <p className="text-xs text-slate-500 font-medium line-clamp-1">
                             {test.instructions}
                           </p>
                         )}
 
                         {/* Specs row */}
-                        <div className="flex flex-wrap gap-4 text-xs font-extrabold text-slate-500 pt-1">
-                          <span className="flex items-center gap-1.5 text-slate-700">
+                        <div className="flex flex-wrap gap-4 text-xs font-bold text-slate-600 pt-1">
+                          <span className="flex items-center gap-1.5 text-slate-800">
                             <Clock className="w-3.5 h-3.5 text-emerald-600" /> {test.duration} mins
                           </span>
 
-                          <span className="flex items-center gap-1.5 text-slate-700">
+                          <span className="flex items-center gap-1.5 text-slate-800">
                             <Award className="w-3.5 h-3.5 text-emerald-600" /> +{test.marksPerQuestion ?? 4} pts / -{test.negativeMarksPerQuestion ?? 1} wrong
                           </span>
 
                           {test.isDynamic && (
-                            <span className="text-blue-600 flex items-center gap-1">
+                            <span className="text-blue-600 font-bold flex items-center gap-1">
                               <Zap className="w-3.5 h-3.5" /> {test.dynamicTotalQuestions} Qs Random
                             </span>
                           )}
@@ -315,7 +321,7 @@ export default function TestSection({
                         <button
                           id={`view-review-${tid}`}
                           onClick={() => setReviewAttemptId((latestAttempt as any)._id || latestAttempt.id)}
-                          className="px-4 py-2.5 bg-slate-200/80 hover:bg-slate-300 text-slate-800 font-black rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                          className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 border border-slate-200"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           View Scorecard
@@ -323,7 +329,7 @@ export default function TestSection({
                       )}
 
                       {!eligible ? (
-                        <span className="text-xs font-black text-slate-400 bg-slate-100 border border-slate-300 px-4 py-2.5 rounded-xl">
+                        <span className="text-xs font-bold text-slate-400 bg-slate-100 border border-slate-200 px-4 py-2.5 rounded-xl">
                           Max Retakes Reached
                         </span>
                       ) : (
@@ -358,9 +364,9 @@ export default function TestSection({
       {tab === 'history' && (
         <div className="space-y-4">
           {attempts.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl bg-slate-900/10 border border-slate-300/80 backdrop-blur-md space-y-2">
+            <div className="p-10 text-center rounded-2xl bg-white border border-slate-200 space-y-2 shadow-2xs">
               <CheckCircle className="w-10 h-10 mx-auto text-slate-400 opacity-60" />
-              <p className="font-black text-sm text-slate-700">No results recorded yet.</p>
+              <p className="font-black text-sm text-slate-800">No results recorded yet.</p>
               <p className="text-xs text-slate-500 font-medium">Attempt your first test to see your scorecards and analytics here.</p>
             </div>
           ) : (
@@ -382,14 +388,14 @@ export default function TestSection({
                   <div
                     key={aid}
                     onClick={() => setReviewAttemptId(aid)}
-                    className="p-4 rounded-2xl border border-slate-300/80 hover:border-emerald-500 bg-slate-900/10 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all cursor-pointer shadow-xs hover:shadow-md group"
+                    className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-500 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all cursor-pointer shadow-2xs hover:shadow-md group"
                   >
                     <div className="flex items-center gap-4 min-w-0 flex-1">
                       {/* Score Badge Ring */}
-                      <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center flex-shrink-0 border-2 font-mono font-black text-sm shadow-xs ${
-                        percentage >= 70 ? 'border-emerald-500 bg-emerald-500/20 text-emerald-700' :
-                        percentage >= 40 ? 'border-amber-500 bg-amber-500/20 text-amber-800' :
-                        'border-rose-500 bg-rose-500/20 text-rose-800'
+                      <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center flex-shrink-0 border font-mono font-black text-sm shadow-2xs ${
+                        percentage >= 70 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
+                        percentage >= 40 ? 'border-amber-200 bg-amber-50 text-amber-900' :
+                        'border-rose-200 bg-rose-50 text-rose-800'
                       }`}>
                         <span>{percentage}%</span>
                       </div>
@@ -399,27 +405,27 @@ export default function TestSection({
                           {testTitle}
                         </h4>
                         <div className="flex flex-wrap gap-3 mt-1 text-xs font-bold text-slate-500">
-                          <span className="text-slate-800">{score} / {totalMarks} marks</span>
+                          <span className="text-slate-800 font-bold">{score} / {totalMarks} marks</span>
                           <span>{new Date(attempt.submittedAt || '').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                           {isForced && (
-                            <span className="text-rose-600 font-black">⚠ Auto-Submitted</span>
+                            <span className="text-rose-600 font-bold">⚠ Auto-Submitted</span>
                           )}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 justify-between sm:justify-end">
-                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-wider shrink-0 ${
-                        isForced ? 'bg-rose-100 text-rose-800 border-rose-300' :
-                        'bg-emerald-100 text-emerald-800 border-emerald-300'
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md border uppercase tracking-wider shrink-0 ${
+                        isForced ? 'bg-rose-50 text-rose-800 border-rose-200' :
+                        'bg-emerald-50 text-emerald-800 border-emerald-200'
                       }`}>
                         {isForced ? 'Force-Submitted' : 'Completed'}
                       </span>
                       <button
                         onClick={(e) => { e.stopPropagation(); setReviewAttemptId(aid); }}
-                        className="px-4 py-2 bg-slate-900 group-hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
                       >
-                        <Eye className="w-3.5 h-3.5" /> View Review
+                        <Eye className="w-3.5 h-3.5" /> View Scorecard
                       </button>
                     </div>
                   </div>

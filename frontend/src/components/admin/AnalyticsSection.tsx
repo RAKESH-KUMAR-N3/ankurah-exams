@@ -116,13 +116,13 @@ export default function AnalyticsSection({
   }
 
   return (
-    <div id="analytics_section" className="space-y-8 font-sans pb-10">
+    <div id="analytics_section" className="space-y-6 font-sans pb-10 max-w-full overflow-x-hidden">
       
       {/* ─── HEADER ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
-            <Award className="w-7 h-7 text-emerald-600" />
+            <Award className="w-7 h-7 text-emerald-600 shrink-0" />
             Performance & Weakness Report
           </h1>
           <p className="text-slate-600 text-xs sm:text-sm font-medium mt-1">
@@ -140,8 +140,8 @@ export default function AnalyticsSection({
         </div>
 
         {attempts.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl bg-slate-900/10 border border-slate-300/80 backdrop-blur-md">
-            <p className="text-slate-600 text-xs font-bold">No test attempts recorded yet.</p>
+          <div className="p-8 text-center rounded-2xl bg-white border border-slate-200 shadow-2xs">
+            <p className="text-slate-700 text-xs font-bold">No test attempts recorded yet.</p>
             <p className="text-slate-500 text-[11px] mt-0.5">Attempt a test to see your scorecards here.</p>
           </div>
         ) : (
@@ -157,18 +157,18 @@ export default function AnalyticsSection({
                 <div
                   key={aid}
                   onClick={() => setReviewAttemptId(aid)}
-                  className="p-4 rounded-2xl border border-slate-300/80 hover:border-emerald-500 bg-slate-900/10 backdrop-blur-md flex items-center justify-between gap-4 shadow-xs transition-all cursor-pointer group"
+                  className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-500 bg-white flex items-center justify-between gap-3 shadow-2xs transition-all cursor-pointer group"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className={`w-12 h-12 rounded-xl border flex flex-col items-center justify-center font-mono font-black text-xs shrink-0 shadow-xs ${
-                      percentage >= 70 ? 'border-emerald-500 bg-emerald-500/20 text-emerald-800' :
-                      percentage >= 40 ? 'border-amber-500 bg-amber-500/20 text-amber-900' :
-                      'border-rose-500 bg-rose-500/20 text-rose-900'
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-12 h-12 rounded-xl border flex flex-col items-center justify-center font-mono font-black text-xs shrink-0 shadow-2xs ${
+                      percentage >= 70 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
+                      percentage >= 40 ? 'border-amber-200 bg-amber-50 text-amber-900' :
+                      'border-rose-200 bg-rose-50 text-rose-800'
                     }`}>
                       <span>{percentage}%</span>
                     </div>
 
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="text-sm font-black text-slate-900 leading-snug line-clamp-1 group-hover:text-emerald-700 transition-colors">
                         {testTitle}
                       </h4>
@@ -183,9 +183,9 @@ export default function AnalyticsSection({
                       e.stopPropagation();
                       setReviewAttemptId(aid);
                     }}
-                    className="px-3.5 py-2 bg-slate-900 group-hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1.5"
+                    className="px-3.5 py-2 bg-slate-900 group-hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1.5"
                   >
-                    <Eye className="w-3.5 h-3.5" /> View Scorecard
+                    <Eye className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Scorecard</span><span className="sm:hidden">View</span>
                   </button>
                 </div>
               );
@@ -220,20 +220,20 @@ export default function AnalyticsSection({
                     whileHover={{ y: -3, scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={() => setSelectedSubjectId(subj.id)}
-                    className="p-5 rounded-2xl border border-slate-300/80 hover:border-emerald-500 bg-slate-900/10 backdrop-blur-md cursor-pointer transition-all flex flex-col justify-between space-y-4 shadow-xs group"
+                    className="p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 bg-white cursor-pointer transition-all flex flex-col justify-between space-y-4 shadow-2xs group"
                   >
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="px-2.5 py-0.5 bg-slate-800 text-white font-mono font-extrabold text-[10px] rounded-md uppercase">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="px-2.5 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 font-mono font-extrabold text-[10px] rounded-md uppercase">
                           {subj.totalChapters} Chapters
                         </span>
 
                         {subj.weakCount > 0 ? (
-                          <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
+                          <span className="px-2.5 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
                             <AlertTriangle className="w-3 h-3 text-rose-600" /> {subj.weakCount} Weak
                           </span>
                         ) : (
-                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
+                          <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Strong
                           </span>
                         )}
@@ -248,7 +248,7 @@ export default function AnalyticsSection({
                       </p>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs font-black text-emerald-600">
+                    <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-black text-emerald-600">
                       <span>View Chapter Breakdown</span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -267,10 +267,10 @@ export default function AnalyticsSection({
               className="space-y-4"
             >
               {/* Back Bar */}
-              <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-3 flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedSubjectId(null)}
-                  className="px-4 py-2 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs flex items-center gap-2"
+                  className="px-4 py-2 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-2xs flex items-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" /> Back to All Subjects
                 </button>
@@ -280,13 +280,13 @@ export default function AnalyticsSection({
                 </span>
               </div>
 
-              {/* Subject Title */}
-              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/20 to-slate-900/30 border border-emerald-500/40 backdrop-blur-md flex items-center justify-between gap-4">
+              {/* Subject Title Card */}
+              <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between gap-3 shadow-2xs">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">{selectedSubject?.name}</h3>
+                  <h3 className="text-base sm:text-lg font-black text-slate-900">{selectedSubject?.name}</h3>
                   <p className="text-xs font-medium text-slate-600">Chapter-wise performance analysis based on test results.</p>
                 </div>
-                <span className="px-3 py-1 bg-emerald-600 text-white font-mono font-black text-xs rounded-lg">
+                <span className="px-3 py-1 bg-emerald-600 text-white font-mono font-black text-xs rounded-xl shadow-xs">
                   {selectedSubjectChapters.length} Chapters
                 </span>
               </div>
@@ -299,43 +299,43 @@ export default function AnalyticsSection({
                   selectedSubjectChapters.map((ch, idx) => (
                     <div 
                       key={ch.id}
-                      className={`p-4 rounded-2xl border backdrop-blur-md flex items-center justify-between gap-4 shadow-xs ${
+                      className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs ${
                         ch.isWeak 
-                          ? 'border-rose-400 bg-rose-500/10' 
-                          : 'border-slate-300/80 bg-slate-900/10'
+                          ? 'border-rose-300 bg-rose-50/70' 
+                          : 'border-slate-200 bg-white'
                       }`}
                     >
-                      <div className="flex items-center gap-3.5">
+                      <div className="flex items-center gap-3.5 min-w-0">
                         <span className={`w-8 h-8 rounded-lg font-mono font-black text-xs flex items-center justify-center shrink-0 ${
-                          ch.isWeak ? 'bg-rose-500 text-white' : 'bg-emerald-500/20 text-emerald-800'
+                          ch.isWeak ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'
                         }`}>
                           {idx + 1}
                         </span>
 
-                        <div>
-                          <h4 className="text-base font-black text-slate-900 tracking-tight">
+                        <div className="min-w-0">
+                          <h4 className="text-sm sm:text-base font-black text-slate-900 tracking-tight truncate">
                             {ch.name}
                           </h4>
                           <p className="text-xs font-bold text-slate-500 mt-0.5">
-                            Accuracy Score: <span className="font-mono text-slate-900">{ch.percentage}%</span>
+                            Accuracy Score: <span className="font-mono text-slate-900 font-black">{ch.percentage}%</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                         {ch.isWeak ? (
-                          <span className="px-3 py-1 bg-rose-100 text-rose-800 border border-rose-300 font-mono font-black text-[10px] rounded-lg uppercase tracking-wider flex items-center gap-1">
+                          <span className="px-3 py-1 bg-rose-100 text-rose-800 border border-rose-200 font-mono font-black text-[10px] rounded-lg uppercase tracking-wider flex items-center gap-1">
                             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Weak Chapter
                           </span>
                         ) : (
-                          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-black text-[10px] rounded-md uppercase tracking-wider flex items-center gap-1">
+                          <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono font-black text-[10px] rounded-md uppercase tracking-wider flex items-center gap-1">
                             <Check className="w-3.5 h-3.5 text-emerald-600" /> Strong
                           </span>
                         )}
 
                         <button
                           onClick={() => onNavigate('tests')}
-                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1"
                         >
                           Practice Exam <Play className="w-3 h-3 fill-white" />
                         </button>

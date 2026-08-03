@@ -48,7 +48,28 @@ const mapSubject = (s: any): Subject => ({ id: s._id || s.id, name: s.name, subj
 const mapChapter = (c: any): Chapter => ({ id: c._id || c.id, subjectId: c.subjectId?._id || c.subjectId?.id || c.subjectId, name: c.name || c.title || '', description: c.description || '' });
 const mapQuestion = (q: any): Question => ({ id: q._id || q.id, subjectId: q.subjectId?._id || q.subjectId?.id || q.subjectId, chapterId: q.chapterId?._id || q.chapterId?.id || q.chapterId, content: q.content, options: q.options || [], correctAnswer: q.correctAnswer, difficulty: q.difficulty || 'medium', marks: q.marks || 4, negativeMarks: q.negativeMarks || 1, explanation: q.explanation || '' });
 const mapTest = (t: any): Test => ({ id: t._id || t.id, title: t.title, testType: t.testType || 'Chapter', duration: t.duration || 15, subjectId: t.subjectId, chapterId: t.chapterId, questions: t.questions || [], isDynamic: t.isDynamic, examIds: t.examIds, studentTypeIds: t.studentTypeIds, marksPerQuestion: t.marksPerQuestion, negativeMarksPerQuestion: t.negativeMarksPerQuestion, status: t.status });
-const mapTimetable = (t: any): Timetable => ({ id: t._id || t.id, examId: t.examId, studentType: t.studentType, studyPlan: t.studyPlan, subjectId: t.subjectId, chapterId: t.chapterId, date: t.date, title: t.title, studyTopic: t.studyTopic, practiceMCQsCount: t.practiceMCQsCount, revisionTopic: t.revisionTopic, assignment: t.assignment });
+const mapTimetable = (t: any): Timetable => ({
+  id: t._id || t.id,
+  _id: t._id || t.id,
+  planId: t.planId || (typeof t.examId === 'object' ? t.examId?._id || t.examId?.id : t.examId),
+  examId: typeof t.examId === 'object' ? t.examId?._id || t.examId?.id : t.examId,
+  studentType: t.studentType || (typeof t.studentTypeId === 'object' ? t.studentTypeId?._id || t.studentTypeId?.id : t.studentTypeId),
+  studyPlan: t.studyPlan,
+  subjectId: typeof t.subjectId === 'object' ? t.subjectId?._id || t.subjectId?.id : t.subjectId,
+  subjectIds: t.subjectIds || (t.subjectId ? [typeof t.subjectId === 'object' ? t.subjectId?._id || t.subjectId?.id : t.subjectId] : []),
+  chapterId: typeof t.chapterId === 'object' ? t.chapterId?._id || t.chapterId?.id : t.chapterId,
+  chapterName: t.chapterName,
+  date: t.date,
+  scheduleType: t.scheduleType || 'daily',
+  dayOfWeek: t.dayOfWeek,
+  title: t.studyTopic || t.title || '',
+  studyTopic: t.studyTopic || t.title || '',
+  imageUrl: t.imageUrl,
+  practiceMCQsCount: Number(t.practiceMCQsCount || t.practiceMCQs || 0),
+  revisionTopic: t.revision || t.revisionTopic,
+  assignment: t.assignment,
+  createdAt: t.createdAt
+});
 const mapNotification = (n: any): Notification => ({ id: n._id || n.id, userId: n.userId || n.studentId, title: n.title, message: n.message, isRead: n.isRead, createdAt: n.createdAt });
 const mapBackendUser = (u: any): User => ({ uid: u._id, name: u.name, email: u.email, phone: u.phone, role: u.role, state: u.state, selectedEntranceExams: u.selectedEntranceExams, selectedCompetitiveExams: u.selectedCompetitiveExams, studentType: u.studentType, studyPlan: u.studyPlan, purchasedPlans: u.purchasedPlans || [], streak: u.streak || 0, lastActiveDate: u.lastActiveDate, createdAt: u.createdAt });
 

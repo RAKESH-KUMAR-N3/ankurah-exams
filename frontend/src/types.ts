@@ -106,17 +106,25 @@ export interface Chapter {
 
 export interface Timetable {
   id: string;
-  examId: string;
-  studentType: string; // 'first_year' | 'second_year' | 'long_term' | ''
-  studyPlan: string;   // 'quarterly' | 'half_yearly' | 'academic_year' | 'yearly' | ''
-  subjectId: string;
-  chapterId: string;
-  date: string;        // YYYY-MM-DD
-  title: string;
-  studyTopic: string;
-  practiceMCQsCount: number;
-  revisionTopic: string;
+  _id?: string;
+  planId?: string;
+  examId?: string;
+  studentType?: string;
+  studyPlan?: string;
+  subjectId?: string;
+  subjectIds?: string[];
+  chapterId?: string;
+  chapterName?: string;
+  date?: string;        // YYYY-MM-DD
+  scheduleType?: string; // 'daily' | 'weekly'
+  dayOfWeek?: string;   // 'Monday', 'Tuesday', etc.
+  title?: string;
+  studyTopic?: string;
+  imageUrl?: string;    // Base64 or URL of uploaded timetable image
+  practiceMCQsCount?: number;
+  revisionTopic?: string;
   assignment?: string;
+  createdAt?: string;
 }
 
 export interface Topic {
