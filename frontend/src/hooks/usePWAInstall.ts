@@ -42,12 +42,10 @@ export function usePWAInstall() {
 
     checkStandalone();
 
-    // Check if early captured prompt exists on window
     if (window.deferredPWAInstallPrompt) {
       setDeferredPrompt(window.deferredPWAInstallPrompt);
     }
 
-    // Check iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice && !(window.navigator as any).standalone);
@@ -104,7 +102,24 @@ export function usePWAInstall() {
   }, []);
 
   const promptInstall = useCallback(async () => {
-    const activePrompt = deferredPrompt || window.deferredPWAInstallPrompt;
+    let activePrompt = deferredPrompt || window.deferredPWAInstallPrompt;
+
+    // If activePrompt is not ready yet, wait briefly (up to 1.5s) in case beforeinstallprompt is firing
+    if (!activePrompt) {
+      activePrompt = await new Promise<BeforeInstallPromptEvent | null>((resolve) => {
+        const timer = setTimeout(() => {
+          resolve(window.deferredPWAInstallPrompt || null);
+        }, 1500);
+
+        const onCaptured = (e: any) => {
+          clearTimeout(timer);
+          window.removeEventListener('pwa-prompt-captured', onCaptured);
+          resolve(e.detail || window.deferredPWAInstallPrompt || null);
+        };
+        window.addEventListener('pwa-prompt-captured', onCaptured);
+      });
+    }
+
     if (activePrompt) {
       try {
         await activePrompt.prompt();

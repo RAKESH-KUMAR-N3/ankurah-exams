@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, Award, TrendingUp, CheckCircle2, ShieldCheck, Calculator, Cpu, Activity, Microscope, Atom, Globe, Briefcase, ArrowRight, Sparkles, Download, Smartphone, Share, PlusSquare, X, Check } from 'lucide-react';
+import { BookOpen, Award, TrendingUp, CheckCircle2, ShieldCheck, Calculator, Cpu, Activity, Microscope, Atom, Globe, Briefcase, ArrowRight, Sparkles, Download, Check, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import heroImage from '../../assets/hero-image.png';
@@ -243,10 +243,13 @@ const SubtleSplashAnimations = () => (
 const MobileSplashScreen = () => {
   const navigate = useNavigate();
   const { isStandalone, isInstalled, promptInstall } = usePWAInstall();
+  const [installing, setInstalling] = useState(false);
   const [installSuccess, setInstallSuccess] = useState(false);
 
   const handleInstallClick = async () => {
+    setInstalling(true);
     const result = await promptInstall();
+    setInstalling(false);
     if (result === 'accepted') {
       setInstallSuccess(true);
       setTimeout(() => {
@@ -305,10 +308,15 @@ const MobileSplashScreen = () => {
                 <button
                   type="button"
                   onClick={handleInstallClick}
-                  className="flex-1 bg-emerald-900/85 hover:bg-emerald-800/90 text-emerald-200 hover:text-white text-[10px] font-bold py-1.5 px-2 rounded-lg border border-emerald-400/40 shadow-sm flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                  disabled={installing}
+                  className="flex-1 bg-emerald-900/85 hover:bg-emerald-800/90 text-emerald-200 hover:text-white text-[10px] font-bold py-1.5 px-2 rounded-lg border border-emerald-400/40 shadow-sm flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap active:scale-95 disabled:opacity-75"
                 >
-                  <Download className="w-3 h-3 text-emerald-400" />
-                  <span>Install App</span>
+                  {installing ? (
+                    <Loader2 className="w-3 h-3 text-emerald-400 animate-spin" />
+                  ) : (
+                    <Download className="w-3 h-3 text-emerald-400" />
+                  )}
+                  <span>{installing ? 'Opening...' : 'Install App'}</span>
                 </button>
 
                 <button
