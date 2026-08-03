@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { BookOpen, Award, TrendingUp, CheckCircle2, ShieldCheck, Calculator, Cpu, Activity, Microscope, Atom, Globe, Briefcase, ArrowRight, Sparkles } from 'lucide-react';
+import { BookOpen, Award, TrendingUp, CheckCircle2, ShieldCheck, Calculator, Cpu, Activity, Microscope, Atom, Globe, Briefcase, ArrowRight, Sparkles, Download, Smartphone, Share, PlusSquare, X, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import heroImage from '../../assets/hero-image.png';
 import cardsBg from '../../assets/cards-bg.jpg';
 import mobileSplash from '../../assets/mobile-splash.png';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 const TYPE_PHRASES = [
   "Ace Your Next Exam.",
@@ -241,6 +242,35 @@ const SubtleSplashAnimations = () => (
 
 const MobileSplashScreen = () => {
   const navigate = useNavigate();
+  const { isStandalone, isInstalled, isIOS, promptInstall } = usePWAInstall();
+  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [installSuccess, setInstallSuccess] = useState(false);
+
+  const handleInstallClick = async () => {
+    if (isIOS) {
+      setShowIOSGuide(true);
+      return;
+    }
+    const result = await promptInstall();
+    if (result === 'accepted') {
+      setInstallSuccess(true);
+      setTimeout(() => {
+        navigate('/login');
+      }, 1200);
+    } else if (result === 'ios_manual') {
+      setShowIOSGuide(true);
+    } else if (result === 'unavailable') {
+      // Fallback if browser doesn't support prompt
+      navigate('/login');
+    }
+  };
+
+  const handleContinue = () => {
+    navigate('/login');
+  };
+
+  // If already running in standalone PWA or marked installed, do not show install prompt
+  const isAlreadyInstalled = isStandalone || isInstalled;
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col justify-end items-center p-6 bg-slate-950 overflow-hidden font-sans select-none">
@@ -254,23 +284,110 @@ const MobileSplashScreen = () => {
       {/* Live Subtle Animations Overlay (Scanlines, Pulsing Lens Glow & Floating Particles) */}
       <SubtleSplashAnimations />
 
-      {/* Bottom Section: Continue Button - Narrow Width & Placed Higher Up */}
+      {/* Bottom Section: Actions */}
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-[180px] pb-20 sm:pb-24 flex flex-col items-center"
+        className="relative z-10 w-full max-w-[210px] pb-16 sm:pb-20 flex flex-col items-center gap-1.5"
       >
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/login')}
-          className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.6)] shadow-emerald-950/50 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 group cursor-pointer border border-white/60"
-        >
-          <span>Continue</span>
-          <ArrowRight className="w-3.5 h-3.5 text-emerald-700 group-hover:translate-x-1 transition-transform animate-pulse" />
-        </motion.button>
+        {isAlreadyInstalled ? (
+          /* When ALREADY INSTALLED / Standalone mode: Just show clean Continue button (Do not ask to install) */
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleContinue}
+            className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.6)] shadow-emerald-950/50 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 group cursor-pointer border border-white/60"
+          >
+            <span>Continue</span>
+            <ArrowRight className="w-3.5 h-3.5 text-emerald-700 group-hover:translate-x-1 transition-transform animate-pulse" />
+          </motion.button>
+        ) : (
+          /* When NOT INSTALLED: Show Install App + small Install Later button */
+          <>
+            {installSuccess ? (
+              <div className="w-full bg-emerald-500/90 backdrop-blur-md text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-emerald-400/50 shadow-lg animate-fade-in">
+                <Check className="w-4 h-4" />
+                <span>Installed Successfully!</span>
+              </div>
+            ) : (
+              <motion.button
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={handleInstallClick}
+                className="w-full relative overflow-hidden bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.6)] shadow-emerald-950/60 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 cursor-pointer border border-white/80 group"
+              >
+                <Download className="w-4 h-4 text-emerald-700 group-hover:scale-110 transition-transform animate-bounce" />
+                <span>Install App</span>
+              </motion.button>
+            )}
+
+            {/* Small Install Later text button */}
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="text-[11px] font-semibold text-emerald-200/90 hover:text-white underline underline-offset-4 decoration-emerald-400/40 hover:decoration-white transition-colors cursor-pointer py-1 px-3 mt-0.5 active:opacity-75 flex items-center gap-1"
+            >
+              <span>Install Later</span>
+              <ArrowRight className="w-3 h-3 opacity-70" />
+            </button>
+          </>
+        )}
       </motion.div>
+
+      {/* iOS Safari Add to Home Screen Instructions Modal */}
+      {showIOSGuide && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-end justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="w-full max-w-sm bg-slate-900/95 border border-emerald-500/40 rounded-3xl p-5 text-white shadow-2xl relative mb-4"
+          >
+            <button
+              onClick={() => setShowIOSGuide(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full bg-slate-800/80 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                <Smartphone className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-sm text-white">Install Ankurah Exams</h3>
+                <p className="text-[11px] text-emerald-300">Add to your Home Screen</p>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-slate-200 mb-5">
+              <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">1</span>
+                <span>Tap the <strong>Share</strong> button <Share className="inline w-3.5 h-3.5 text-blue-400 mx-1" /> in Safari browser.</span>
+              </div>
+              <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">2</span>
+                <span>Scroll down and select <strong>Add to Home Screen</strong> <PlusSquare className="inline w-3.5 h-3.5 text-emerald-400 mx-1" />.</span>
+              </div>
+              <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">3</span>
+                <span>Tap <strong>Add</strong> on top right corner.</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setShowIOSGuide(false);
+                navigate('/login');
+              }}
+              className="w-full bg-white text-emerald-950 font-bold text-xs py-2.5 rounded-xl text-center shadow cursor-pointer uppercase tracking-wider"
+            >
+              Continue to App
+            </button>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };
