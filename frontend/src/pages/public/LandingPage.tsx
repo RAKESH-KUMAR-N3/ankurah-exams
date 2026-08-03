@@ -289,49 +289,48 @@ const MobileSplashScreen = () => {
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-[210px] pb-16 sm:pb-20 flex flex-col items-center gap-1.5"
+        className="relative z-10 w-full max-w-[210px] pb-20 sm:pb-24 flex flex-col items-center gap-2"
       >
-        {isAlreadyInstalled ? (
-          /* When ALREADY INSTALLED / Standalone mode: Just show clean Continue button (Do not ask to install) */
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleContinue}
-            className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.6)] shadow-emerald-950/50 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 group cursor-pointer border border-white/60"
-          >
-            <span>Continue</span>
-            <ArrowRight className="w-3.5 h-3.5 text-emerald-700 group-hover:translate-x-1 transition-transform animate-pulse" />
-          </motion.button>
-        ) : (
-          /* When NOT INSTALLED: Show Install App + small Install Later button */
-          <>
+        {/* Main Continue Button */}
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleContinue}
+          className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.6)] shadow-emerald-950/50 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 group cursor-pointer border border-white/60"
+        >
+          <span>Continue</span>
+          <ArrowRight className="w-3.5 h-3.5 text-emerald-700 group-hover:translate-x-1 transition-transform animate-pulse" />
+        </motion.button>
+
+        {/* If NOT already installed: Show Install App & Install Later side-by-side underneath */}
+        {!isAlreadyInstalled && (
+          <div className="w-full flex items-center justify-between gap-1.5 pt-0.5">
             {installSuccess ? (
-              <div className="w-full bg-emerald-500/90 backdrop-blur-md text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-emerald-400/50 shadow-lg animate-fade-in">
-                <Check className="w-4 h-4" />
-                <span>Installed Successfully!</span>
+              <div className="w-full bg-emerald-500/90 text-white font-bold text-[10px] py-1.5 px-2 rounded-lg flex items-center justify-center gap-1 shadow">
+                <Check className="w-3 h-3" />
+                <span>Installed!</span>
               </div>
             ) : (
-              <motion.button
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={handleInstallClick}
-                className="w-full relative overflow-hidden bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.6)] shadow-emerald-950/60 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 cursor-pointer border border-white/80 group"
-              >
-                <Download className="w-4 h-4 text-emerald-700 group-hover:scale-110 transition-transform animate-bounce" />
-                <span>Install App</span>
-              </motion.button>
-            )}
+              <>
+                <button
+                  type="button"
+                  onClick={handleInstallClick}
+                  className="flex-1 bg-emerald-900/85 hover:bg-emerald-800/90 text-emerald-200 hover:text-white text-[10px] font-bold py-1.5 px-2 rounded-lg border border-emerald-400/40 shadow-sm flex items-center justify-center gap-1 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                >
+                  <Download className="w-3 h-3 text-emerald-400" />
+                  <span>Install App</span>
+                </button>
 
-            {/* Small Install Later text button */}
-            <button
-              type="button"
-              onClick={handleContinue}
-              className="text-[11px] font-semibold text-emerald-200/90 hover:text-white underline underline-offset-4 decoration-emerald-400/40 hover:decoration-white transition-colors cursor-pointer py-1 px-3 mt-0.5 active:opacity-75 flex items-center gap-1"
-            >
-              <span>Install Later</span>
-              <ArrowRight className="w-3 h-3 opacity-70" />
-            </button>
-          </>
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  className="flex-1 bg-black/40 hover:bg-black/60 text-emerald-200/90 hover:text-white text-[10px] font-semibold py-1.5 px-2 rounded-lg border border-white/15 flex items-center justify-center gap-0.5 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+                >
+                  <span>Install Later</span>
+                </button>
+              </>
+            )}
+          </div>
         )}
       </motion.div>
 
