@@ -1,0 +1,21 @@
+# Don't touch /api requests — let Passenger handle them
+# Only rewrite requests that are NOT real files/dirs AND NOT /api/*
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Internally rewrite /uploads to /api/uploads so Passenger handles it
+  RewriteRule ^uploads/(.*)$ /api/uploads/$1 [L]
+
+  # Skip /api/* — let cPanel Passenger proxy handle it
+  RewriteCond %{REQUEST_URI} ^/api [NC]
+  RewriteRule ^ - [L]
+
+  # Skip actual files (js, css, images, etc.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Everything else → index.html (React Router handles it)
+  RewriteRule ^ /index.html [L]
+</IfModule>
