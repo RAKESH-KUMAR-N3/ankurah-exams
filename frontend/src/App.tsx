@@ -100,6 +100,7 @@ const mapTest = (t: any): Test => ({
   chapterId: t.chapterId?._id || t.chapterId,
   dynamicTotalQuestions: t.dynamicTotalQuestions,
   targetDifficulty: t.targetDifficulty,
+  subjectConfigs: t.subjectConfigs,
   questions: t.questions || [],
   duration: t.duration || 60,
   marksPerQuestion: t.marksPerQuestion ?? 4,
@@ -600,12 +601,6 @@ export default function App() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'doubts' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
                 >
                   <MessageCircle className={`w-4 h-4 ${activeTab === 'doubts' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Doubts
-                </button>
-                <button
-                  onClick={() => handleTabChange('syllabus')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'syllabus' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
-                >
-                  <BookOpen className={`w-4 h-4 ${activeTab === 'syllabus' ? 'text-emerald-600' : 'text-emerald-300'}`} /> My Syllabus
                 </button>
                 <button
                   onClick={() => handleTabChange('analytics')}

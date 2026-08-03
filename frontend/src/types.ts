@@ -151,6 +151,17 @@ export interface Question {
   negativeMarks?: number;
 }
 
+export interface ChapterWeightageConfig {
+  chapterId: string | any;
+  questionCount: number;
+}
+
+export interface SubjectWeightageConfig {
+  subjectId: string | any;
+  chapters: ChapterWeightageConfig[];
+  totalQuestions?: number;
+}
+
 export interface Test {
   _id?: string;
   id?: string;
@@ -160,10 +171,11 @@ export interface Test {
   studentTypeIds?: string[] | any[];  // Multi-group assignment
   testType: 'Chapter' | 'Grand' | 'Weekly' | 'Monthly' | 'Practice';
   isDynamic?: boolean;
-  subjectId?: string;
-  chapterId?: string;
+  subjectId?: string | any;
+  chapterId?: string | any;
   dynamicTotalQuestions?: number;
   targetDifficulty?: 'Easy' | 'Medium' | 'Hard' | 'Mixed';
+  subjectConfigs?: SubjectWeightageConfig[];
   questions?: string[];
   duration: number;                   // in minutes
   marksPerQuestion?: number;          // default 4

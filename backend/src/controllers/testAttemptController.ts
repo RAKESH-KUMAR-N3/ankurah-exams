@@ -10,11 +10,40 @@ import CompetitiveQuestionBySubject from '../models/CompetitiveQuestionBySubject
 import Subject from '../models/Subject';
 import { evaluateTestAttempt } from '../services/testEvaluationService';
 
+const normalizeFilter = (query: any) => {
+  const converted: any = {};
+  for (const [key, val] of Object.entries(query)) {
+    if (typeof val === 'string' && mongoose.isValidObjectId(val)) {
+      converted[key] = { $in: [val, new mongoose.Types.ObjectId(val)] };
+    } else if (Array.isArray(val)) {
+      converted[key] = {
+        $in: val.flatMap(item =>
+          typeof item === 'string' && mongoose.isValidObjectId(item)
+            ? [item, new mongoose.Types.ObjectId(item)]
+            : [item]
+        )
+      };
+    } else if (val && typeof val === 'object' && (val as any).$in) {
+      converted[key] = {
+        $in: (val as any).$in.flatMap((item: any) =>
+          typeof item === 'string' && mongoose.isValidObjectId(item)
+            ? [item, new mongoose.Types.ObjectId(item)]
+            : [item]
+        )
+      };
+    } else {
+      converted[key] = val;
+    }
+  }
+  return converted;
+};
+
 const fetchRandomQs = async (query: any, size: number) => {
+  const normalized = normalizeFilter(query);
   const [ap, tg, comp] = await Promise.all([
-    ApEntranceQuestion.aggregate([{ $match: query }, { $sample: { size } }]),
-    TgEntranceQuestion.aggregate([{ $match: query }, { $sample: { size } }]),
-    CompetitiveQuestionBySubject.aggregate([{ $match: query }, { $sample: { size } }])
+    ApEntranceQuestion.aggregate([{ $match: normalized }, { $sample: { size } }]),
+    TgEntranceQuestion.aggregate([{ $match: normalized }, { $sample: { size } }]),
+    CompetitiveQuestionBySubject.aggregate([{ $match: normalized }, { $sample: { size } }])
   ]);
   return [...ap, ...tg, ...comp].sort(() => 0.5 - Math.random()).slice(0, size);
 };
@@ -36,8 +65,22 @@ export const populateAttemptQuestions = async (attempt: any, selectFields: strin
     Question.find({ _id: { $in: qIds } }).select(selectFields).lean()
   ]);
 
+  const allFound = [...ap, ...tg, ...comp, ...legacy];
+  const subIds = allFound
+    .map(q => q.subjectId?._id || q.subjectId)
+    .filter(id => id && mongoose.isValidObjectId(id));
+  
+  const subjects = subIds.length > 0
+    ? await Subject.find({ _id: { $in: subIds } }).select('name').lean()
+    : [];
+  const subMap = new Map(subjects.map((s: any) => [s._id.toString(), s]));
+
   const qMap = new Map();
-  [...ap, ...tg, ...comp, ...legacy].forEach((q: any) => {
+  allFound.forEach((q: any) => {
+    const rawSubId = (q.subjectId?._id || q.subjectId)?.toString();
+    if (rawSubId && subMap.has(rawSubId)) {
+      q.subjectId = subMap.get(rawSubId);
+    }
     qMap.set(q._id.toString(), q);
   });
 
@@ -77,7 +120,7 @@ export const startTest = async (req: Request, res: Response): Promise<void> => {
     });
 
     if (existingAttempt) {
-      const populatedExisting = await populateAttemptQuestions(existingAttempt, 'content options difficulty explanation');
+      const populatedExisting = await populateAttemptQuestions(existingAttempt, 'content options difficulty explanation chapterId subjectId');
       res.status(200).json(populatedExisting);
       return;
     }
@@ -104,7 +147,69 @@ export const startTest = async (req: Request, res: Response): Promise<void> => {
     // Build question set
     let initialResponses: any[] = [];
 
-    if (test.isDynamic && test.dynamicTotalQuestions) {
+    if (test.subjectConfigs && Array.isArray(test.subjectConfigs) && test.subjectConfigs.length > 0) {
+      // Multi-Subject & Multi-Chapter test: pick questions in strict subject-wise order
+      const allSelectedQuestions: any[] = [];
+      const usedQuestionIds = new Set<string>();
+
+      for (const sConf of test.subjectConfigs) {
+        const subId = (sConf.subjectId?._id || sConf.subjectId)?.toString();
+        if (!subId) continue;
+
+        const chapters = sConf.chapters || [];
+        for (const chap of chapters) {
+          const chapId = (chap.chapterId?._id || chap.chapterId)?.toString();
+          const targetCount = Number(chap.questionCount) || 0;
+          if (targetCount <= 0 || !chapId) continue;
+
+          const query: any = { subjectId: subId, chapterId: chapId };
+          if (test.targetDifficulty && test.targetDifficulty !== 'Mixed') {
+            query.difficulty = test.targetDifficulty;
+          }
+
+          let chapQuestions = await fetchRandomQs(query, targetCount * 2);
+          chapQuestions = chapQuestions.filter(q => !usedQuestionIds.has(q._id.toString())).slice(0, targetCount);
+
+          // Fallback 1: Relax difficulty if needed
+          if (chapQuestions.length < targetCount && query.difficulty) {
+            delete query.difficulty;
+            let fallbackQs = await fetchRandomQs(query, (targetCount - chapQuestions.length) * 2);
+            fallbackQs = fallbackQs.filter(
+              q => !usedQuestionIds.has(q._id.toString()) && !chapQuestions.some(cq => cq._id.toString() === q._id.toString())
+            );
+            chapQuestions.push(...fallbackQs.slice(0, targetCount - chapQuestions.length));
+          }
+
+          // Fallback 2: Relax chapter filter within same subject if needed
+          if (chapQuestions.length < targetCount) {
+            const needed = targetCount - chapQuestions.length;
+            let subFallback = await fetchRandomQs({ subjectId: subId }, needed * 2);
+            subFallback = subFallback.filter(
+              q => !usedQuestionIds.has(q._id.toString()) && !chapQuestions.some(cq => cq._id.toString() === q._id.toString())
+            );
+            chapQuestions.push(...subFallback.slice(0, needed));
+          }
+
+          chapQuestions.forEach(q => {
+            usedQuestionIds.add(q._id.toString());
+            allSelectedQuestions.push(q);
+          });
+        }
+      }
+
+      if (allSelectedQuestions.length === 0) {
+        res.status(400).json({ 
+          message: 'No questions found in Question Bank for the configured subjects/chapters of this test. Please upload questions in Question Bank first.' 
+        });
+        return;
+      }
+
+      initialResponses = allSelectedQuestions.map(q => ({
+        questionId: q._id,
+        selectedOption: null,
+        isCorrect: null
+      }));
+    } else if (test.isDynamic && test.dynamicTotalQuestions) {
       // Dynamic test: pick random questions strictly from matching subject/exam
       let allowedSubjectIds: any[] = [];
       if (test.subjectId) {
@@ -182,7 +287,7 @@ export const startTest = async (req: Request, res: Response): Promise<void> => {
 
     const savedAttempt = await attempt.save();
 
-    const populatedAttempt = await populateAttemptQuestions(savedAttempt, 'content options difficulty explanation');
+    const populatedAttempt = await populateAttemptQuestions(savedAttempt, 'content options difficulty explanation chapterId subjectId');
 
     res.status(201).json(populatedAttempt);
   } catch (error: any) {
@@ -280,7 +385,7 @@ export const submitTest = async (req: Request, res: Response): Promise<void> => 
     if (attempt.status === 'Completed' || attempt.status === 'Force-Submitted') {
       let result = await TestAttempt.findById(attempt._id)
         .populate({ path: 'testId', select: 'title testType duration marksPerQuestion negativeMarksPerQuestion' });
-      result = await populateAttemptQuestions(result, 'content options correctAnswer explanation difficulty');
+      result = await populateAttemptQuestions(result, 'content options correctAnswer explanation difficulty chapterId subjectId');
       res.json({ message: 'Test already submitted', result });
       return;
     }
@@ -299,7 +404,7 @@ export const submitTest = async (req: Request, res: Response): Promise<void> => 
     // Populate for immediate scorecard display
     let result = await TestAttempt.findById(evaluatedAttempt._id)
       .populate({ path: 'testId', select: 'title testType duration marksPerQuestion negativeMarksPerQuestion' });
-    result = await populateAttemptQuestions(result, 'content options correctAnswer explanation difficulty');
+    result = await populateAttemptQuestions(result, 'content options correctAnswer explanation difficulty chapterId subjectId');
     
     res.json({ message: 'Test submitted successfully', result });
   } catch (error: any) {

@@ -14,6 +14,7 @@ export const createTest = asyncHandler(async (req: Request, res: Response) => {
     title, categoryId, examIds, studentTypeIds,
     subjectId, chapterId, testType,
     isDynamic, dynamicTotalQuestions, targetDifficulty,
+    subjectConfigs,
     questions,
     duration, marksPerQuestion, negativeMarksPerQuestion,
     retakeLimit, isFullSyllabus, status, instructions
@@ -26,6 +27,7 @@ export const createTest = asyncHandler(async (req: Request, res: Response) => {
     subjectId, chapterId, testType,
     isDynamic: isDynamic || false,
     dynamicTotalQuestions, targetDifficulty,
+    subjectConfigs: subjectConfigs || [],
     questions: questions || [],
     duration,
     marksPerQuestion: marksPerQuestion ?? 4,
@@ -44,7 +46,7 @@ export const createTest = asyncHandler(async (req: Request, res: Response) => {
 // @access  Admin (all including Draft), Student (Published only via student route)
 export const getTests = asyncHandler(async (req: Request, res: Response) => {
   const tests = await Test.find({})
-    .populate('categoryId examIds studentTypeIds subjectId chapterId questions');
+    .populate('categoryId examIds studentTypeIds subjectId chapterId questions subjectConfigs.subjectId subjectConfigs.chapters.chapterId');
   res.json(tests);
 });
 
@@ -53,7 +55,7 @@ export const getTests = asyncHandler(async (req: Request, res: Response) => {
 // @access  Admin
 export const getTestById = asyncHandler(async (req: Request, res: Response) => {
   const test = await Test.findById(req.params.id)
-    .populate('categoryId examIds studentTypeIds subjectId chapterId questions');
+    .populate('categoryId examIds studentTypeIds subjectId chapterId questions subjectConfigs.subjectId subjectConfigs.chapters.chapterId');
   if (test) {
     res.json(test);
   } else {
@@ -73,6 +75,7 @@ export const updateTest = asyncHandler(async (req: Request, res: Response) => {
       title, categoryId, examIds, studentTypeIds,
       subjectId, chapterId, testType,
       isDynamic, dynamicTotalQuestions, targetDifficulty,
+      subjectConfigs,
       questions,
       duration, marksPerQuestion, negativeMarksPerQuestion,
       retakeLimit, isFullSyllabus, status, instructions
@@ -92,6 +95,7 @@ export const updateTest = asyncHandler(async (req: Request, res: Response) => {
     if (isDynamic !== undefined) test.isDynamic = isDynamic;
     if (dynamicTotalQuestions !== undefined) test.dynamicTotalQuestions = dynamicTotalQuestions;
     if (targetDifficulty !== undefined) test.targetDifficulty = targetDifficulty;
+    if (subjectConfigs !== undefined) test.subjectConfigs = subjectConfigs;
     if (questions !== undefined) test.questions = questions;
     if (duration !== undefined) test.duration = duration;
     if (marksPerQuestion !== undefined) test.marksPerQuestion = marksPerQuestion;

@@ -259,3 +259,45 @@ export const bulkUploadQuestions = asyncHandler(async (req: Request, res: Respon
       }
     });
 });
+
+// @desc    Get chapter-wise question counts for a subject
+// @route   GET /api/questions/chapter-counts?subjectId=xxx
+// @access  Admin
+export const getChapterQuestionCounts = asyncHandler(async (req: Request, res: Response) => {
+  const { subjectId } = req.query as { subjectId?: string };
+
+  if (!subjectId) {
+    res.status(400);
+    throw new Error('subjectId is required');
+  }
+
+  const isComp = await CompetitiveSubject.findById(subjectId).lean();
+  
+  let chapterCounts: Record<string, number> = {};
+
+  if (isComp) {
+    // Competitive questions don't have chapterId — return subject-level count
+    const total = await CompetitiveQuestionBySubject.countDocuments({ subjectId });
+    chapterCounts['_subject_total'] = total;
+  } else {
+    // AP or TG entrance
+    const sub = await Subject.findById(subjectId).lean() as any;
+    const isTG = sub?.state === 'TG';
+    const Model = isTG ? TgEntranceQuestion : ApEntranceQuestion;
+
+    const chapters = await Chapter.find({ subjectId }).lean();
+    
+    await Promise.all(chapters.map(async (c: any) => {
+      const cid = c._id.toString();
+      const cnt = await Model.countDocuments({ chapterId: c._id });
+      chapterCounts[cid] = cnt;
+    }));
+
+    // Also count questions with no chapterId
+    const noChap = await Model.countDocuments({ subjectId, chapterId: { $exists: false } });
+    if (noChap > 0) chapterCounts['_no_chapter'] = noChap;
+  }
+
+  res.json({ subjectId, chapterCounts });
+});
+

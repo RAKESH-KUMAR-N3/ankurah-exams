@@ -3,7 +3,8 @@ import { startExam, saveExamProgress, submitExam, reportTabSwitch, raiseDoubt, f
 import { Test, TestAttempt } from '../../types';
 import {
   Clock, AlertTriangle, CheckCircle2, XCircle, ChevronLeft, ChevronRight,
-  Maximize, Flag, Send, Trophy, MessageSquarePlus, RotateCcw, BookOpen, X
+  Maximize, Flag, Send, Trophy, MessageSquarePlus, RotateCcw, BookOpen, X,
+  Layers, Bookmark, BarChart2
 } from 'lucide-react';
 
 interface ExamPageProps {
@@ -43,6 +44,55 @@ export default function ExamPage({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showMobilePalette, setShowMobilePalette] = useState(false);
   const [showMobileReviewPalette, setShowMobileReviewPalette] = useState(false);
+
+  // Derive Subject sections from attempt.responses
+  const subjectSections = React.useMemo(() => {
+    if (!attempt?.responses || attempt.responses.length === 0) return [];
+    
+    const secMap = new Map<string, {
+      subjectId: string;
+      subjectName: string;
+      questionIndices: number[];
+    }>();
+
+    attempt.responses.forEach((resp: any, idx: number) => {
+      const q = typeof resp.questionId === 'object' ? resp.questionId : null;
+      const subObj = q?.subjectId;
+      const rawSubId = (typeof subObj === 'object' ? (subObj?._id || subObj?.id) : subObj) || (test?.subjectId?._id || test?.subjectId) || 'general';
+      const subIdStr = rawSubId ? rawSubId.toString() : 'general';
+
+      let subName = typeof subObj === 'object' ? subObj?.name : null;
+      if (!subName) {
+        const found = (subjects || []).find((s: any) => (s.id || s._id || '').toString() === subIdStr);
+        subName = found?.name || (test?.isFullSyllabus ? `Section ${secMap.size + 1}` : 'General Subject');
+      }
+
+      if (!secMap.has(subIdStr)) {
+        secMap.set(subIdStr, {
+          subjectId: subIdStr,
+          subjectName: subName || 'General Subject',
+          questionIndices: [idx]
+        });
+      } else {
+        secMap.get(subIdStr)!.questionIndices.push(idx);
+      }
+    });
+
+    return Array.from(secMap.values()).map(sec => ({
+      subjectId: sec.subjectId,
+      subjectName: sec.subjectName,
+      startIndex: sec.questionIndices[0],
+      endIndex: sec.questionIndices[sec.questionIndices.length - 1],
+      questionCount: sec.questionIndices.length,
+      questionIndices: sec.questionIndices,
+    }));
+  }, [attempt, subjects, test]);
+
+  // Current active subject section
+  const currentSection = React.useMemo(() => {
+    if (!subjectSections || subjectSections.length === 0) return null;
+    return subjectSections.find(s => s.questionIndices.includes(currentIndex)) || subjectSections[0];
+  }, [subjectSections, currentIndex]);
 
   useEffect(() => {
     if (phase === 'running') {
@@ -402,22 +452,54 @@ export default function ExamPage({
               <Trophy className="w-3.5 h-3.5 text-amber-600" /> Academic Scope & Syllabus
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
-                <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Target Exam</span>
-                <span className="font-black text-slate-900 line-clamp-1">{examName}</span>
+            {Array.isArray(test?.subjectConfigs) && test.subjectConfigs.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Multi-Subject Competitive Exam ({test.subjectConfigs.length} Subjects)</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {test.subjectConfigs.map((sc, sci) => {
+                    const sObj = subjects.find(s => (s.id || (s as any)._id).toString() === (sc.subjectId?._id || sc.subjectId || '').toString());
+                    const sName = sc.subjectId?.name || sObj?.name || `Subject ${sci + 1}`;
+                    const chapCount = sc.chapters?.length || 0;
+                    const qCount = sc.totalQuestions || sc.chapters?.reduce((acc: number, c: any) => acc + (c.questionCount || 0), 0);
+                    return (
+                      <div key={sci} className="p-2.5 rounded-lg bg-white border border-emerald-200/90 shadow-2xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-slate-900 text-xs flex items-center gap-1">
+                            📖 {sName}
+                          </span>
+                          <span className="text-[10px] font-mono font-black px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded">
+                            {qCount} Qs
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 font-medium">
+                          {chapCount} Chapter{chapCount !== 1 ? 's' : ''} configured
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
+                  <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Target Exam</span>
+                  <span className="font-black text-slate-900 line-clamp-1">{examName}</span>
+                </div>
 
-              <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
-                <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Subject Involved</span>
-                <span className="font-black text-emerald-800 line-clamp-1">{subjectName}</span>
-              </div>
+                <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
+                  <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Subject Involved</span>
+                  <span className="font-black text-emerald-800 line-clamp-1">{subjectName}</span>
+                </div>
 
-              <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
-                <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Chapter Covered</span>
-                <span className="font-black text-amber-800 line-clamp-1">{chapterName}</span>
+                <div className="p-3 rounded-lg bg-white border border-emerald-200/80 space-y-0.5 shadow-2xs">
+                  <span className="text-[9px] font-mono font-bold text-slate-500 uppercase block">Chapter Covered</span>
+                  <span className="font-black text-amber-800 line-clamp-1">{chapterName}</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Instructions text if provided */}
@@ -566,10 +648,78 @@ export default function ExamPage({
     const maxMarks = result.totalMarks || (totalCount * marksPerQ) || 120;
     const percentage = maxMarks > 0 ? Math.round((netScore / maxMarks) * 100) : 0;
 
+    const scorecardSubjectBreakdown = (() => {
+      const map = new Map<string, {
+        subjectName: string;
+        total: number;
+        correct: number;
+        wrong: number;
+        unattempted: number;
+        score: number;
+        maxMarks: number;
+      }>();
+
+      resultResponses.forEach((r: any) => {
+        const q = typeof r.questionId === 'object' ? r.questionId : null;
+        const subObj = q?.subjectId;
+        const rawSubId = (typeof subObj === 'object' ? (subObj?._id || subObj?.id) : subObj) || 'general';
+        const subIdStr = rawSubId ? rawSubId.toString() : 'general';
+
+        let subName = typeof subObj === 'object' ? subObj?.name : null;
+        if (!subName) {
+          const found = (subjects || []).find((s: any) => (s.id || s._id || '').toString() === subIdStr);
+          subName = found?.name || 'Subject';
+        }
+
+        if (!map.has(subIdStr)) {
+          map.set(subIdStr, {
+            subjectName: subName || 'General',
+            total: 0,
+            correct: 0,
+            wrong: 0,
+            unattempted: 0,
+            score: 0,
+            maxMarks: 0,
+          });
+        }
+
+        const entry = map.get(subIdStr)!;
+        entry.total += 1;
+        entry.maxMarks += marksPerQ;
+        if (r.isCorrect) {
+          entry.correct += 1;
+          entry.score += marksPerQ;
+        } else if (r.selectedOption) {
+          entry.wrong += 1;
+          entry.score -= negMarksPerQ;
+        } else {
+          entry.unattempted += 1;
+        }
+      });
+
+      return Array.from(map.values());
+    })();
+
     const currentReviewResp = resultResponses[reviewIndex] || {};
     const currentQ = typeof currentReviewResp.questionId === 'object' ? currentReviewResp.questionId : null;
     const isCorrect = !!currentReviewResp.isCorrect;
     const attempted = !!currentReviewResp.selectedOption;
+
+    const currentQSubName = (() => {
+      if (!currentQ) return '';
+      const subObj = currentQ.subjectId;
+      if (typeof subObj === 'object' && subObj?.name) return subObj.name;
+      const match = (subjects || []).find((s: any) => (s.id || s._id || '').toString() === (subObj || '').toString());
+      return match?.name || '';
+    })();
+
+    const currentQChapName = (() => {
+      if (!currentQ) return '';
+      const chapObj = currentQ.chapterId;
+      if (typeof chapObj === 'object' && (chapObj?.title || chapObj?.name)) return chapObj.title || chapObj.name;
+      const match = (chapters || []).find((c: any) => (c.id || c._id || '').toString() === (chapObj || '').toString());
+      return match?.title || match?.name || '';
+    })();
 
     return (
       <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
@@ -632,6 +782,25 @@ export default function ExamPage({
               </span>
             </div>
           </div>
+
+          {/* Subject-Wise Performance Breakdown Strip */}
+          {scorecardSubjectBreakdown.length > 1 && (
+            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-0.5 border-t border-slate-100">
+              <span className="text-[10px] font-mono font-bold uppercase text-slate-400 shrink-0 flex items-center gap-1">
+                <BarChart2 className="w-3 h-3 text-emerald-600" /> Subject Breakdown:
+              </span>
+              {scorecardSubjectBreakdown.map((sb, sbi) => {
+                const subPct = sb.maxMarks > 0 ? Math.round((Math.max(0, sb.score) / sb.maxMarks) * 100) : 0;
+                return (
+                  <div key={sbi} className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1.5 shrink-0">
+                    <span className="text-slate-800 font-bold">{sb.subjectName}:</span>
+                    <span className="text-emerald-700">{sb.correct}/{sb.total}</span>
+                    <span className="text-slate-400">({sb.score} pts • {subPct}%)</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </header>
 
         {/* MAIN VIEWPORT BODY (NO PAGE SCROLLBAR) */}
@@ -751,9 +920,22 @@ export default function ExamPage({
                 
                 <div className="space-y-3">
                   {/* Question Header & Status Badge */}
-                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200">
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono font-black text-slate-900 text-xs sm:text-sm">Question {reviewIndex + 1} of {resultResponses.length}</span>
+                      
+                      {currentQSubName && (
+                        <span className="px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-800 font-mono font-bold text-[10px] rounded-md flex items-center gap-1">
+                          <Bookmark className="w-2.5 h-2.5 text-blue-600" /> {currentQSubName}
+                        </span>
+                      )}
+
+                      {currentQChapName && (
+                        <span className="hidden sm:inline-flex px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] font-bold rounded-md">
+                          📖 {currentQChapName}
+                        </span>
+                      )}
+
                       <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-md border uppercase tracking-wider ${
                         isCorrect ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
                         attempted ? 'bg-rose-50 text-rose-800 border-rose-300' :
@@ -987,6 +1169,43 @@ export default function ExamPage({
           </div>
         </header>
 
+        {/* SUBJECT SECTION NAVIGATION TABS (NTA / CBT COMPETITIVE STYLE) */}
+        {subjectSections.length > 1 && (
+          <div className="bg-slate-100/90 border-b border-slate-200 px-4 sm:px-6 py-2 flex items-center gap-2 overflow-x-auto shrink-0 shadow-2xs">
+            <span className="text-[10px] font-mono font-black uppercase text-slate-500 tracking-wider flex items-center gap-1 shrink-0 mr-1">
+              <Layers className="w-3.5 h-3.5 text-emerald-600" /> Sections:
+            </span>
+            {subjectSections.map((sec) => {
+              const isActive = currentSection?.subjectId === sec.subjectId;
+              const secAns = sec.questionIndices.filter(i => {
+                const qId = typeof attempt.responses[i]?.questionId === 'object'
+                  ? attempt.responses[i].questionId._id
+                  : attempt.responses[i]?.questionId;
+                return !!responses[qId];
+              }).length;
+
+              return (
+                <button
+                  key={sec.subjectId}
+                  onClick={() => setCurrentIndex(sec.startIndex)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shrink-0 ${
+                    isActive
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-400/40'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  <span>{sec.subjectName}</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
+                    isActive ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {secAns}/{sec.questionCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* MAIN EXAM BODY (Side Panel + Question Area) */}
         <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
           
@@ -1022,50 +1241,108 @@ export default function ExamPage({
               </div>
             </div>
 
-            {/* Grid of Number Pills */}
-            <div className="space-y-2 flex-1">
+            {/* Grid of Number Pills (Subject-wise if multi-subject) */}
+            <div className="space-y-3 flex-1">
               <h4 className="text-[10px] font-mono font-black uppercase text-slate-500 tracking-wider">
                 Question Palette ({total} Questions)
               </h4>
 
-              <div className="grid grid-cols-5 gap-2">
-                {attempt.responses.map((_: any, idx: number) => {
-                  const qId = typeof attempt.responses[idx].questionId === 'object'
-                    ? attempt.responses[idx].questionId._id
-                    : attempt.responses[idx].questionId;
-                  
-                  const isCurrent = idx === currentIndex;
-                  const isAns = !!responses[qId];
-                  const isRev = !!markedForReview[qId];
-                  const isVis = visitedQuestions.has(idx);
+              {subjectSections.length > 1 ? (
+                <div className="space-y-4">
+                  {subjectSections.map((sec) => {
+                    const isCurrentSec = currentSection?.subjectId === sec.subjectId;
+                    return (
+                      <div key={sec.subjectId} className="space-y-1.5">
+                        <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                          <span className={`text-[11px] font-black flex items-center gap-1 ${
+                            isCurrentSec ? 'text-emerald-700' : 'text-slate-600'
+                          }`}>
+                            <Bookmark className="w-3 h-3 text-emerald-600" /> {sec.subjectName}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            ({sec.questionCount} Qs)
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-1.5">
+                          {sec.questionIndices.map((idx) => {
+                            const qId = typeof attempt.responses[idx].questionId === 'object'
+                              ? attempt.responses[idx].questionId._id
+                              : attempt.responses[idx].questionId;
+                            
+                            const isCurrent = idx === currentIndex;
+                            const isAns = !!responses[qId];
+                            const isRev = !!markedForReview[qId];
+                            const isVis = visitedQuestions.has(idx);
 
-                  let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                            let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                            if (isCurrent) {
+                              colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
+                            } else if (isAns && isRev) {
+                              colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
+                            } else if (isRev) {
+                              colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
+                            } else if (isAns) {
+                              colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
+                            } else if (isVis) {
+                              colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
+                            }
 
-                  if (isCurrent) {
-                    colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
-                  } else if (isAns && isRev) {
-                    colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
-                  } else if (isRev) {
-                    colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
-                  } else if (isAns) {
-                    colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
-                  } else if (isVis) {
-                    colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
-                  }
+                            return (
+                              <button
+                                key={idx}
+                                id={`nav-q-${idx}`}
+                                onClick={() => setCurrentIndex(idx)}
+                                className={`w-9 h-9 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${colorStyle}`}
+                                title={`Question ${idx + 1}`}
+                              >
+                                {idx + 1}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-5 gap-2">
+                  {attempt.responses.map((_: any, idx: number) => {
+                    const qId = typeof attempt.responses[idx].questionId === 'object'
+                      ? attempt.responses[idx].questionId._id
+                      : attempt.responses[idx].questionId;
+                    
+                    const isCurrent = idx === currentIndex;
+                    const isAns = !!responses[qId];
+                    const isRev = !!markedForReview[qId];
+                    const isVis = visitedQuestions.has(idx);
 
-                  return (
-                    <button
-                      key={idx}
-                      id={`nav-q-${idx}`}
-                      onClick={() => setCurrentIndex(idx)}
-                      className={`w-9 h-9 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${colorStyle}`}
-                      title={`Question ${idx + 1}`}
-                    >
-                      {idx + 1}
-                    </button>
-                  );
-                })}
-              </div>
+                    let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                    if (isCurrent) {
+                      colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
+                    } else if (isAns && isRev) {
+                      colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
+                    } else if (isRev) {
+                      colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
+                    } else if (isAns) {
+                      colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
+                    } else if (isVis) {
+                      colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        id={`nav-q-${idx}`}
+                        onClick={() => setCurrentIndex(idx)}
+                        className={`w-9 h-9 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${colorStyle}`}
+                        title={`Question ${idx + 1}`}
+                      >
+                        {idx + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </aside>
 
@@ -1105,43 +1382,98 @@ export default function ExamPage({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-5 gap-2 pt-2">
-                  {attempt.responses.map((_: any, idx: number) => {
-                    const qId = typeof attempt.responses[idx].questionId === 'object'
-                      ? attempt.responses[idx].questionId._id
-                      : attempt.responses[idx].questionId;
+                <div className="pt-2 max-h-[50vh] overflow-y-auto space-y-4">
+                  {subjectSections.length > 1 ? (
+                    subjectSections.map((sec) => (
+                      <div key={sec.subjectId} className="space-y-2">
+                        <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                          <span className="text-xs font-black text-slate-800 flex items-center gap-1">
+                            <Bookmark className="w-3 h-3 text-emerald-600" /> {sec.subjectName}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400">
+                            ({sec.questionCount} Qs)
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-2">
+                          {sec.questionIndices.map((idx) => {
+                            const qId = typeof attempt.responses[idx].questionId === 'object'
+                              ? attempt.responses[idx].questionId._id
+                              : attempt.responses[idx].questionId;
 
-                    const isCurrent = idx === currentIndex;
-                    const isAns = !!responses[qId];
-                    const isRev = !!markedForReview[qId];
-                    const isVis = visitedQuestions.has(idx);
+                            const isCurrent = idx === currentIndex;
+                            const isAns = !!responses[qId];
+                            const isRev = !!markedForReview[qId];
+                            const isVis = visitedQuestions.has(idx);
 
-                    let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
-                    if (isCurrent) {
-                      colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
-                    } else if (isAns && isRev) {
-                      colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
-                    } else if (isRev) {
-                      colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
-                    } else if (isAns) {
-                      colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
-                    } else if (isVis) {
-                      colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
-                    }
+                            let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                            if (isCurrent) {
+                              colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
+                            } else if (isAns && isRev) {
+                              colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
+                            } else if (isRev) {
+                              colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
+                            } else if (isAns) {
+                              colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
+                            } else if (isVis) {
+                              colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
+                            }
 
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setCurrentIndex(idx);
-                          setShowMobilePalette(false);
-                        }}
-                        className={`h-10 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${colorStyle}`}
-                      >
-                        {idx + 1}
-                      </button>
-                    );
-                  })}
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  setCurrentIndex(idx);
+                                  setShowMobilePalette(false);
+                                }}
+                                className={`h-10 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${colorStyle}`}
+                              >
+                                {idx + 1}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="grid grid-cols-5 gap-2">
+                      {attempt.responses.map((_: any, idx: number) => {
+                        const qId = typeof attempt.responses[idx].questionId === 'object'
+                          ? attempt.responses[idx].questionId._id
+                          : attempt.responses[idx].questionId;
+
+                        const isCurrent = idx === currentIndex;
+                        const isAns = !!responses[qId];
+                        const isRev = !!markedForReview[qId];
+                        const isVis = visitedQuestions.has(idx);
+
+                        let colorStyle = 'bg-slate-100 border border-slate-200 text-slate-600';
+                        if (isCurrent) {
+                          colorStyle = 'ring-2 ring-emerald-500 bg-emerald-600 text-white font-black scale-105 shadow-sm';
+                        } else if (isAns && isRev) {
+                          colorStyle = 'bg-indigo-600 border border-indigo-500 text-white font-black';
+                        } else if (isRev) {
+                          colorStyle = 'bg-indigo-50 border border-indigo-300 text-indigo-800 font-black';
+                        } else if (isAns) {
+                          colorStyle = 'bg-emerald-100 border border-emerald-300 text-emerald-800 font-black';
+                        } else if (isVis) {
+                          colorStyle = 'bg-amber-100 border border-amber-300 text-amber-800 font-black';
+                        }
+
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setCurrentIndex(idx);
+                              setShowMobilePalette(false);
+                            }}
+                            className={`h-10 rounded-xl font-mono text-xs transition-all cursor-pointer flex items-center justify-center ${colorStyle}`}
+                          >
+                            {idx + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1155,26 +1487,41 @@ export default function ExamPage({
                 
                 <div className="space-y-4 sm:space-y-6">
                   {/* Question Header & Specs */}
-                  <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono font-black text-xs rounded-lg">
-                        Q{currentIndex + 1} / {total}
-                      </span>
-
-                      {markedForReview[currentQId] && (
-                        <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-[10px] rounded-md uppercase flex items-center gap-1">
-                          ★ Review
+                  <div className="space-y-2 pb-2.5 border-b border-slate-200">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono font-black text-xs rounded-lg">
+                          Q{currentIndex + 1} / {total}
                         </span>
-                      )}
-                    </div>
 
-                    <div className="flex items-center gap-2 text-xs font-mono font-bold">
-                      <span className="text-emerald-700">+{(test as any).marksPerQuestion || 4} Marks</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-rose-600">-{(test as any).negativeMarksPerQuestion || 1} Neg</span>
-                      <span className="hidden sm:inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] uppercase ml-1">
-                        {currentQ.difficulty || 'Medium'}
-                      </span>
+                        {currentSection && subjectSections.length > 1 && (
+                          <span className="px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-800 font-mono font-bold text-xs rounded-lg flex items-center gap-1">
+                            <Bookmark className="w-3 h-3 text-blue-600" />
+                            {currentSection.subjectName} (Q{currentSection.questionIndices.indexOf(currentIndex) + 1}/{currentSection.questionCount})
+                          </span>
+                        )}
+
+                        {currentQ?.chapterId && (
+                          <span className="hidden sm:inline-flex px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10px] font-bold rounded-md">
+                            📖 {(typeof currentQ.chapterId === 'object' ? (currentQ.chapterId.title || currentQ.chapterId.name) : currentQ.chapterId)}
+                          </span>
+                        )}
+
+                        {markedForReview[currentQId] && (
+                          <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-[10px] rounded-md uppercase flex items-center gap-1">
+                            ★ Review
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs font-mono font-bold">
+                        <span className="text-emerald-700">+{(test as any).marksPerQuestion || 4} Marks</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="text-rose-600">-{(test as any).negativeMarksPerQuestion || 1} Neg</span>
+                        <span className="hidden sm:inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] uppercase ml-1">
+                          {currentQ.difficulty || 'Medium'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

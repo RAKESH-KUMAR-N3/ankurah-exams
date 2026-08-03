@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Response } from 'express';
 import { AuthRequest as Request } from '../middlewares/authMiddleware';
 import User from '../models/User';
@@ -56,41 +57,79 @@ export const updateProfile = async (req: Request, res: Response): Promise<void> 
   }
 };
 
+const getStudentExamIds = async (user: any) => {
+  const activePlans = user.purchasedPlans?.filter((p: any) => {
+    if (!p.isActive) return false;
+    if (p.expiryDate && new Date(p.expiryDate) < new Date()) return false;
+    return true;
+  }) || [];
+
+  const rawIds = activePlans.flatMap((p: any) => [
+    p.planId?.toString(),
+    (p.examId?._id || p.examId)?.toString()
+  ]).filter(Boolean);
+
+  if (rawIds.length === 0) return { examRefStrings: [], examObjectIds: [], purchasedExams: [] };
+
+  const validObjectIds = rawIds.filter((id: any) => mongoose.isValidObjectId(id)).map((id: any) => new mongoose.Types.ObjectId(id));
+  
+  const purchasedExams = await Exam.find({
+    $or: [
+      { _id: { $in: validObjectIds } },
+      { examId: { $in: rawIds } }
+    ]
+  });
+
+  const allStrings = new Set<string>(rawIds);
+  purchasedExams.forEach(e => {
+    allStrings.add(e._id.toString());
+    if (e.examId) allStrings.add(e.examId);
+  });
+
+  const examRefStrings = Array.from(allStrings);
+  const examObjectIds = examRefStrings.filter((id: any) => mongoose.isValidObjectId(id)).map((id: any) => new mongoose.Types.ObjectId(id));
+
+  return { examRefStrings, examObjectIds, purchasedExams };
+};
+
 export const getMySubjects = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
     if (!user) { res.json([]); return; }
 
-    // Only active (non-expired) plans
-    const activePlans = user.purchasedPlans?.filter((p: any) => {
-      if (!p.isActive) return false;
-      if (p.expiryDate && new Date(p.expiryDate) < new Date()) return false;
-      return true;
-    }) || [];
+    const { examRefStrings, examObjectIds, purchasedExams } = await getStudentExamIds(user);
+    if (examRefStrings.length === 0 && purchasedExams.length === 0) { res.json([]); return; }
 
-    const purchasedExamIds = activePlans
-      .map((p: any) => (p.examId?._id || p.examId)?.toString())
-      .filter(Boolean);
-
-    if (purchasedExamIds.length === 0) { res.json([]); return; }
-
-    // Fetch exams with their attached subjects
-    const purchasedExams = await Exam.find({ _id: { $in: purchasedExamIds } });
-
-    // Collect all subject IDs from course subjects arrays
-    const allSubjectIds: string[] = [];
-    for (const exam of purchasedExams) {
-      if (exam.subjects && exam.subjects.length > 0) {
-        exam.subjects.forEach((sid: any) => allSubjectIds.push(sid.toString()));
+    // Direct subjects attached to exams
+    const directSubjectIds: string[] = [];
+    purchasedExams.forEach(e => {
+      if (Array.isArray(e.subjects)) {
+        e.subjects.forEach((s: any) => directSubjectIds.push(s.toString()));
       }
-    }
+    });
+    const validDirectSubjectObjIds = directSubjectIds.filter((id: any) => mongoose.isValidObjectId(id)).map((id: any) => new mongoose.Types.ObjectId(id));
+    const allExamRefs = [...examObjectIds, ...examRefStrings];
 
-    if (allSubjectIds.length === 0) { res.json([]); return; }
+    const subjectQuery: any = {
+      $or: [
+        { _id: { $in: [...validDirectSubjectObjIds, ...directSubjectIds] } },
+        { examId: { $in: allExamRefs } },
+        { examIds: { $in: examRefStrings } }
+      ]
+    };
+
+    const compSubjectQuery: any = {
+      $or: [
+        { _id: { $in: [...validDirectSubjectObjIds, ...directSubjectIds] } },
+        { examId: { $in: allExamRefs } },
+        { examIds: { $in: examRefStrings } }
+      ]
+    };
 
     // Fetch from both Subject and CompetitiveSubject collections
     const [entranceSubjects, compSubjects] = await Promise.all([
-      Subject.find({ _id: { $in: allSubjectIds } }),
-      CompetitiveSubject.find({ _id: { $in: allSubjectIds } })
+      Subject.find(subjectQuery).populate('applicableFor'),
+      CompetitiveSubject.find(compSubjectQuery)
     ]);
 
     // Deduplicate by ID (in case same subject attached to multiple courses)
@@ -113,60 +152,75 @@ export const getMyChapters = async (req: Request, res: Response): Promise<void> 
     const user = await User.findById(req.user?._id);
     if (!user) { res.json([]); return; }
 
-    // Only active (non-expired) plans
-    const activePlans = user.purchasedPlans?.filter((p: any) => {
-      if (!p.isActive) return false;
-      if (p.expiryDate && new Date(p.expiryDate) < new Date()) return false;
-      return true;
-    }) || [];
-
-    const purchasedExamIds = activePlans
-      .map((p: any) => (p.examId?._id || p.examId)?.toString())
-      .filter(Boolean);
-
-    if (purchasedExamIds.length === 0) { res.json([]); return; }
-
     const subjectId = req.query.subjectId;
     if (subjectId) {
-      const chapters = await Chapter.find({ subjectId }).populate('subjectId', 'name');
+      const validSubId = mongoose.isValidObjectId(subjectId) ? new mongoose.Types.ObjectId(subjectId as string) : subjectId;
+      const chapters = await Chapter.find({
+        $or: [
+          { subjectId: subjectId },
+          { subjectId: validSubId }
+        ]
+      }).populate('subjectId', 'name');
       res.json(chapters);
       return;
     }
 
-    // Get all subject IDs from purchased exam courses
-    const purchasedExams = await Exam.find({ _id: { $in: purchasedExamIds } });
-    const allSubjectIds: string[] = [];
-    for (const exam of purchasedExams) {
-      if (exam.subjects && exam.subjects.length > 0) {
-        exam.subjects.forEach((sid: any) => allSubjectIds.push(sid.toString()));
+    const { examRefStrings, examObjectIds, purchasedExams } = await getStudentExamIds(user);
+    if (examRefStrings.length === 0 && purchasedExams.length === 0) { res.json([]); return; }
+
+    // Direct subjects attached to exams
+    const directSubjectIds: string[] = [];
+    purchasedExams.forEach(e => {
+      if (Array.isArray(e.subjects)) {
+        e.subjects.forEach((s: any) => directSubjectIds.push(s.toString()));
       }
-    }
+    });
+    const validDirectSubjectObjIds = directSubjectIds.filter((id: any) => mongoose.isValidObjectId(id)).map((id: any) => new mongoose.Types.ObjectId(id));
+    const allExamRefs = [...examObjectIds, ...examRefStrings];
 
-    if (allSubjectIds.length === 0) { res.json([]); return; }
+    const subjectQuery: any = {
+      $or: [
+        { _id: { $in: [...validDirectSubjectObjIds, ...directSubjectIds] } },
+        { examId: { $in: allExamRefs } },
+        { examIds: { $in: examRefStrings } }
+      ]
+    };
 
-    const chapters = await Chapter.find({ subjectId: { $in: allSubjectIds } }).populate('subjectId', 'name');
+    const [entranceSubjects, compSubjects] = await Promise.all([
+      Subject.find(subjectQuery).select('_id'),
+      CompetitiveSubject.find(subjectQuery).select('_id')
+    ]);
+
+    const allResolvedSubjectIds = [...entranceSubjects, ...compSubjects].map(s => s._id.toString());
+    const validSubObjIds = allResolvedSubjectIds.filter((id: any) => mongoose.isValidObjectId(id)).map((id: any) => new mongoose.Types.ObjectId(id));
+
+    if (allResolvedSubjectIds.length === 0) { res.json([]); return; }
+
+    const chapters = await Chapter.find({
+      $or: [
+        { subjectId: { $in: allResolvedSubjectIds } },
+        { subjectId: { $in: validSubObjIds } }
+      ]
+    }).populate('subjectId', 'name');
+
     res.json(chapters);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-
 export const getMyTimetables = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    const purchasedExamIds = user?.purchasedPlans
-      ?.filter((p: any) => p.isActive)
-      .map((p: any) => (p.examId?._id || p.examId)?.toString())
-      .filter(Boolean) || [];
+    if (!user) { res.json([]); return; }
 
-    if (!user || purchasedExamIds.length === 0) {
-      res.json([]);
-      return;
-    }
+    const { examRefStrings, examObjectIds } = await getStudentExamIds(user);
+    if (examRefStrings.length === 0) { res.json([]); return; }
 
-    let query: any = { examId: { $in: purchasedExamIds } };
+    const allExamRefs = [...examObjectIds, ...examRefStrings];
+    let query: any = { 
+      examId: { $in: allExamRefs } 
+    };
     if (user.studentType) {
       query.$and = [
         {
@@ -192,41 +246,76 @@ export const getMyTimetables = async (req: Request, res: Response): Promise<void
 export const getMyTests = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    const purchasedExamIds = user?.purchasedPlans
-      ?.filter((p: any) => p.isActive)
-      .map((p: any) => (p.examId?._id || p.examId)?.toString())
-      .filter(Boolean) || [];
+    if (!user) { res.json([]); return; }
 
-    if (!user || purchasedExamIds.length === 0) {
-      res.json([]);
-      return;
-    }
+    const { examRefStrings, examObjectIds, purchasedExams } = await getStudentExamIds(user);
+    if (examRefStrings.length === 0 && purchasedExams.length === 0) { res.json([]); return; }
 
-    let query: any = { 
-      examIds: { $in: purchasedExamIds },
-      status: 'Published'
+    const allExamRefs = [...examObjectIds, ...examRefStrings];
+
+    // Find student's subjects as well so chapter tests created for those subjects are matched
+    const directSubjectIds: string[] = [];
+    purchasedExams.forEach(e => {
+      if (Array.isArray(e.subjects)) {
+        e.subjects.forEach((s: any) => directSubjectIds.push(s.toString()));
+      }
+    });
+    const validDirectSubjectObjIds = directSubjectIds.filter((id: any) => mongoose.isValidObjectId(id)).map((id: any) => new mongoose.Types.ObjectId(id));
+
+    const subjectQuery: any = {
+      $or: [
+        { _id: { $in: [...validDirectSubjectObjIds, ...directSubjectIds] } },
+        { examId: { $in: allExamRefs } },
+        { examIds: { $in: examRefStrings } }
+      ]
     };
-    
+    const [entranceSubjects, compSubjects] = await Promise.all([
+      Subject.find(subjectQuery).select('_id'),
+      CompetitiveSubject.find(subjectQuery).select('_id')
+    ]);
+    const allSubjectIds = [...entranceSubjects, ...compSubjects].map(s => s._id.toString());
+    const validSubObjIds = allSubjectIds.filter((id: any) => mongoose.isValidObjectId(id)).map((id: any) => new mongoose.Types.ObjectId(id));
+    const allSubRefs = [...validSubObjIds, ...allSubjectIds];
+
+    const conditions: any[] = [
+      { status: 'Published' },
+      {
+        $or: [
+          { examIds: { $in: allExamRefs } },
+          { examId: { $in: allExamRefs } },
+          ...(allSubRefs.length > 0 ? [{ subjectId: { $in: allSubRefs } }] : [])
+        ]
+      }
+    ];
+
     if (user.studentType) {
-      query.$or = [
-        { studentTypeIds: user.studentType },
-        { studentTypeIds: { $exists: false } },
-        { studentTypeIds: { $size: 0 } }
-      ];
+      conditions.push({
+        $or: [
+          { studentTypeIds: user.studentType },
+          { studentTypeIds: { $exists: false } },
+          { studentTypeIds: { $size: 0 } }
+        ]
+      });
     } else {
-      query.$or = [
-        { studentTypeIds: { $exists: false } },
-        { studentTypeIds: { $size: 0 } }
-      ];
+      conditions.push({
+        $or: [
+          { studentTypeIds: { $exists: false } },
+          { studentTypeIds: { $size: 0 } }
+        ]
+      });
     }
-    
+
     if (req.query.type) {
-      query.testType = req.query.type;
+      conditions.push({ testType: req.query.type });
     }
-    
+
+    const query: any = { $and: conditions };
+
     const tests = await Test.find(query)
       .populate('subjectId', 'name')
       .populate('chapterId', 'title')
+      .populate('subjectConfigs.subjectId', 'name')
+      .populate('subjectConfigs.chapters.chapterId', 'title')
       .select('-questions');
     res.json(tests);
   } catch (error: any) {
