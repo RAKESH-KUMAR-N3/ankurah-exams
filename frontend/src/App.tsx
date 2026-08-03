@@ -165,6 +165,7 @@ export default function App() {
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [studentsList, setStudentsList] = useState<User[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<'enterprise' | 'cyberpunk'>(() => {
     return (localStorage.getItem('ankurah_theme_mode') as any) || 'enterprise';

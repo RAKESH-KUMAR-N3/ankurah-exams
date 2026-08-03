@@ -900,7 +900,11 @@ export default function TestConfiguratorTab() {
                   : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
               }`}
             >
-                        {/* Modal Form Body — 2 Column Layout with Independent Scrolling */}
+              ✕ CLOSE & EXIT
+            </button>
+          </div>
+
+          {/* Modal Form Body — 2 Column Layout with Independent Scrolling */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-hidden p-4 sm:p-6">
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-start">
               
@@ -1314,7 +1318,7 @@ export default function TestConfiguratorTab() {
                                   {subChapters.map((chap) => {
                                     const chapId = (chap.id || (chap as any)._id).toString();
                                     const curVal = subChapConfig[chapId] || 0;
-                                    const availCount = chapterQuestionCounts[subId]?.[chapId] ?? (chap.questionCount || 15);
+                                    const availCount = chapterQuestionCounts[subId]?.[chapId] ?? ((chap as any).questionCount || 15);
 
                                     return (
                                       <div
@@ -1348,7 +1352,7 @@ export default function TestConfiguratorTab() {
                                             max={availCount}
                                             value={curVal}
                                             onChange={(e) =>
-                                              handleSubjectChapterQuestionChange(subId, chapId, Number(e.target.value))
+                                              handleChapterCountChange(subId, chapId, Number(e.target.value))
                                             }
                                             className={`w-14 p-1 border rounded-md font-mono font-bold text-xs text-center focus:outline-none ${
                                               isEnterprise
