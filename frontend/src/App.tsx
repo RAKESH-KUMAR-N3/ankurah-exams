@@ -448,6 +448,8 @@ export default function App() {
             timetables={timetables}
             subjects={subjects}
             chapters={chapters}
+            availableTests={tests}
+            onAttemptTest={() => handleTabChange('tests')}
           />
         );
       case 'subjects':

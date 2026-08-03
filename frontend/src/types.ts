@@ -104,9 +104,26 @@ export interface Chapter {
   description: string;
 }
 
+export interface TimetableWeeklyChapter {
+  subjectId: string;
+  subjectName: string;
+  chapterId: string;
+  chapterName: string;
+}
+
 export interface Timetable {
   id: string;
   _id?: string;
+  courseId?: string;
+  courseName?: string;
+  weekTitle?: string;
+  weekNumber?: number;
+  startDate?: string;
+  endDate?: string;
+  weeklyChapters?: TimetableWeeklyChapter[];
+  weekendExamId?: string;
+  weekendExamTitle?: string;
+  status?: 'published' | 'draft';
   planId?: string;
   examId?: string;
   studentType?: string;

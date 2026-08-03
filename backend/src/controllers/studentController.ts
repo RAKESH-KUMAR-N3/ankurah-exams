@@ -212,36 +212,41 @@ export const getMyChapters = async (req: Request, res: Response): Promise<void> 
 export const getMyTimetables = async (req: Request, res: Response): Promise<void> => {
   try {
     const user = await User.findById(req.user?._id);
-    if (!user) { res.json([]); return; }
 
-    const { examRefStrings, examObjectIds } = await getStudentExamIds(user);
-    if (examRefStrings.length === 0) { res.json([]); return; }
-
-    const allExamRefs = [...examObjectIds, ...examRefStrings];
-    let query: any = { 
-      examId: { $in: allExamRefs } 
-    };
-    if (user.studentType) {
-      query.$and = [
-        {
-          $or: [
-            { studentTypeId: user.studentType },
-            { studentTypeId: { $exists: false } },
-            { studentTypeId: null }
-          ]
-        }
-      ];
+    if (!user) {
+      res.json([]);
+      return;
     }
 
-    const timetables = await Timetable.find(query)
-      .populate('subjectId', 'name')
-      .populate('chapterId', 'title')
-      .sort({ date: 1, startTime: 1 });
+    // Collect all IDs (planId + examId) from active purchased plans
+    const activePlans = (user.purchasedPlans || []).filter((p: any) => p.isActive !== false);
+    const purchasedPlanIds = activePlans.map((p: any) => (p.planId?._id || p.planId)?.toString()).filter(Boolean);
+    const purchasedExamIds = activePlans.map((p: any) => (p.examId?._id || p.examId)?.toString()).filter(Boolean);
+
+    // All IDs to match against courseId / planId / examId on the timetable
+    const allIds = [...new Set([...purchasedPlanIds, ...purchasedExamIds])];
+
+    // If no purchased plans, return all published timetables (preview mode)
+    let query: any;
+    if (allIds.length === 0) {
+      query = { status: 'published' };
+    } else {
+      query = {
+        $or: [
+          { courseId: { $in: allIds } },
+          { planId: { $in: allIds } },
+          { examId: { $in: allIds } }
+        ]
+      };
+    }
+
+    const timetables = await Timetable.find(query).sort({ weekNumber: 1, createdAt: 1 });
     res.json(timetables);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 export const getMyTests = async (req: Request, res: Response): Promise<void> => {
   try {

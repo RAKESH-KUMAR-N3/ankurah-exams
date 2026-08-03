@@ -1,265 +1,318 @@
-import React, { useState } from 'react';
-import { User, Timetable, Subject, Chapter } from '../../types';
-import { Calendar, Clock, BookOpen, FileText, CheckCircle2, ChevronRight, Bookmark, ArrowRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { User, Timetable, Subject, Chapter, Test } from '../../types';
+import { 
+  Calendar, BookOpen, Clock, Award, ChevronDown, ChevronRight, 
+  Sparkles, CheckCircle2, Flame, Layers, ArrowRight, Shield, PlayCircle, History
+} from 'lucide-react';
 
 interface TimetableSectionProps {
   user: User;
   timetables: Timetable[];
   subjects: Subject[];
   chapters: Chapter[];
+  availableTests?: Test[];
+  onAttemptTest?: (test: Test) => void;
 }
 
 export default function TimetableSection({
   user,
   timetables,
   subjects,
-  chapters
+  chapters,
+  availableTests = [],
+  onAttemptTest
 }: TimetableSectionProps) {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [completedTopics, setCompletedTopics] = useState<Record<string, boolean>>({});
+  const [expandedBacklogs, setExpandedBacklogs] = useState<Record<string, boolean>>({});
 
-  // Get matching timetables for this user's criteria:
-  // User must have selected the exam, studentType, and studyPlan
-  const filteredTimetables = timetables.filter(item => {
-    // 1. Is the exam associated with student's chosen exams?
-    const examMatch = (user.selectedEntranceExams || []).includes(item.examId) || 
-                      (user.selectedCompetitiveExams || []).includes(item.examId);
-    
-    // 2. Is student type match? (Only enforce if entrance exam)
-    const studentTypeId = typeof user.studentType === 'object' ? (user.studentType as any)?._id || (user.studentType as any)?.id : user.studentType;
-    const typeMatch = !item.studentType || item.studentType === studentTypeId;
+  // Determine user's course names & IDs
+  // Backend already returns timetables filtered for this student's purchased plans.
+  // Just sort by weekNumber ascending (Week 1, Week 2, Week 3...)
+  const courseTimetables = useMemo(() => {
+    return [...timetables].sort((a: any, b: any) => (a.weekNumber || 1) - (b.weekNumber || 1));
+  }, [timetables]);
 
-    // 3. Is study plan match?
-    const planMatch = !item.studyPlan || item.studyPlan === user.studyPlan;
 
-    return examMatch && typeMatch && planMatch;
-  });
+  // Identify Current Active Week vs Previous Weeks vs Future Weeks
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  // Sort timetables: today first, then future
-  const sortedSchedules = [...filteredTimetables].sort((a, b) => {
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
-  });
-
-  const handleToggleCompleted = (id: string) => {
-    setCompletedTopics(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
-  // Group by date
-  const groupedSchedules: Record<string, Timetable[]> = {};
-  sortedSchedules.forEach(item => {
-    if (!groupedSchedules[item.date]) {
-      groupedSchedules[item.date] = [];
+  const { currentWeek, previousWeeks, upcomingWeeks } = useMemo(() => {
+    if (courseTimetables.length === 0) {
+      return { currentWeek: null, previousWeeks: [], upcomingWeeks: [] };
     }
-    groupedSchedules[item.date].push(item);
-  });
 
-  // Format dates beautifully
-  const formatFriendlyDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    // Find week matching today's date range, or fallback to latest week
+    let active = courseTimetables.find(t => {
+      if (!t.startDate || !t.endDate) return false;
+      return todayStr >= t.startDate && todayStr <= t.endDate;
+    });
 
-    if (dateStr === today) return 'Today';
-    if (dateStr === tomorrow) return 'Tomorrow';
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (!active) {
+      active = courseTimetables[courseTimetables.length - 1]; // Fallback to latest
+    }
+
+    const prev = courseTimetables.filter(t => (t._id || t.id) !== (active?._id || active?.id) && (t.weekNumber || 1) < (active?.weekNumber || 1));
+    const upcoming = courseTimetables.filter(t => (t._id || t.id) !== (active?._id || active?.id) && (t.weekNumber || 1) > (active?.weekNumber || 1));
+
+    return { currentWeek: active, previousWeeks: prev, upcomingWeeks: upcoming };
+  }, [courseTimetables, todayStr]);
+
+  const toggleBacklogExpand = (id: string) => {
+    setExpandedBacklogs(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const studentTypeName = typeof user.studentType === 'object' ? (user.studentType as any)?.name : user.studentType;
+  // Find linked test object for a timetable schedule
+  const getTimetableTest = (t: Timetable) => {
+    if (!t.weekendExamId) return null;
+    return availableTests.find((test: any) => String(test.id || test._id) === String(t.weekendExamId));
+  };
 
   return (
     <div id="timetable_section" className="space-y-6 font-sans">
       
-      {/* Welcome & Info */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* ── HEADER TITLE & COURSE BADGE ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-zinc-900" />
-            Your Personalized Timetable
+          <div className="flex items-center gap-2 text-emerald-400 font-mono font-black text-xs uppercase tracking-widest mb-1">
+            <Sparkles className="w-4 h-4" /> Academic Study Roadmap
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase flex items-center gap-2">
+            <Calendar className="w-7 h-7 text-emerald-400" />
+            Your Course Timetable
           </h1>
-          <p className="text-zinc-500 text-sm mt-1">
-            Dynamic study plan custom tailored for your selected preparation tracks.
+          <p className="text-slate-400 text-xs sm:text-sm mt-1 font-bold">
+            Weekly subject-wise chapter goals and weekend exams tailored to your enrolled plan.
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-50 text-zinc-800 text-xs font-semibold rounded-md border border-geom-border">
-          <BookOpen className="w-4 h-4 text-zinc-900" />
-          Plan Duration: <span className="uppercase text-zinc-950 ml-1 font-bold">{user.studyPlan || 'yearly'}</span>
-        </div>
+
+        {user.purchasedPlans && user.purchasedPlans.length > 0 && (
+          <div className="px-3.5 py-2 bg-slate-950 border border-emerald-500/40 text-emerald-300 text-xs font-black uppercase tracking-wider rounded-none shrink-0 flex items-center gap-2">
+            <Shield className="w-4 h-4 text-emerald-400" />
+            Enrolled Course Active
+          </div>
+        )}
       </div>
 
-      {filteredTimetables.length === 0 ? (
-        <div className="bg-white rounded-lg border border-geom-border p-12 text-center shadow-geom">
-          <Calendar className="w-12 h-12 text-zinc-300 mx-auto mb-3" />
-          <h3 className="font-bold text-zinc-800 text-base">No Daily Timetable Configured</h3>
-          <p className="text-zinc-500 text-xs mt-1.5 max-w-md mx-auto leading-relaxed">
-            Our academic designers haven't posted a timetable matching your exact criteria yet. Ask your Administrator to map subjects to your exams, student type (<span className="font-bold text-zinc-900">{studentTypeName || 'Not Set'}</span>) and plan (<span className="font-bold text-zinc-900">{user.studyPlan || 'Not Set'}</span>)!
+      {courseTimetables.length === 0 ? (
+        <div className="bg-slate-950 rounded-none border border-slate-800 p-12 text-center shadow-2xl space-y-3">
+          <Calendar className="w-12 h-12 text-slate-600 mx-auto" />
+          <h3 className="font-black text-white text-base uppercase">No Timetable Schedules Published Yet</h3>
+          <p className="text-slate-400 text-xs max-w-md mx-auto font-bold leading-relaxed">
+            Your course academic schedules will appear here once published by your course administrators. Check back soon!
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           
-          {/* Timeline List */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-lg border border-geom-border p-6 shadow-geom">
-              <h3 className="font-bold text-zinc-900 text-base mb-6 pb-4 border-b border-geom-border">
-                Academic Flow Chronology
-              </h3>
+          {/* ── 1. CURRENT ACTIVE WEEK SPOTLIGHT ── */}
+          {currentWeek && (
+            <div className="bg-slate-950 border-2 border-emerald-500/60 rounded-none shadow-2xl overflow-hidden relative">
+              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 p-4 border-b border-emerald-500/40 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1 bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-none flex items-center gap-1.5 shadow-md">
+                    <Flame className="w-4 h-4 fill-black" /> CURRENT ACTIVE WEEK
+                  </span>
+                  <div>
+                    <h2 className="text-lg font-black text-white uppercase tracking-tight">
+                      {currentWeek.weekTitle || `Week ${currentWeek.weekNumber || 1}`}
+                    </h2>
+                    <span className="text-xs font-mono font-bold text-emerald-400">
+                      📅 {currentWeek.startDate} to {currentWeek.endDate}
+                    </span>
+                  </div>
+                </div>
 
-              <div className="space-y-8 relative before:absolute before:top-2 before:bottom-2 before:left-[19px] before:w-[1px] before:bg-zinc-200">
-                {Object.keys(groupedSchedules).map((dateStr) => (
-                  <div key={dateStr} className="relative pl-12 space-y-4">
-                    
-                    {/* Square date tag */}
-                    <div className="absolute left-0 top-1 w-9 h-9 bg-zinc-900 text-white rounded-md border border-zinc-800 flex items-center justify-center z-10 shrink-0 shadow-geom-sm">
-                      <Calendar className="w-4.5 h-4.5 text-emerald-400" />
+                {currentWeek.courseName && (
+                  <span className="px-3 py-1 bg-slate-900 border border-slate-700 text-slate-300 font-mono font-bold text-xs rounded-none">
+                    {currentWeek.courseName}
+                  </span>
+                )}
+              </div>
+
+              {/* Weekly Assigned Chapters Grid */}
+              <div className="p-5 space-y-4">
+                <h4 className="text-xs font-mono font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-emerald-400" /> WEEKLY SUBJECT STUDY CHAPTERS
+                </h4>
+
+                {Array.isArray(currentWeek.weeklyChapters) && currentWeek.weeklyChapters.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {currentWeek.weeklyChapters.map((wc, idx) => (
+                      <div key={idx} className="p-3.5 bg-slate-900 border border-slate-800 rounded-none space-y-1.5 hover:border-emerald-500/50 transition-colors">
+                        <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block">
+                          SUBJECT {idx + 1}
+                        </span>
+                        <h5 className="font-black text-white text-xs uppercase truncate">{wc.subjectName}</h5>
+                        <div className="pt-1.5 border-t border-slate-800">
+                          <span className="text-[9px] font-mono text-slate-400 block font-bold">ASSIGNED CHAPTER:</span>
+                          <p className="text-xs font-extrabold text-emerald-300 tracking-wide line-clamp-2">
+                            {wc.chapterName || 'General Chapter'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 text-xs italic">No subject chapters assigned for this week yet.</p>
+                )}
+
+                {/* SUNDAY WEEKEND EXAM BANNER */}
+                {currentWeek.weekendExamTitle ? (
+                  <div className="p-4 bg-amber-950/60 border border-amber-500/50 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-none bg-amber-500/20 border border-amber-400 text-amber-400 flex items-center justify-center shrink-0">
+                        <Award className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-wider block">
+                          SUNDAY WEEKEND EXAM
+                        </span>
+                        <h4 className="text-sm font-black text-white uppercase">{currentWeek.weekendExamTitle}</h4>
+                        <p className="text-[11px] text-amber-200/80 font-bold">Cumulative exam covering all assigned chapters above.</p>
+                      </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-zinc-900 flex items-center gap-2">
-                        {formatFriendlyDate(dateStr)}
-                        <span className="text-xs text-zinc-400 font-normal">({dateStr})</span>
-                      </h4>
-                    </div>
+                    <button
+                      onClick={() => {
+                        const linkedTest = getTimetableTest(currentWeek);
+                        if (linkedTest && onAttemptTest) {
+                          onAttemptTest(linkedTest);
+                        } else {
+                          alert(`Weekend Exam: ${currentWeek.weekendExamTitle}. Go to Exams & Mocks tab to attempt.`);
+                        }
+                      }}
+                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-400 shrink-0 shadow-lg active:scale-95"
+                    >
+                      <PlayCircle className="w-4 h-4 stroke-[3]" /> Take Weekend Exam
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-none text-slate-400 text-xs font-mono font-bold flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-emerald-400" /> Study schedule active. Complete assigned chapters above before weekend.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
-                    <div className="space-y-4">
-                      {groupedSchedules[dateStr].map((item) => {
-                        const isDone = completedTopics[item.id];
-                        const subjectObj = subjects.find(s => s.id === item.subjectId);
-                        const chapterObj = chapters.find(c => c.id === item.chapterId);
+          {/* ── 2. PREVIOUS WEEKS & BACKLOGS (FOR LATE JOINERS) ── */}
+          {previousWeeks.length > 0 && (
+            <div className="bg-slate-950 border border-slate-800 rounded-none shadow-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-emerald-400" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    Previous Weeks & Backlogs ({previousWeeks.length})
+                  </h3>
+                </div>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase">
+                  Late Joiner Access Allowed
+                </span>
+              </div>
 
-                        return (
-                          <div 
-                            key={item.id} 
-                            className={`p-5 rounded-lg border transition-all ${
-                              isDone 
-                                ? 'bg-zinc-50/50 border-geom-border opacity-70' 
-                                : 'bg-white border-geom-border hover:border-zinc-300 shadow-geom'
-                            }`}
-                          >
-                            <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center pb-4 border-b border-geom-border mb-4">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="px-2 py-0.5 bg-zinc-900 text-white font-bold text-[9px] rounded-sm uppercase tracking-wider border border-zinc-800">
-                                    {subjectObj?.name || 'General'}
-                                  </span>
-                                  {chapterObj && (
-                                    <span className="px-2 py-0.5 bg-zinc-100 border border-geom-border text-zinc-600 text-[9px] font-bold rounded-sm uppercase tracking-wide">
-                                      {chapterObj.name}
-                                    </span>
-                                  )}
-                                  <span className="text-xs text-zinc-400 flex items-center gap-1 font-medium">
-                                    <Clock className="w-3 h-3" /> Scheduled
-                                  </span>
+              <p className="text-slate-400 text-xs font-bold">
+                Joined late? You can access all previous weekly study roadmaps below and attempt past weekend exams anytime to complete your backlogs.
+              </p>
+
+              <div className="space-y-3">
+                {previousWeeks.map((pw: Timetable) => {
+                  const pwId = pw._id || pw.id;
+                  const isExpanded = expandedBacklogs[pwId] ?? false;
+
+                  return (
+                    <div key={pwId} className="border border-slate-800 rounded-none bg-slate-900 overflow-hidden">
+                      <div 
+                        onClick={() => toggleBacklogExpand(pwId)}
+                        className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-800/80 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          {isExpanded ? <ChevronDown className="w-4 h-4 text-emerald-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                          <div>
+                            <h4 className="text-xs font-black text-white uppercase">{pw.weekTitle || `Week ${pw.weekNumber || 1}`}</h4>
+                            <span className="text-[10px] font-mono text-slate-400 font-bold block">
+                              📅 {pw.startDate} to {pw.endDate}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {pw.weekendExamTitle && (
+                            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-mono font-black uppercase">
+                              Exam Included
+                            </span>
+                          )}
+                          <span className="text-xs font-mono font-bold text-emerald-400">
+                            {isExpanded ? 'Hide Details' : 'View Backlog'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Expanded Backlog Content */}
+                      {isExpanded && (
+                        <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-3">
+                          <span className="text-[10px] font-mono font-black text-slate-400 uppercase block">
+                            ASSIGNED CHAPTERS IN THIS WEEK:
+                          </span>
+                          {Array.isArray(pw.weeklyChapters) && pw.weeklyChapters.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {pw.weeklyChapters.map((wc, idx) => (
+                                <div key={idx} className="p-2.5 bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                                  <span className="font-black text-emerald-400 uppercase text-[11px]">{wc.subjectName}:</span>
+                                  <span className="font-bold text-white text-[11px] truncate max-w-[200px]">{wc.chapterName}</span>
                                 </div>
-                                <h5 className={`font-bold text-sm mt-1.5 ${isDone ? 'line-through text-zinc-400' : 'text-zinc-900'}`}>
-                                  {item.title}
-                                </h5>
-                              </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 italic">No chapters listed.</p>
+                          )}
 
+                          {pw.weekendExamTitle && (
+                            <div className="pt-2 flex items-center justify-between bg-slate-900 p-3 border border-amber-500/30">
+                              <span className="text-xs font-bold text-amber-300 uppercase">🏆 {pw.weekendExamTitle}</span>
                               <button
-                                onClick={() => handleToggleCompleted(item.id)}
-                                className={`py-1.5 px-3 rounded-sm text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                                  isDone 
-                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                                    : 'bg-zinc-900 border-zinc-800 hover:bg-zinc-850 text-white'
-                                }`}
+                                onClick={() => {
+                                  const linkedTest = getTimetableTest(pw);
+                                  if (linkedTest && onAttemptTest) {
+                                    onAttemptTest(linkedTest);
+                                  } else {
+                                    alert(`Past Exam: ${pw.weekendExamTitle}. Go to Exams & Mocks tab to attempt.`);
+                                  }
+                                }}
+                                className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider cursor-pointer border border-amber-400"
                               >
-                                <CheckCircle2 className={`w-4 h-4 ${isDone ? 'fill-emerald-600 text-emerald-50' : ''}`} />
-                                {isDone ? 'Completed' : 'Mark Done'}
+                                Practice Past Test
                               </button>
                             </div>
-
-                            {/* Schedule specifics */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                              <div className="space-y-1.5 p-3 rounded-md bg-zinc-50 border border-geom-border">
-                                <span className="font-bold text-zinc-400 text-[10px] uppercase tracking-wider flex items-center gap-1">
-                                  <BookOpen className="w-3.5 h-3.5 text-zinc-700" />
-                                  Core Study Syllabus
-                                </span>
-                                <p className="text-zinc-600 leading-relaxed font-medium">
-                                  {item.studyTopic}
-                                </p>
-                              </div>
-
-                              <div className="space-y-3">
-                                <div className="p-3 rounded-md bg-zinc-50 border border-geom-border flex items-center justify-between">
-                                  <div>
-                                    <span className="font-bold text-zinc-400 text-[9px] uppercase tracking-wider block">Practice Goal</span>
-                                    <p className="text-zinc-800 font-bold mt-0.5">{item.practiceMCQsCount} Multiple Choice Questions</p>
-                                  </div>
-                                  <Bookmark className="w-4.5 h-4.5 text-zinc-900" />
-                                </div>
-
-                                {item.revisionTopic && (
-                                  <div className="p-3 rounded-md bg-zinc-50 border border-geom-border flex items-center justify-between">
-                                    <div>
-                                      <span className="font-bold text-zinc-400 text-[9px] uppercase tracking-wider block">Revision Target</span>
-                                      <p className="text-zinc-800 font-medium mt-0.5">{item.revisionTopic}</p>
-                                    </div>
-                                    <CheckCircle2 className="w-4.5 h-4.5 text-zinc-900" />
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {item.assignment && (
-                              <div className="mt-4 p-3 bg-zinc-50 rounded-md border border-geom-border flex items-center gap-2 text-xs">
-                                <span className="px-1.5 py-0.5 bg-zinc-900 text-white border border-zinc-800 rounded-sm font-bold text-[8px] uppercase tracking-wider shrink-0">
-                                  ASSIGNMENT
-                                </span>
-                                <span className="text-zinc-600 font-semibold">{item.assignment}</span>
-                              </div>
-                            )}
-
-                          </div>
-                        );
-                      })}
+                          )}
+                        </div>
+                      )}
                     </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
+          {/* ── 3. UPCOMING WEEKS PREVIEW ── */}
+          {upcomingWeeks.length > 0 && (
+            <div className="bg-slate-950 border border-slate-800 rounded-none p-5 space-y-3">
+              <h3 className="text-xs font-mono font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Clock className="w-4 h-4 text-emerald-400" /> UPCOMING WEEKS PREVIEW ({upcomingWeeks.length})
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {upcomingWeeks.map((uw: Timetable) => (
+                  <div key={uw._id || uw.id} className="p-3 bg-slate-900 border border-slate-800 opacity-70">
+                    <h4 className="text-xs font-black text-white uppercase">{uw.weekTitle || `Week ${uw.weekNumber || 1}`}</h4>
+                    <span className="text-[10px] font-mono text-slate-400 block font-bold">
+                      Starts: {uw.startDate}
+                    </span>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-
-          {/* Right sidebar details */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-geom-border p-6 shadow-geom space-y-4">
-              <h3 className="font-bold text-zinc-900 text-base">Preparation Summary</h3>
-              
-              <div className="p-4 rounded-md bg-zinc-50 border border-geom-border text-xs space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-400 font-bold uppercase text-[9px] tracking-wider">Student Track</span>
-                  <span className="font-bold text-zinc-800 uppercase text-[9px] bg-zinc-100 border border-geom-border py-0.5 px-2 rounded-sm">
-                    {studentTypeName === 'long_term' ? 'Long Term' : studentTypeName || 'Not Selected'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-400 font-bold uppercase text-[9px] tracking-wider">Total Milestones</span>
-                  <span className="font-bold text-zinc-800 font-mono">{filteredTimetables.length} Days</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-400 font-bold uppercase text-[9px] tracking-wider">Daily MCQs target</span>
-                  <span className="font-bold text-zinc-800 font-mono">
-                    {filteredTimetables.reduce((acc, curr) => acc + curr.practiceMCQsCount, 0)} Total
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-5 bg-zinc-950 text-white border border-zinc-800 rounded-lg space-y-2 relative overflow-hidden geom-grid-pattern-dark">
-                <h4 className="font-bold text-xs text-emerald-400 uppercase tracking-wider">Did you know?</h4>
-                <p className="text-xs text-zinc-400 leading-relaxed font-medium">
-                  Students who follow their daily mapped study track and complete their scheduled MCQs increase their competitive percentile scores by up to 28%! Keep completing your tasks every day.
-                </p>
-              </div>
-            </div>
-          </div>
+          )}
 
         </div>
       )}
-
     </div>
   );
 }

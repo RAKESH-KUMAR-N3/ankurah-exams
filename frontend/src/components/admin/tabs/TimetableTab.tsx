@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  Trash2, Calendar, BookOpen, Clock, Upload, Image as ImageIcon, 
-  Check, AlertCircle, Sparkles, Layers, FileText, Plus, X, Eye, Shield
+  Trash2, Calendar, BookOpen, Clock, CheckCircle2, AlertCircle, 
+  Sparkles, Layers, PlusCircle, Edit2, Shield, Eye, Award, Check, X, RefreshCw, ChevronRight, Filter
 } from 'lucide-react';
-import { Timetable, Subject } from '../../../types';
+import { Timetable, Subject, Chapter, Test } from '../../../types';
 import { useAdminContext } from '../../../context/AdminContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -11,48 +11,49 @@ const getToken = () => localStorage.getItem('token');
 const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
 export default function TimetableTab() {
-  const { entranceExams, competitiveExams, subjects, allPlans, timetables, refreshAdminData } = useAdminContext();
+  const { entranceExams, competitiveExams, subjects, chapters, tests, allPlans, timetables, refreshAdminData } = useAdminContext();
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Deduplicate and extract exact unique 6 real courses created by Admin
-  const rawPlans = [...allPlans, ...entranceExams, ...competitiveExams];
-  const uniquePlansMap = new Map<string, { id: string; name: string; subjects: any[] }>();
-  
-  rawPlans.forEach((p: any) => {
-    const cleanName = (p.name || '').replace(/\s*Plan\s*$/i, '').trim();
-    if (!cleanName) return;
-    const key = cleanName.toLowerCase();
-    if (!uniquePlansMap.has(key)) {
-      uniquePlansMap.set(key, {
-        id: p.id || p._id,
-        name: cleanName,
-        subjects: p.subjects || []
-      });
-    }
-  });
-  const plansList = Array.from(uniquePlansMap.values());
+  // Deduplicate and extract unique real courses created by Admin - sorted Alphabetically A to Z
+  const plansList = useMemo(() => {
+    const rawPlans = [...allPlans, ...entranceExams, ...competitiveExams];
+    const map = new Map<string, { id: string; name: string; subjects: any[] }>();
+    
+    rawPlans.forEach((p: any) => {
+      const cleanName = (p.name || '').replace(/\s*Plan\s*$/i, '').trim();
+      if (!cleanName) return;
+      const key = cleanName.toLowerCase();
+      if (!map.has(key)) {
+        map.set(key, {
+          id: p.id || p._id,
+          name: cleanName,
+          subjects: p.subjects || []
+        });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [allPlans, entranceExams, competitiveExams]);
 
   // Form State
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('');
-  const [scheduleType, setScheduleType] = useState<'daily' | 'weekly'>('daily');
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [dayOfWeek, setDayOfWeek] = useState<string>('Monday');
-  
-  // Multi-subject selection
-  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
-  
-  // Topic Input Mode: 'text' vs 'image'
-  const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
-  const [chapterName, setChapterName] = useState<string>('');
-  const [studyTopic, setStudyTopic] = useState<string>('');
-  const [revisionTopic, setRevisionTopic] = useState<string>('');
-  const [practiceMCQsCount, setPracticeMCQsCount] = useState<number>(15);
-  
-  // Image Upload State
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
-  const [imagePreviewModalUrl, setImagePreviewModalUrl] = useState<string | null>(null);
+  const [editingTimetableId, setEditingTimetableId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+  const [weekTitle, setWeekTitle] = useState<string>('Week 1');
+  const [weekNumber, setWeekNumber] = useState<number>(1);
+
+  // Default Date range: Today to +6 days
+  const todayStr = new Date().toISOString().split('T')[0];
+  const defaultEndStr = new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState<string>(todayStr);
+  const [endDate, setEndDate] = useState<string>(defaultEndStr);
+
+  // Subject -> Assigned Chapter mapping (subjectId -> chapterId)
+  const [assignedChapterMap, setAssignedChapterMap] = useState<Record<string, string>>({});
+  const [selectedWeekendExamId, setSelectedWeekendExamId] = useState<string>('');
+
+  // Right-side History Filter
+  const [historyCourseFilter, setHistoryCourseFilter] = useState<string>('all');
 
   const showSuccess = (msg: string) => {
     setSuccessMsg(msg);
@@ -67,535 +68,522 @@ export default function TimetableTab() {
     setTimeout(() => setErrorMsg(null), 5000);
   };
 
-  // Filter subjects based on selected plan
-  const filteredSubjects = selectedPlanId
-    ? subjects.filter((s: any) => {
-        if (!s.examIds || s.examIds.length === 0) return true;
-        return s.examIds.includes(selectedPlanId);
-      })
-    : subjects;
+  // Subjects belonging to the selected course (sorted A-Z)
+  const courseSubjects = useMemo(() => {
+    if (!selectedCourseId) return [];
+    const courseObj = plansList.find(p => p.id === selectedCourseId);
+    const targetCId = String(selectedCourseId);
 
-  const toggleSubjectSelection = (subId: string) => {
-    if (selectedSubjectIds.includes(subId)) {
-      setSelectedSubjectIds(selectedSubjectIds.filter(id => id !== subId));
-    } else {
-      setSelectedSubjectIds([...selectedSubjectIds, subId]);
+    return subjects.filter((s: any) => {
+      const sId = String(s.id || s._id || '');
+      const sMongoId = String(s._id || s.id || '');
+      const sExamId = s.examId ? String(typeof s.examId === 'object' ? s.examId._id || s.examId.id : s.examId) : '';
+      const sExamIds = Array.isArray(s.examIds) ? s.examIds.map((e: any) => String(typeof e === 'object' ? e._id || e.id : e)) : [];
+
+      const matchedByExamId = sExamId === targetCId || sExamIds.includes(targetCId);
+
+      let matchedByCourseSubjects = false;
+      if (courseObj && Array.isArray(courseObj.subjects)) {
+        matchedByCourseSubjects = courseObj.subjects.some((sub: any) => {
+          const subId = String(typeof sub === 'string' ? sub : (sub._id || sub.id || ''));
+          return subId === sId || subId === sMongoId;
+        });
+      }
+
+      let matchedByKeyword = false;
+      if (courseObj && courseObj.name) {
+        const cNameLower = courseObj.name.toLowerCase();
+        const sNameLower = (s.name || '').toLowerCase();
+        if (cNameLower.includes('neet') && sNameLower.includes('neet')) matchedByKeyword = true;
+        else if ((cNameLower.includes('eapcet') || cNameLower.includes('tg') || cNameLower.includes('ap')) && (sNameLower.includes('tg') || sNameLower.includes('ap') || sNameLower.includes('eapcet'))) matchedByKeyword = true;
+        else if (cNameLower.includes('jee') && sNameLower.includes('jee')) matchedByKeyword = true;
+      }
+
+      return matchedByExamId || matchedByCourseSubjects || matchedByKeyword;
+    }).sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [selectedCourseId, plansList, subjects]);
+
+  // Helper to get chapters for a subject sorted numerically by syllabus order (Chapter 1, 2, 3...)
+  const getSubjectChaptersSorted = (subjectId: string) => {
+    const list = chapters.filter((ch: any) => {
+      const cSubId = String(ch.subjectId?._id || ch.subjectId?.id || ch.subjectId || '');
+      return cSubId === String(subjectId);
+    });
+
+    return [...list].sort((a: any, b: any) => {
+      if (typeof a.chapterNumber === 'number' && typeof b.chapterNumber === 'number') {
+        return a.chapterNumber - b.chapterNumber;
+      }
+      const extractNum = (str: string) => {
+        const match = (str || '').match(/(?:chapter\s*|ch\s*|\b)(\d+)/i);
+        return match ? parseInt(match[1], 10) : null;
+      };
+      const numA = extractNum(a.name || a.title);
+      const numB = extractNum(b.name || b.title);
+      if (numA !== null && numB !== null) return numA - numB;
+      return 0;
+    });
+  };
+
+  const handleSelectCourse = (cId: string) => {
+    setSelectedCourseId(cId);
+    setEditingTimetableId(null);
+    setAssignedChapterMap({});
+
+    // Auto calculate next week number for this course
+    if (cId) {
+      const courseTimetables = timetables.filter(t => t.courseId === cId || t.planId === cId || t.examId === cId);
+      const nextNum = courseTimetables.length + 1;
+      setWeekNumber(nextNum);
+      setWeekTitle(`Week ${nextNum}`);
     }
   };
 
-  // Handle Image File Upload (Base64)
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      showError("Image size must be less than 5MB");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setUploadedImageUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+  // Reset form
+  const resetForm = () => {
+    setEditingTimetableId(null);
+    setSelectedCourseId('');
+    setWeekTitle('Week 1');
+    setWeekNumber(1);
+    setStartDate(todayStr);
+    setEndDate(defaultEndStr);
+    setAssignedChapterMap({});
+    setSelectedWeekendExamId('');
   };
 
-  const handleCreateTimetable = async (e: React.FormEvent) => {
+  // Edit an existing timetable schedule
+  const handleEditTimetable = (t: Timetable) => {
+    setEditingTimetableId(t._id || t.id);
+    setSelectedCourseId(t.courseId || t.planId || t.examId || '');
+    setWeekTitle(t.weekTitle || `Week ${t.weekNumber || 1}`);
+    setWeekNumber(t.weekNumber || 1);
+    setStartDate(t.startDate || todayStr);
+    setEndDate(t.endDate || defaultEndStr);
+    setSelectedWeekendExamId(t.weekendExamId || '');
+
+    const map: Record<string, string> = {};
+    if (Array.isArray(t.weeklyChapters)) {
+      t.weeklyChapters.forEach(wc => {
+        if (wc.subjectId && wc.chapterId) {
+          map[wc.subjectId] = wc.chapterId;
+        }
+      });
+    }
+    setAssignedChapterMap(map);
+  };
+
+  // Save/Publish Timetable Schedule
+  const handleSubmitTimetable = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlanId) {
-      showError("Please select a target Plan / Course first.");
+    if (!selectedCourseId) {
+      showError("Please select a target Course / Plan.");
       return;
     }
 
-    if (selectedSubjectIds.length === 0) {
-      showError("Please select at least one Subject.");
+    if (courseSubjects.length === 0) {
+      showError("No subjects found for the selected course.");
       return;
     }
 
-    if (inputMode === 'text' && !studyTopic && !chapterName) {
-      showError("Please enter Chapter Name or Study Topic details.");
-      return;
-    }
+    // Build weekly chapters payload — only include subjects that have a chapter selected
+    const weeklyChapters = courseSubjects
+      .map((sub: any) => {
+        const subId = String(sub.id || sub._id);
+        const chId = assignedChapterMap[subId] || '';
+        const chapObj = chapters.find((c: any) => String(c.id || c._id) === chId);
+        return {
+          subjectId: subId,
+          subjectName: sub.name,
+          chapterId: chId,
+          chapterName: chapObj ? (chapObj.name || (chapObj as any).title) : ''
+        };
+      })
+      .filter(wc => wc.chapterId && wc.chapterId.trim() !== '');
 
-    if (inputMode === 'image' && !uploadedImageUrl) {
-      showError("Please upload an image of the chapter & topic schedule.");
-      return;
-    }
+    const courseObj = plansList.find(p => p.id === selectedCourseId);
+    const linkedTest = tests.find((t: any) => String(t.id || t._id) === selectedWeekendExamId);
+
+    const payload = {
+      courseId: selectedCourseId,
+      courseName: courseObj?.name || 'Selected Course',
+      weekTitle,
+      weekNumber: Number(weekNumber) || 1,
+      startDate,
+      endDate,
+      weeklyChapters,
+      weekendExamId: selectedWeekendExamId || '',
+      weekendExamTitle: linkedTest ? (linkedTest.title || (linkedTest as any).name || '') : '',
+      status: 'published'
+    };
 
     setLoading(true);
-
     try {
-      const payload = {
-        planId: selectedPlanId,
-        examId: selectedPlanId,
-        subjectIds: selectedSubjectIds,
-        subjectId: selectedSubjectIds[0],
-        chapterName: chapterName || 'Scheduled Topics',
-        studyTopic: studyTopic || (inputMode === 'image' ? 'Image Timetable Schedule' : 'Daily Practice'),
-        scheduleType,
-        date: scheduleType === 'daily' ? date : '',
-        dayOfWeek: scheduleType === 'weekly' ? dayOfWeek : '',
-        imageUrl: inputMode === 'image' ? uploadedImageUrl : '',
-        practiceMCQs: practiceMCQsCount.toString(),
-        revision: revisionTopic
-      };
+      const url = editingTimetableId 
+        ? `${API_URL}/api/timetables/${editingTimetableId}`
+        : `${API_URL}/api/timetables`;
+      const method = editingTimetableId ? 'PUT' : 'POST';
 
-      const res = await fetch(`${API_URL}/api/timetables`, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method,
         headers: authHeaders(),
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error('Failed to publish timetable schedule');
-
-      // Reset form
-      setChapterName('');
-      setStudyTopic('');
-      setRevisionTopic('');
-      setUploadedImageUrl('');
-      setSelectedSubjectIds([]);
-
-      showSuccess("Timetable schedule published successfully!");
+      const data = await res.json();
+      if (res.ok) {
+        showSuccess(editingTimetableId ? "Weekly timetable updated successfully!" : "Weekly timetable published successfully!");
+        resetForm();
+      } else {
+        showError(data.message || "Failed to save timetable schedule.");
+      }
     } catch (err: any) {
-      showError(err.message || "Failed to create timetable schedule.");
+      showError(err.message || "Server connection error.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Delete Timetable Schedule
   const handleDeleteTimetable = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this timetable entry?")) return;
+    if (!window.confirm("Are you sure you want to delete this timetable schedule?")) return;
+    setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/timetables/${id}`, {
         method: 'DELETE',
         headers: authHeaders()
       });
-      if (!res.ok) throw new Error('Failed to delete timetable entry');
-      showSuccess("Timetable slot deleted successfully.");
+      if (res.ok) {
+        showSuccess("Timetable schedule removed successfully.");
+      } else {
+        showError("Failed to remove timetable schedule.");
+      }
     } catch (err: any) {
-      showError(err.message);
+      showError("Server connection error.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Filter published timetables for right panel history
+  const filteredTimetablesHistory = useMemo(() => {
+    return timetables
+      .filter((t: any) => {
+        if (historyCourseFilter === 'all') return true;
+        return (t.courseId || t.planId || t.examId) === historyCourseFilter;
+      })
+      .sort((a: any, b: any) => (a.weekNumber || 1) - (b.weekNumber || 1));
+  }, [timetables, historyCourseFilter]);
+
   return (
-    <div className="flex flex-col gap-6 w-full text-slate-100 font-sans">
-      
-      {/* Alert Banners */}
-      {errorMsg && (
-        <div className="bg-rose-950/80 text-rose-200 p-4 rounded-2xl border border-rose-800 flex items-center gap-3 shadow-lg animate-shake">
-          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
-          <span className="font-bold text-xs">{errorMsg}</span>
+    <div className="space-y-6 font-sans">
+      {/* ── HEADER TITLE ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div>
+          <h2 className="text-xl font-black text-white tracking-tight uppercase flex items-center gap-2">
+            <Calendar className="w-6 h-6 text-emerald-400" /> Academic Timetable Management
+          </h2>
+          <p className="text-slate-400 text-xs font-bold mt-1">
+            Create course-wise weekly study roadmaps & weekend exam schedules for students.
+          </p>
+        </div>
+        <button
+          onClick={refreshAdminData}
+          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer rounded-none self-start md:self-auto"
+        >
+          <RefreshCw className="w-4 h-4 text-emerald-400" /> Refresh Data
+        </button>
+      </div>
+
+      {/* ── ALERTS ── */}
+      {successMsg && (
+        <div className="bg-emerald-950 border border-emerald-500/40 text-emerald-300 p-3.5 rounded-none flex items-center gap-3 text-xs font-black">
+          <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-400" />
+          <span>{successMsg}</span>
         </div>
       )}
-      {successMsg && (
-        <div className="bg-emerald-950/80 text-emerald-200 p-4 rounded-2xl border border-emerald-800 flex items-center gap-3 shadow-lg">
-          <Check className="w-5 h-5 text-emerald-400 shrink-0" />
-          <span className="font-bold text-xs">{successMsg}</span>
+      {errorMsg && (
+        <div className="bg-rose-950 border border-rose-500/40 text-rose-300 p-3.5 rounded-none flex items-center gap-3 text-xs font-black">
+          <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* ── MAIN WORKSPACE GRID: CREATE FORM (LEFT) vs PUBLISHED HISTORY (RIGHT) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* ─── LEFT COLUMN: TIMETABLE FORM ────────────────────────────────────────── */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="p-6 rounded-2xl bg-slate-900/90 geom-grid-pattern-dark border-2 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.12)] backdrop-blur-md">
+        {/* ── LEFT PANEL: TIMETABLE FORM (7 COLS) ── */}
+        <div className="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-none shadow-2xl p-5 space-y-5">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                {editingTimetableId ? 'Edit Weekly Schedule' : 'Create Weekly Schedule'}
+              </h3>
+            </div>
+            {editingTimetableId && (
+              <button
+                onClick={resetForm}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-none text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3 h-3" /> Cancel Edit
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handleSubmitTimetable} className="space-y-4">
             
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <Calendar className="w-5 h-5" />
-              </div>
+            {/* 1. SELECT TARGET COURSE */}
+            <div>
+              <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                1. SELECT TARGET COURSE / PLAN <span className="text-rose-400">*</span>
+              </label>
+              <select
+                value={selectedCourseId}
+                onChange={(e) => handleSelectCourse(e.target.value)}
+                required
+                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-black text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
+              >
+                <option value="">-- Choose Target Course ({plansList.length} Courses) --</option>
+                {plansList.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* 2. WEEK DETAILS & DATE RANGE */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <h3 className="text-lg font-black text-white tracking-tight">Create Academic Timetable</h3>
-                <p className="text-slate-400 text-xs font-medium">Assign daily/weekly study schedules to specific student plans.</p>
+                <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
+                  WEEK TITLE
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Week 1"
+                  value={weekTitle}
+                  onChange={(e) => setWeekTitle(e.target.value)}
+                  required
+                  className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
+                  START DATE
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  required
+                  className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
+                  END DATE
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  required
+                  className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
+                />
               </div>
             </div>
 
-            <form onSubmit={handleCreateTimetable} className="space-y-6 text-xs">
-              
-              {/* STEP 1: SELECT TARGET PLAN / COURSE */}
-              <div>
-                <label className="block text-emerald-400 font-extrabold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" /> 1. Select Target Plan / Course
+            {/* 3. ASSIGN CHAPTERS PER SUBJECT (DYNAMIC) */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <label className="text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5" /> 3. ASSIGN WEEKLY CHAPTERS FOR EACH SUBJECT
                 </label>
-                <select 
-                  value={selectedPlanId} 
-                  onChange={(e) => {
-                    setSelectedPlanId(e.target.value);
-                    setSelectedSubjectIds([]);
-                  }} 
-                  className="w-full p-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                  required
-                >
-                  <option value="">-- Select Target Course ({plansList.length} Real Courses) --</option>
-                  {plansList.map((plan: any) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name}
-                    </option>
-                  ))}
-                </select>
+                <span className="text-[10px] font-mono text-slate-400 font-bold">
+                  {courseSubjects.length} Subjects
+                </span>
               </div>
 
-              {/* STEP 2: FREQUENCY & SCHEDULE TYPE */}
-              <div>
-                <label className="block text-emerald-400 font-extrabold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> 2. Schedule Type & Frequency
-                </label>
-                
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setScheduleType('daily')}
-                    className={`py-2.5 px-4 rounded-xl font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center justify-center gap-2 border ${
-                      scheduleType === 'daily'
-                        ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
-                        : 'bg-slate-950/60 text-slate-300 border-slate-800 hover:bg-slate-800'
-                    }`}
-                  >
-                    <Calendar className="w-4 h-4" /> Daily Schedule
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setScheduleType('weekly')}
-                    className={`py-2.5 px-4 rounded-xl font-extrabold uppercase tracking-wider cursor-pointer transition-all flex items-center justify-center gap-2 border ${
-                      scheduleType === 'weekly'
-                        ? 'bg-cyan-500 text-black border-cyan-400 shadow-md'
-                        : 'bg-slate-950/60 text-slate-300 border-slate-800 hover:bg-slate-800'
-                    }`}
-                  >
-                    <Clock className="w-4 h-4" /> Weekly Plan
-                  </button>
+              {!selectedCourseId ? (
+                <div className="p-6 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs font-bold">
+                  👈 Select a Course above to assign its subjects & chapters.
                 </div>
-
-                {scheduleType === 'daily' ? (
-                  <div>
-                    <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Target Date</label>
-                    <input 
-                      type="date" 
-                      value={date} 
-                      onChange={(e) => setDate(e.target.value)} 
-                      className="w-full p-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" 
-                      required 
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Day of Week</label>
-                    <select 
-                      value={dayOfWeek} 
-                      onChange={(e) => setDayOfWeek(e.target.value)} 
-                      className="w-full p-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white font-bold focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
-                    >
-                      <option value="Monday">Monday</option>
-                      <option value="Tuesday">Tuesday</option>
-                      <option value="Wednesday">Wednesday</option>
-                      <option value="Thursday">Thursday</option>
-                      <option value="Friday">Friday</option>
-                      <option value="Saturday">Saturday</option>
-                      <option value="Sunday">Sunday</option>
-                      <option value="Everyday">Everyday (All Days)</option>
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {/* STEP 3: SELECT SUBJECTS (ONE OR MULTIPLE) */}
-              <div>
-                <label className="block text-emerald-400 font-extrabold uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> 3. Select Subject(s) (Multiple Allowed)</span>
-                  <span className="text-[10px] text-slate-400">{selectedSubjectIds.length} selected</span>
-                </label>
-
-                {filteredSubjects.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800 text-slate-400 text-center font-bold">
-                    No subjects found for selected plan. Please select a plan or add subjects first.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[160px] overflow-y-auto p-2 bg-slate-950/60 rounded-xl border border-slate-800">
-                    {filteredSubjects.map((sub: Subject) => {
-                      const isSelected = selectedSubjectIds.includes(sub.id);
-                      return (
-                        <button
-                          type="button"
-                          key={sub.id}
-                          onClick={() => toggleSubjectSelection(sub.id)}
-                          className={`p-2.5 rounded-xl text-xs font-bold text-left transition-all cursor-pointer flex items-center justify-between border ${
-                            isSelected
-                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm'
-                              : 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white'
-                          }`}
-                        >
-                          <span className="truncate">{sub.name}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* STEP 4: CHAPTER & TOPIC DETAILS (TYPE TEXT OR UPLOAD IMAGE) */}
-              <div>
-                <label className="block text-emerald-400 font-extrabold uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> 4. Chapter & Topic Details</span>
-                </label>
-
-                {/* Input Mode Selector Tabs */}
-                <div className="flex border-b border-slate-800 mb-4">
-                  <button
-                    type="button"
-                    onClick={() => setInputMode('text')}
-                    className={`py-2 px-4 font-bold text-xs cursor-pointer border-b-2 transition-all flex items-center gap-2 ${
-                      inputMode === 'text'
-                        ? 'border-emerald-400 text-emerald-400'
-                        : 'border-transparent text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" /> 📝 Type Text Details
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInputMode('image')}
-                    className={`py-2 px-4 font-bold text-xs cursor-pointer border-b-2 transition-all flex items-center gap-2 ${
-                      inputMode === 'image'
-                        ? 'border-emerald-400 text-emerald-400'
-                        : 'border-transparent text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <ImageIcon className="w-4 h-4" /> 🖼️ Upload Timetable Image
-                  </button>
+              ) : courseSubjects.length === 0 ? (
+                <div className="p-6 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs font-bold">
+                  No subjects found for this course. Please assign subjects to this course in Subjects & Chapters tab.
                 </div>
+              ) : (
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {courseSubjects.map((sub: any) => {
+                    const subId = String(sub.id || sub._id);
+                    const subChapters = getSubjectChaptersSorted(subId);
+                    const currentAssignedChap = assignedChapterMap[subId] || '';
 
-                {inputMode === 'text' ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Chapter Name</label>
-                      <input 
-                        type="text" 
-                        value={chapterName} 
-                        onChange={(e) => setChapterName(e.target.value)} 
-                        className="w-full p-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500" 
-                        placeholder="e.g. Kinematics & Laws of Motion" 
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Study Topic & Details</label>
-                      <textarea 
-                        rows={2} 
-                        value={studyTopic} 
-                        onChange={(e) => setStudyTopic(e.target.value)} 
-                        className="w-full p-3 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" 
-                        placeholder="e.g. Newton's 2nd Law problem solving & MCQ practice sheet" 
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-slate-400 font-bold uppercase tracking-wider mb-2">Upload Timetable Image Schedule</label>
-                    {uploadedImageUrl ? (
-                      <div className="relative p-3 rounded-xl bg-slate-950 border border-emerald-500/50 flex flex-col items-center gap-3">
-                        <img 
-                          src={uploadedImageUrl} 
-                          alt="Timetable Preview" 
-                          className="max-h-48 rounded-lg object-contain border border-slate-800" 
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setImagePreviewModalUrl(uploadedImageUrl)}
-                            className="px-3 py-1.5 bg-slate-800 text-slate-200 rounded-lg text-xs font-bold hover:bg-slate-700 cursor-pointer flex items-center gap-1"
+                    return (
+                      <div key={subId} className="p-2.5 bg-slate-900 border border-slate-800 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="min-w-0 sm:w-2/5">
+                          <span className="text-[9px] font-mono font-bold text-emerald-400 uppercase block">SUBJECT</span>
+                          <span className="text-xs font-black text-white truncate block uppercase">{sub.name}</span>
+                        </div>
+
+                        <div className="sm:w-3/5">
+                          <select
+                            value={currentAssignedChap}
+                            onChange={(e) => setAssignedChapterMap({ ...assignedChapterMap, [subId]: e.target.value })}
+                            className="w-full p-2 bg-slate-950 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
                           >
-                            <Eye className="w-3.5 h-3.5" /> Preview Full
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setUploadedImageUrl('')}
-                            className="px-3 py-1.5 bg-rose-950 text-rose-300 rounded-lg text-xs font-bold hover:bg-rose-900 cursor-pointer flex items-center gap-1 border border-rose-800"
-                          >
-                            <X className="w-3.5 h-3.5" /> Remove Image
-                          </button>
+                            <option value="">-- Choose Chapter ({subChapters.length} Chapters) --</option>
+                            {subChapters.map((ch: any) => (
+                              <option key={ch.id || ch._id} value={ch.id || ch._id}>
+                                {ch.name || (ch as any).title}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
-                    ) : (
-                      <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-slate-700/80 bg-slate-950/60 hover:border-emerald-500/80 cursor-pointer transition-all group">
-                        <Upload className="w-8 h-8 text-slate-400 group-hover:text-emerald-400 mb-2 transition-colors" />
-                        <span className="font-extrabold text-white text-xs">Click or drag image file here</span>
-                        <span className="text-[10px] text-slate-400 mt-0.5">Supports PNG, JPG, WEBP (Max 5MB)</span>
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          onChange={handleImageChange} 
-                          className="hidden" 
-                        />
-                      </label>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Extra Practice & Revision Targets */}
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-800">
-                <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Practice MCQ Target</label>
-                  <input 
-                    type="number" 
-                    value={practiceMCQsCount} 
-                    onChange={(e) => setPracticeMCQsCount(parseInt(e.target.value, 10) || 0)} 
-                    className="w-full p-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white font-mono font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" 
-                  />
+                    );
+                  })}
                 </div>
-                <div>
-                  <label className="block text-slate-400 font-bold uppercase tracking-wider mb-1">Revision Note (Optional)</label>
-                  <input 
-                    type="text" 
-                    value={revisionTopic} 
-                    onChange={(e) => setRevisionTopic(e.target.value)} 
-                    className="w-full p-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-white font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500" 
-                    placeholder="e.g. Formula revision" 
-                  />
-                </div>
-              </div>
+              )}
+            </div>
 
-              <button 
-                type="submit" 
-                disabled={loading} 
-                className="w-full py-3.5 px-6 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-black font-black uppercase tracking-wider rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+            {/* 4. LINK SUNDAY WEEKEND EXAM */}
+            <div className="pt-2">
+              <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <Award className="w-3.5 h-3.5 text-amber-400" /> 4. LINK SUNDAY WEEKEND EXAM (OPTIONAL)
+              </label>
+              <select
+                value={selectedWeekendExamId}
+                onChange={(e) => setSelectedWeekendExamId(e.target.value)}
+                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-amber-400"
               >
-                {loading ? (
-                  <span>Publishing Schedule...</span>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" /> Publish Timetable Schedule
-                  </>
-                )}
-              </button>
+                <option value="">-- No Exam Linked (Study Schedule Only) --</option>
+                {tests.map((t: any) => (
+                  <option key={t.id || t._id} value={t.id || t._id}>
+                    🏆 {t.title || t.name} ({t.testType || 'Exam'})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            </form>
-          </div>
+            {/* SUBMIT BUTTON */}
+            <button
+              type="submit"
+              disabled={loading || !selectedCourseId}
+              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black text-xs font-black uppercase tracking-wider shadow-lg transition-all border border-emerald-400 cursor-pointer flex items-center justify-center gap-2 mt-4"
+            >
+              <PlusCircle className="w-4 h-4 stroke-[3]" />
+              {editingTimetableId ? 'Update Weekly Schedule' : 'Publish Weekly Schedule'}
+            </button>
+
+          </form>
         </div>
 
-        {/* ─── RIGHT COLUMN: PUBLISHED SCHEDULE ENTRIES LIST ────────────────────────── */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-black text-white tracking-tight flex items-center gap-2">
-              <Layers className="w-5 h-5 text-emerald-400" />
-              Published Schedules ({timetables.length})
-            </h3>
+        {/* ── RIGHT PANEL: PUBLISHED SCHEDULES HISTORY (5 COLS) ── */}
+        <div className="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-none shadow-2xl p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                Published Schedules ({filteredTimetablesHistory.length})
+              </h3>
+            </div>
           </div>
 
-          <div className="space-y-3 max-h-[700px] overflow-y-auto pr-1">
-            {timetables.map((tb: Timetable) => {
-              const targetPlanObj = plansList.find(p => p.id === tb.planId || p.id === tb.examId);
-              const targetPlanName = targetPlanObj ? targetPlanObj.name : 'All Enrolled Students';
+          {/* Filter History by Course */}
+          <div>
+            <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
+              FILTER HISTORY BY COURSE
+            </label>
+            <select
+              value={historyCourseFilter}
+              onChange={(e) => setHistoryCourseFilter(e.target.value)}
+              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
+            >
+              <option value="all">All Published Courses ({timetables.length})</option>
+              {plansList.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
 
-              // Map subject names
-              const mappedSubjectNames = (tb.subjectIds || (tb.subjectId ? [tb.subjectId] : [])).map(sId => {
-                const subObj = subjects.find(s => s.id === sId || (s as any)._id === sId);
-                return subObj ? subObj.name : 'Core Subject';
-              });
+          {/* History List */}
+          {filteredTimetablesHistory.length === 0 ? (
+            <div className="p-8 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs italic">
+              No published timetables found for the selected course filter.
+            </div>
+          ) : (
+            <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
+              {filteredTimetablesHistory.map((t: Timetable) => {
+                const tId = t._id || t.id;
+                const isEditing = editingTimetableId === tId;
 
-              return (
-                <div 
-                  key={tb.id || tb._id} 
-                  className="p-4 bg-slate-900/90 geom-grid-pattern-dark border-2 border-emerald-500/40 hover:border-emerald-400 rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.15)] flex flex-col gap-2.5 transition-all"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 font-extrabold text-[10px] uppercase tracking-wider border border-emerald-500/30">
-                        {targetPlanName}
-                      </span>
-                      <span className="ml-2 px-2 py-0.5 rounded-md bg-cyan-500/20 text-cyan-400 font-extrabold text-[10px] uppercase tracking-wider border border-cyan-500/30">
-                        {tb.scheduleType === 'weekly' ? `Weekly (${tb.dayOfWeek || 'All Days'})` : `Daily (${tb.date || 'Scheduled'})`}
-                      </span>
-                    </div>
-
-                    <button 
-                      onClick={() => handleDeleteTimetable(tb.id || tb._id || '')} 
-                      className="text-slate-500 hover:text-rose-400 p-1 cursor-pointer transition-colors"
-                      title="Delete Timetable"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Subject Badges */}
-                  <div className="flex flex-wrap gap-1">
-                    {mappedSubjectNames.map((sName, idx) => (
-                      <span key={idx} className="px-2 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-bold rounded border border-slate-700">
-                        {sName}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Content: Text vs Image */}
-                  {tb.imageUrl ? (
-                    <div className="relative group rounded-xl overflow-hidden border border-slate-800 bg-slate-950 p-2 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <img 
-                          src={tb.imageUrl} 
-                          alt="Timetable Schedule" 
-                          className="w-16 h-12 rounded object-cover border border-slate-700" 
-                        />
-                        <div>
-                          <span className="font-extrabold text-xs text-white block">Image Schedule Attached</span>
-                          <span className="text-[10px] text-slate-400">Click to expand schedule image</span>
-                        </div>
+                return (
+                  <div 
+                    key={tId} 
+                    className={`p-3.5 bg-slate-900 border transition-all ${
+                      isEditing ? 'border-emerald-400 ring-1 ring-emerald-400' : 'border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-800">
+                      <div>
+                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[9px] font-mono font-black uppercase rounded-none inline-block mb-1">
+                          {t.weekTitle || `Week ${t.weekNumber || 1}`}
+                        </span>
+                        <h4 className="text-xs font-black text-white uppercase">{t.courseName || 'Course Timetable'}</h4>
+                        <span className="text-[10px] font-mono font-bold text-slate-400 block">
+                          📅 {t.startDate} to {t.endDate}
+                        </span>
                       </div>
-                      <button
-                        onClick={() => setImagePreviewModalUrl(tb.imageUrl || '')}
-                        className="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-500/30 cursor-pointer flex items-center gap-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> View
-                      </button>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleEditTimetable(t)}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-none cursor-pointer border border-slate-700"
+                          title="Edit Schedule"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTimetable(tId)}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-none cursor-pointer border border-slate-700"
+                          title="Delete Schedule"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {tb.chapterName && (
-                        <div className="font-extrabold text-xs text-white">Ch: {tb.chapterName}</div>
+
+                    {/* Assigned Chapters List */}
+                    <div className="pt-2 space-y-1">
+                      <span className="text-[9px] font-mono font-black text-slate-400 uppercase block mb-1">ASSIGNED CHAPTERS:</span>
+                      {Array.isArray(t.weeklyChapters) && t.weeklyChapters.length > 0 ? (
+                        t.weeklyChapters.map((wc, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-[11px] bg-slate-950 px-2 py-1 border border-slate-800/80">
+                            <span className="font-bold text-emerald-400 uppercase text-[10px]">{wc.subjectName}:</span>
+                            <span className="font-bold text-white text-[10px] truncate max-w-[180px]">{wc.chapterName || 'General'}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[10px] text-slate-400 italic">No chapter details specified.</p>
                       )}
-                      <div className="text-xs text-slate-300 font-medium">{tb.studyTopic || tb.title}</div>
                     </div>
-                  )}
 
-                  {/* Footer Meta */}
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-800/80 text-[10px] text-slate-400 font-semibold">
-                    <span>MCQ Target: <strong className="text-white font-mono">{tb.practiceMCQsCount || 10} Questions</strong></span>
-                    {tb.revisionTopic && <span>Rev: <strong className="text-amber-400">{tb.revisionTopic}</strong></span>}
+                    {/* Linked Weekend Exam */}
+                    {t.weekendExamTitle && (
+                      <div className="mt-2 p-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span className="truncate">Weekend Exam: {t.weekendExamTitle}</span>
+                      </div>
+                    )}
                   </div>
-
-                </div>
-              );
-            })}
-
-            {timetables.length === 0 && (
-              <div className="text-center text-xs text-slate-500 py-12 font-bold bg-slate-900/60 rounded-2xl border border-slate-800">
-                No published timetable schedules yet.
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       </div>
-
-      {/* FULL IMAGE PREVIEW MODAL */}
-      {imagePreviewModalUrl && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="relative max-w-4xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col items-center">
-            <button
-              onClick={() => setImagePreviewModalUrl(null)}
-              className="absolute top-4 right-4 p-2 bg-slate-800 text-slate-300 hover:text-white rounded-full cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <h4 className="text-sm font-bold text-white mb-3">Timetable Image Schedule Preview</h4>
-            <img 
-              src={imagePreviewModalUrl} 
-              alt="Full Timetable Schedule" 
-              className="max-h-[80vh] w-auto rounded-xl object-contain border border-slate-800" 
-            />
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
