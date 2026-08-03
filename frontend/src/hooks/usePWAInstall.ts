@@ -10,18 +10,22 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 declare global {
-  interface WindowEventMap {
-    beforeinstallprompt: BeforeInstallPromptEvent;
+  interface Window {
+    deferredPWAInstallPrompt?: BeforeInstallPromptEvent | null;
   }
 }
 
 export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(() => {
+    if (typeof window !== 'undefined' && window.deferredPWAInstallPrompt) {
+      return window.deferredPWAInstallPrompt;
+    }
+    return null;
+  });
   const [isStandalone, setIsStandalone] = useState<boolean>(false);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
   const [isIOS, setIsIOS] = useState<boolean>(false);
 
-  // Check standalone / installed status
   useEffect(() => {
     const checkStandalone = () => {
       const isStandaloneMode =
@@ -38,7 +42,12 @@ export function usePWAInstall() {
 
     checkStandalone();
 
-    // Check iOS Safari (needs manual "Add to Home Screen" instructions)
+    // Check if early captured prompt exists on window
+    if (window.deferredPWAInstallPrompt) {
+      setDeferredPrompt(window.deferredPWAInstallPrompt);
+    }
+
+    // Check iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice && !(window.navigator as any).standalone);
@@ -59,19 +68,27 @@ export function usePWAInstall() {
     }
 
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
-      // Prevent browser default mini-infobar
       e.preventDefault();
+      window.deferredPWAInstallPrompt = e;
       setDeferredPrompt(e);
+    };
+
+    const handleEarlyCaptured = (e: any) => {
+      if (e.detail || window.deferredPWAInstallPrompt) {
+        setDeferredPrompt(e.detail || window.deferredPWAInstallPrompt);
+      }
     };
 
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setIsStandalone(true);
       setDeferredPrompt(null);
+      window.deferredPWAInstallPrompt = null;
       localStorage.setItem('ankurah_pwa_installed', 'true');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('pwa-prompt-captured', handleEarlyCaptured);
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
@@ -81,20 +98,23 @@ export function usePWAInstall() {
         mediaQuery.removeListener(handleDisplayModeChange);
       }
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-captured', handleEarlyCaptured);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (deferredPrompt) {
+    const activePrompt = deferredPrompt || window.deferredPWAInstallPrompt;
+    if (activePrompt) {
       try {
-        await deferredPrompt.prompt();
-        const choiceResult = await deferredPrompt.userChoice;
+        await activePrompt.prompt();
+        const choiceResult = await activePrompt.userChoice;
         if (choiceResult.outcome === 'accepted') {
           setIsInstalled(true);
           localStorage.setItem('ankurah_pwa_installed', 'true');
         }
         setDeferredPrompt(null);
+        window.deferredPWAInstallPrompt = null;
         return choiceResult.outcome;
       } catch (err) {
         console.error('PWA install prompt error:', err);
@@ -109,7 +129,7 @@ export function usePWAInstall() {
   return {
     isStandalone,
     isInstalled,
-    canInstall: Boolean(deferredPrompt) || isIOS,
+    canInstall: Boolean(deferredPrompt || window.deferredPWAInstallPrompt) || isIOS,
     isIOS,
     promptInstall,
   };
