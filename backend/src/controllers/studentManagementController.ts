@@ -73,3 +73,16 @@ export const deactivateStudent = async (req: Request, res: Response): Promise<vo
     res.status(500).json({ message: error.message });
   }
 };
+
+export const deleteStudent = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const student = await User.findOneAndDelete({ _id: req.params.id, role: 'student' });
+    if (!student) {
+      res.status(404).json({ message: 'Student not found' });
+      return;
+    }
+    res.json({ message: 'Student deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};

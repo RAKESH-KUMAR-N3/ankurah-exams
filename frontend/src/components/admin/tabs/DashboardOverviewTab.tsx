@@ -205,8 +205,10 @@ export default function DashboardOverviewTab({
     return null;
   };
 
+  const isEnterprise = (localStorage.getItem('ankurah_theme_mode') || 'enterprise') === 'enterprise';
+
   return (
-    <div className="space-y-6 font-sans text-slate-100">
+    <div className={`space-y-6 ${isEnterprise ? 'font-sans text-slate-900' : 'font-sans text-slate-100'}`}>
       
       {/* ─── 1. SLEEK THIN EXECUTIVE HEADER CARD ────────────────────────────────────────── */}
       <motion.div 
@@ -214,22 +216,30 @@ export default function DashboardOverviewTab({
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
         viewport={{ once: false, amount: 0.15 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-5 rounded-xl bg-slate-950/60 geom-grid-pattern-dark border-2 border-emerald-500/40 backdrop-blur-md gap-3 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+        className={`flex flex-col sm:flex-row sm:items-center justify-between py-2.5 px-3.5 sm:py-3 sm:px-5 rounded-xl gap-2 sm:gap-3 border ${
+          isEnterprise
+            ? 'bg-white border-gray-200 shadow-sm'
+            : 'bg-slate-950/60 geom-grid-pattern-dark border-2 border-emerald-500/40 backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.15)]'
+        }`}
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-            <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
+          <div className={`p-2 rounded-lg border shrink-0 ${
+            isEnterprise ? 'bg-emerald-50 text-[#166534] border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+          }`}>
+            <Activity className={`w-4 h-4 animate-pulse ${isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}`} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+              <h2 className={`text-base sm:text-lg font-black tracking-tight ${isEnterprise ? 'text-gray-900 font-heading' : 'text-white'}`}>
                 Academic Performance Overview
               </h2>
-              <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${
+                isEnterprise ? 'bg-emerald-50 text-[#166534] border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              }`}>
                 LIVE REAL-TIME
               </span>
             </div>
-            <p className="text-slate-400 text-[11px] font-medium hidden sm:block">
+            <p className={`text-[11px] font-medium hidden sm:block ${isEnterprise ? 'text-gray-500' : 'text-slate-400'}`}>
               Live platform data for active courses, registered students, question banks, and revenue analytics.
             </p>
           </div>
@@ -255,7 +265,7 @@ export default function DashboardOverviewTab({
       </motion.div>
 
       {/* ─── 2. FULLY WORKING TRANSPARENT KPI STAT CARDS (5 METRICS) ────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4">
         
         {/* Metric 1: Revenue (Interactive & Animated on Scroll) */}
         <motion.div 
@@ -266,20 +276,20 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(16,185,129,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('payments')}
-          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-emerald-500/50 hover:border-emerald-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(16,185,129,0.18)] cursor-pointer"
+          className="p-3 sm:p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-emerald-500/50 hover:border-emerald-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(16,185,129,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5" /> Total Revenue
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+              <DollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Revenue
             </span>
-            <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-black transition-colors">
-              <ChevronRight className="w-3.5 h-3.5" />
+            <span className="p-1 sm:p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500 group-hover:text-black transition-colors">
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-white font-mono">₹{totalRevenue.toLocaleString()}</div>
-            <div className="text-[10px] font-bold text-emerald-400/90 flex items-center gap-1 mt-0.5">
-              <ArrowUpRight className="w-3 h-3" /> Click to view transactions
+          <div className="mt-2 sm:mt-3">
+            <div className="text-lg sm:text-2xl font-black text-white font-mono">₹{totalRevenue.toLocaleString()}</div>
+            <div className="text-[9px] sm:text-[10px] font-bold text-emerald-400/90 flex items-center gap-0.5 sm:gap-1 mt-0.5 truncate">
+              <ArrowUpRight className="w-2.5 h-2.5 sm:w-3 sm:h-3 shrink-0" /> Transactions
             </div>
           </div>
         </motion.div>
@@ -293,20 +303,20 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(6,182,212,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('students')}
-          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-cyan-500/50 hover:border-cyan-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(6,182,212,0.18)] cursor-pointer"
+          className="p-3 sm:p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-cyan-500/50 hover:border-cyan-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(6,182,212,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" /> Enrolled Students
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
+              <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Students
             </span>
-            <span className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-black transition-colors">
-              <ChevronRight className="w-3.5 h-3.5" />
+            <span className="p-1 sm:p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 group-hover:bg-cyan-500 group-hover:text-black transition-colors">
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-white font-mono">{totalStudentsCount}</div>
-            <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-0.5">
-              Active registered students
+          <div className="mt-2 sm:mt-3">
+            <div className="text-lg sm:text-2xl font-black text-white font-mono">{totalStudentsCount}</div>
+            <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+              Registered
             </div>
           </div>
         </motion.div>
@@ -320,20 +330,20 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(139,92,246,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('exams')}
-          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-purple-500/50 hover:border-purple-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(139,92,246,0.18)] cursor-pointer"
+          className="p-3 sm:p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-purple-500/50 hover:border-purple-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(139,92,246,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1">
-              <BookOpen className="w-3.5 h-3.5" /> Active Courses
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1">
+              <BookOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Courses
             </span>
-            <span className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:bg-purple-500 group-hover:text-black transition-colors">
-              <ChevronRight className="w-3.5 h-3.5" />
+            <span className="p-1 sm:p-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:bg-purple-500 group-hover:text-black transition-colors">
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-white font-mono">{totalActiveCoursesCount}</div>
-            <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-              Only active course programs
+          <div className="mt-2 sm:mt-3">
+            <div className="text-lg sm:text-2xl font-black text-white font-mono">{totalActiveCoursesCount}</div>
+            <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-0.5 truncate">
+              Active Programs
             </div>
           </div>
         </motion.div>
@@ -347,20 +357,20 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(245,158,11,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('questions')}
-          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-amber-500/50 hover:border-amber-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(245,158,11,0.18)] cursor-pointer"
+          className="p-3 sm:p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-amber-500/50 hover:border-amber-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(245,158,11,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1">
-              <FileText className="w-3.5 h-3.5" /> Exams & Question Bank
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+              <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Exams / Q-Bank
             </span>
-            <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500 group-hover:text-black transition-colors">
-              <ChevronRight className="w-3.5 h-3.5" />
+            <span className="p-1 sm:p-1.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500 group-hover:text-black transition-colors">
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-white font-mono">{totalTestsCount} <span className="text-xs font-bold text-slate-400">Tests</span></div>
-            <div className="text-[10px] font-bold text-amber-400/90 mt-0.5 font-mono">
-              {totalQuestionsCount} Question items
+          <div className="mt-2 sm:mt-3">
+            <div className="text-lg sm:text-2xl font-black text-white font-mono">{totalTestsCount} <span className="text-[10px] font-bold text-slate-400">Tests</span></div>
+            <div className="text-[9px] sm:text-[10px] font-bold text-amber-400/90 mt-0.5 font-mono truncate">
+              {totalQuestionsCount} Questions
             </div>
           </div>
         </motion.div>
@@ -374,20 +384,20 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(244,63,94,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('tests')}
-          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-rose-500/50 hover:border-rose-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(244,63,94,0.18)] cursor-pointer"
+          className="p-3 sm:p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-rose-500/50 hover:border-rose-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(244,63,94,0.18)] cursor-pointer col-span-2 sm:col-span-1"
         >
           <div className="flex justify-between items-start">
-            <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1">
-              <Award className="w-3.5 h-3.5" /> Platform Ranks
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1">
+              <Award className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Ranks
             </span>
-            <span className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500 group-hover:text-black transition-colors">
-              <ChevronRight className="w-3.5 h-3.5" />
+            <span className="p-1 sm:p-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20 group-hover:bg-rose-500 group-hover:text-black transition-colors">
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </span>
           </div>
-          <div className="mt-3">
-            <div className="text-2xl font-black text-white font-mono">88.4%</div>
-            <div className="text-[10px] font-bold text-slate-400 mt-0.5">
-              Average Pass Benchmark
+          <div className="mt-2 sm:mt-3">
+            <div className="text-lg sm:text-2xl font-black text-white font-mono">88.4%</div>
+            <div className="text-[9px] sm:text-[10px] font-bold text-slate-400 mt-0.5 truncate">
+              Pass Benchmark
             </div>
           </div>
         </motion.div>

@@ -47,8 +47,10 @@ export default function TestConfiguratorTab() {
   const loading = false;
   const onRefresh = refreshAdminData;
 
-  const [testCategoryTab, setTestCategoryTab] = useState<'entrance' | 'competitive'>('entrance');
+  const [testCategoryTab, setTestCategoryTab] = useState<'all' | 'entrance' | 'competitive'>('all');
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [selectedSubjectChapters, setSelectedSubjectChapters] = useState<{ [subId: string]: { [chapId: string]: number } }>({});
   const [expandedSubjects, setExpandedSubjects] = useState<string[]>([]);
@@ -225,11 +227,17 @@ export default function TestConfiguratorTab() {
 
   // Filter tests matching the selected tab and optional course / group filters
   const categoryTests = tests.filter(t => {
+    if (testCategoryTab === 'all') return true;
+
     const tExams = Array.isArray((t as any).examIds) ? (t as any).examIds.map((e: any) => (e?._id || e?.id || e).toString()) : [];
-    const tSubId = (((t.subjectId as any)?._id || t.subjectId || '')).toString();
-    const matchesExam = tExams.some((id: string) => targetExamIds.includes(id));
-    const matchesSubject = tSubId && tabSubjectIds.includes(tSubId);
-    return matchesExam || matchesSubject || (testCategoryTab === 'entrance' && tExams.length === 0 && !tSubId);
+    const isCompetitiveTest = competitiveExamIds.some((id: string) => tExams.includes(id));
+
+    if (testCategoryTab === 'competitive') {
+      return isCompetitiveTest;
+    } else if (testCategoryTab === 'entrance') {
+      return !isCompetitiveTest;
+    }
+    return true;
   });
 
   const filteredTests = categoryTests.filter(t => {
@@ -347,12 +355,12 @@ export default function TestConfiguratorTab() {
     }
     setSelectedSubjectChapters(chapMap);
     setExpandedSubjects(expSubs);
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setShowCreateModal(true);
   };
 
   const handleCancelEdit = () => {
     setEditingTestId(null);
+    setShowCreateModal(false);
     setForm({ ...DEFAULT_FORM });
     setSelectedSubjectChapters({});
     setExpandedSubjects([]);
@@ -469,6 +477,7 @@ export default function TestConfiguratorTab() {
 
       setSuccess(editingTestId ? `✅ Test "${form.title}" updated successfully!` : '✅ Test created successfully! Status: Draft');
       setEditingTestId(null);
+      setShowCreateModal(false);
       setForm({ ...DEFAULT_FORM });
       setSelectedSubjectChapters({});
       setExpandedSubjects([]);
@@ -519,718 +528,307 @@ export default function TestConfiguratorTab() {
     t.isFullSyllabus ? <Trophy size={14} className="text-yellow-500" /> :
     <BookOpen size={14} className="text-emerald-500" />;
 
+  const isEnterprise = (localStorage.getItem('ankurah_theme_mode') || 'enterprise') === 'enterprise';
+
   return (
-    <div className="flex flex-col gap-6 w-full">
-      {/* ── TOP LEVEL CATEGORY TAB SWITCHER ── */}
-      <div className="flex gap-2 border-b border-slate-200 pb-0">
-        <button
-          type="button"
-          onClick={() => {
-            setTestCategoryTab('entrance');
-            setForm(f => ({ ...f, subjectId: '', chapterId: '', examIds: [], studentTypeIds: [] }));
-          }}
-          className={`flex items-center gap-2 px-5 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
-            testCategoryTab === 'entrance'
-              ? 'border-emerald-600 text-emerald-700 bg-emerald-50'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          🎓 Entrance Exam Tests
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setTestCategoryTab('competitive');
-            setForm(f => ({ ...f, subjectId: '', chapterId: '', examIds: [], studentTypeIds: [] }));
-          }}
-          className={`flex items-center gap-2 px-5 py-3 font-bold text-sm rounded-t-xl transition-all border-b-2 ${
-            testCategoryTab === 'competitive'
-              ? 'border-blue-600 text-blue-700 bg-blue-50'
-              : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          🏆 Competitive Exam Tests
-        </button>
-      </div>
-
-      {/* ── CREATE TEST FORM ──────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-              editingTestId ? 'bg-amber-100' : testCategoryTab === 'competitive' ? 'bg-blue-50' : 'bg-emerald-50'
-            }`}>
-              {editingTestId ? (
-                <Edit3 size={18} className="text-amber-700" />
-              ) : (
-                <Plus size={18} className={testCategoryTab === 'competitive' ? 'text-blue-600' : 'text-emerald-600'} />
-              )}
-            </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-800">
-                {editingTestId
-                  ? `Edit Test: ${form.title || 'Untitled Test'}`
-                  : testCategoryTab === 'entrance' ? 'Create Entrance Exam Test' : 'Create Competitive Exam Test'}
-              </h2>
-              {editingTestId && (
-                <p className="text-xs text-amber-700 font-bold">You are currently modifying an existing test configuration.</p>
-              )}
-            </div>
-          </div>
-          {editingTestId && (
-            <button
-              type="button"
-              onClick={handleCancelEdit}
-              className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              ✕ Cancel Edit
-            </button>
-          )}
+    <div className={`space-y-6 w-full ${isEnterprise ? 'font-sans text-slate-900' : 'font-sans'}`}>
+      {/* Toast Notifications */}
+      {error && (
+        <div className={`p-4 rounded-xl border flex items-center gap-3 shadow-lg ${
+          isEnterprise
+            ? 'bg-rose-50 text-rose-800 border-rose-200'
+            : 'bg-rose-950/80 text-rose-300 border-rose-700/50'
+        }`}>
+          <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600" />
+          <span className="font-bold text-xs">{error}</span>
         </div>
+      )}
+      {success && (
+        <div className={`p-4 rounded-xl border flex items-center gap-3 shadow-lg ${
+          isEnterprise
+            ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+            : 'bg-emerald-950/80 text-emerald-300 border-emerald-700/50'
+        }`}>
+          <Check className="w-5 h-5 shrink-0 text-emerald-600" />
+          <span className="font-bold text-xs">{success}</span>
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-
-          {/* Target Course / Exam Plan Selector */}
-          <div className="p-4 rounded-2xl border transition-all bg-slate-50 border-slate-200">
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-800">
-                Select Target Course / Exam Plan *
-              </label>
-            </div>
-            {targetExams && targetExams.length > 0 ? (
-              <select
-                value={form.examIds.length > 0 ? form.examIds[0] : ""}
-                onChange={(e) => handleExamChange(e.target.value)}
-                className={`w-full p-3 bg-white border rounded-xl text-slate-900 font-bold focus:outline-none text-xs cursor-pointer transition-colors shadow-2xs ${
-                  form.examIds.length === 0 ? 'border-amber-300 focus:border-amber-500' : 'border-emerald-400 focus:border-emerald-600'
-                }`}
-                required
-              >
-                <option value="">-- Select Target Course / Exam Plan * --</option>
-                {targetExams.map((ex: any) => {
-                  const exId = (ex.id || ex._id).toString();
-                  return (
-                    <option key={exId} value={exId}>
-                      {ex.name}
-                    </option>
-                  );
-                })}
-              </select>
-            ) : (
-              <p className="text-xs text-slate-400">No {testCategoryTab} courses/plans found.</p>
-            )}
-          </div>
-
-          {/* Mode Toggle */}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setForm(f => ({ ...f, mode: 'dynamic', testType: 'Chapter' }))}
-              className={`flex-1 flex items-center gap-2 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all ${
-                form.mode === 'dynamic'
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-slate-200 text-slate-500 hover:border-slate-300'
-              }`}
-            >
-              <Zap size={18} /> {testCategoryTab === 'entrance' ? 'Dynamic / Chapter Test' : 'Dynamic Test'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setForm(f => ({ ...f, mode: 'grand', testType: 'Grand', isFullSyllabus: true }))}
-              className={`flex-1 flex items-center gap-2 py-3 px-4 rounded-xl border-2 font-bold text-sm transition-all ${
-                form.mode === 'grand'
-                  ? 'border-yellow-500 bg-yellow-50 text-yellow-700'
-                  : 'border-slate-200 text-slate-500 hover:border-slate-300'
-              }`}
-            >
-              <Trophy size={18} /> Grand Test (CSV)
-            </button>
-          </div>
-
-          {/* Title */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Test Title *</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400 transition"
-              placeholder={testCategoryTab === 'entrance' ? 'e.g. Botany 1st Year - Chapter 1 Test' : 'e.g. SBI PO Mock Test 1 – General Awareness'}
-              required
-            />
-          </div>
-
-          {/* Dynamic Test Options - Multi-Subject & Multi-Chapter Weightage */}
-          {form.mode === 'dynamic' && (
-            <div className="space-y-5 pt-2">
-              
-              {/* Difficulty & Global Quick Controls Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                    <Zap size={16} />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                      Multi-Subject & Chapter Weightage
-                    </h3>
-                    <p className="text-[11px] text-slate-500 font-medium">
-                      {selectedExam
-                        ? `Course: ${selectedExam.name} (${filteredSubjects.length} Subjects)`
-                        : 'Select a course above to configure subjects & chapters'
-                      }
-                    </p>
-                  </div>
-                </div>
-
-                {filteredSubjects.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedSubjects(filteredSubjects.map(s => (s.id || (s as any)._id).toString()))}
-                      className="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer shadow-2xs transition"
-                    >
-                      Expand All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedSubjects([])}
-                      className="px-2.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl cursor-pointer shadow-2xs transition"
-                    >
-                      Collapse All
-                    </button>
-
-                    <div className="flex items-center gap-2 ml-2">
-                      <label className="text-xs font-bold text-slate-600">Difficulty:</label>
-                      <select
-                        value={form.targetDifficulty}
-                        onChange={e => setForm(f => ({ ...f, targetDifficulty: e.target.value }))}
-                        className="p-1.5 bg-white border border-slate-300 rounded-xl text-slate-900 font-bold focus:outline-none focus:border-blue-500 text-xs cursor-pointer shadow-2xs"
-                      >
-                        <option value="Mixed">Mixed</option>
-                        <option value="Easy">Easy Only</option>
-                        <option value="Medium">Medium Only</option>
-                        <option value="Hard">Hard Only</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Subjects & Chapters List Accordion */}
-              {!selectedExam ? (
-                <div className="p-8 text-center bg-blue-50/50 border-2 border-dashed border-blue-200 rounded-2xl">
-                  <BookOpen className="w-8 h-8 text-blue-500 mx-auto mb-2 opacity-80" />
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">Select a Target Course / Plan First</h4>
-                  <p className="text-xs text-slate-500 font-medium max-w-md mx-auto">
-                    Please choose a Course / Exam Plan from the dropdown above. Its subjects & chapters will then appear here.
-                  </p>
-                </div>
-              ) : filteredSubjects.length === 0 ? (
-                <div className="p-8 text-center bg-amber-50/60 border-2 border-dashed border-amber-200 rounded-2xl text-amber-800 font-bold text-xs">
-                  No subjects linked to &quot;{selectedExam.name}&quot; yet. Please configure subjects in Subjects &amp; Chapters tab.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredSubjects.map(sub => {
-                    const subId = (sub.id || (sub as any)._id).toString();
-                    const subChapters = chapters.filter(c =>
-                      c.subjectId === subId || (c.subjectId as any)?._id === subId
-                    );
-                    const isExpanded = expandedSubjects.includes(subId);
-                    const subChapConfig = selectedSubjectChapters[subId] || {};
-                    const selectedChapsCount = Object.values(subChapConfig).filter(c => c > 0).length;
-                    const subTotalQuestions = Object.values(subChapConfig).reduce((a, b) => a + (Number(b) || 0), 0);
-
-                    return (
-                      <div
-                        key={subId}
-                        className={`rounded-2xl border-2 transition-all overflow-hidden ${
-                          subTotalQuestions > 0
-                            ? 'border-emerald-300 bg-white shadow-xs'
-                            : 'border-slate-200 bg-slate-50/70'
-                        }`}
-                      >
-                        {/* Subject Card Header */}
-                        <div
-                          onClick={() => toggleExpandSubject(subId)}
-                          className="p-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-slate-50 select-none"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                              subTotalQuestions > 0
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-200 text-slate-700'
-                            }`}>
-                              <Layers size={15} />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="text-sm font-black text-slate-800">{sub.name}</h4>
-                                <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                                  {subChapters.length} Chapters
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-slate-500 font-medium">
-                                {subTotalQuestions > 0
-                                  ? `✓ ${subTotalQuestions} questions selected across ${selectedChapsCount} chapters`
-                                  : 'No chapters selected yet'}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                            {/* Quick buttons */}
-                            <button
-                              type="button"
-                              onClick={() => handleSelectAllChaptersInSubject(subId, 5)}
-                              className="hidden sm:inline-flex px-2.5 py-1 text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-                              title="Set 5 questions for every chapter in this subject"
-                            >
-                              All (5 Qs)
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSelectAllChaptersInSubject(subId, 10)}
-                              className="hidden sm:inline-flex px-2.5 py-1 text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 border border-slate-200 rounded-lg transition-colors cursor-pointer"
-                              title="Set 10 questions for every chapter in this subject"
-                            >
-                              All (10 Qs)
-                            </button>
-                            {subTotalQuestions > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => handleClearSubjectChapters(subId)}
-                                className="px-2.5 py-1 text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg transition-colors cursor-pointer"
-                              >
-                                Clear
-                              </button>
-                            )}
-
-                            {/* Expand / Collapse Icon */}
-                            <button
-                              type="button"
-                              onClick={() => toggleExpandSubject(subId)}
-                              className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-                            >
-                              {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Expanded Chapter Selection Body */}
-                        {isExpanded && (
-                          <div className="border-t border-slate-200 p-4 bg-white space-y-3">
-                            {subChapters.length === 0 ? (
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-amber-50/70 border border-amber-200">
-                                <div>
-                                  <p className="text-xs font-bold text-amber-900">
-                                    No chapters created under this subject yet.
-                                  </p>
-                                  <p className="text-[11px] text-amber-700">
-                                    You can assign questions directly to this subject:
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <label className="text-xs font-bold text-amber-900">Questions:</label>
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    max={200}
-                                    placeholder="e.g. 30"
-                                    value={subChapConfig['direct'] || ''}
-                                    onChange={e => handleChapterCountChange(subId, 'direct', parseInt(e.target.value) || 0)}
-                                    className="w-20 p-2 bg-white border border-amber-300 rounded-xl text-xs font-black text-center text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                                {subChapters.map(chap => {
-                                  const chapId = (chap.id || (chap as any)._id).toString();
-                                  const count = subChapConfig[chapId] || 0;
-                                  const isChecked = count > 0;
-                                  const availableCount = chapterQuestionCounts[subId]?.[chapId];
-
-                                  return (
-                                    <div
-                                      key={chapId}
-                                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-all ${
-                                        isChecked
-                                          ? 'border-emerald-300 bg-emerald-50/50'
-                                          : 'border-slate-200 bg-slate-50/40 hover:bg-slate-50'
-                                      }`}
-                                    >
-                                      <label
-                                        className="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer select-none"
-                                        onClick={() => handleChapterToggle(subId, chapId, Math.min(5, availableCount || 5))}
-                                      >
-                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors ${
-                                          isChecked ? 'bg-emerald-600 text-white' : 'border border-slate-300 bg-white'
-                                        }`}>
-                                          {isChecked && <Check size={13} />}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                          <span className={`text-xs block truncate ${isChecked ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
-                                            {chap.name}
-                                          </span>
-                                          {loadingCounts[subId] ? (
-                                            <span className="text-[10px] text-slate-400">Loading...</span>
-                                          ) : availableCount !== undefined ? (
-                                            <span className={`text-[10px] font-bold ${
-                                              availableCount === 0 ? 'text-rose-500' : 'text-slate-500'
-                                            }`}>
-                                              {availableCount === 0 ? '⚠ No questions in DB' : `${availableCount} questions in DB`}
-                                            </span>
-                                          ) : null}
-                                        </div>
-                                      </label>
-
-                                      {isChecked ? (
-                                        <div className="flex flex-col items-end gap-0.5 shrink-0">
-                                          <div className="flex items-center gap-1.5">
-                                            <label className="text-[10px] font-bold text-emerald-800 uppercase">Qs:</label>
-                                            <input
-                                              type="number"
-                                              min={1}
-                                              max={availableCount !== undefined ? availableCount : 200}
-                                              value={count}
-                                              onChange={e => {
-                                                const val = parseInt(e.target.value) || 0;
-                                                const cap = availableCount !== undefined ? availableCount : 9999;
-                                                handleChapterCountChange(subId, chapId, Math.min(val, cap));
-                                              }}
-                                              className="w-16 p-1.5 bg-white border border-emerald-300 rounded-lg text-xs font-black text-center text-emerald-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-2xs"
-                                            />
-                                          </div>
-                                          {availableCount !== undefined && count > availableCount && (
-                                            <span className="text-[9px] text-rose-600 font-bold">Max: {availableCount}</span>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <button
-                                          type="button"
-                                          disabled={availableCount === 0}
-                                          onClick={() => handleChapterToggle(subId, chapId, Math.min(5, availableCount || 5))}
-                                          className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${
-                                            availableCount === 0
-                                              ? 'text-slate-300 cursor-not-allowed'
-                                              : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer'
-                                          }`}
-                                        >
-                                          {availableCount === 0 ? 'No Qs' : '+ Add'}
-                                        </button>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Total Configured Summary Banner */}
-              {totalConfiguredQuestions > 0 && (
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-2 border-emerald-300 shadow-xs space-y-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <Sparkles size={16} className="text-emerald-600" />
-                      <h4 className="text-xs font-black uppercase tracking-wider text-emerald-900">
-                        Exam Configuration Summary
-                      </h4>
-                    </div>
-                    <div className="px-3 py-1 bg-emerald-600 text-white rounded-xl text-xs font-black font-mono">
-                      TOTAL: {totalConfiguredQuestions} QUESTIONS
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {builtSubjectConfigs.map((sc, i) => {
-                      const subObj = subjects.find(s => (s.id || (s as any)._id).toString() === sc.subjectId);
-                      return (
-                        <span
-                          key={i}
-                          className="px-2.5 py-1 bg-white border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1.5"
-                        >
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span>{subObj?.name || 'Subject'}:</span>
-                          <span className="font-black text-slate-900">{sc.totalQuestions} Qs ({sc.chapters.length} chap)</span>
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-            </div>
-          )}
-
-          {/* Duration + Marks Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Duration (mins) *</label>
-              <input
-                type="number"
-                min={1}
-                value={form.duration}
-                onChange={e => setForm(f => ({ ...f, duration: Number(e.target.value) }))}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Marks / Question</label>
-              <input
-                type="number"
-                min={0}
-                step={0.5}
-                value={form.marksPerQuestion}
-                onChange={e => setForm(f => ({ ...f, marksPerQuestion: Number(e.target.value) }))}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Negative Marks</label>
-              <input
-                type="number"
-                min={0}
-                step={0.25}
-                value={form.negativeMarksPerQuestion}
-                onChange={e => setForm(f => ({ ...f, negativeMarksPerQuestion: Number(e.target.value) }))}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                Retake Limit
-                <span className="ml-1 normal-case font-normal text-slate-400">(0=∞)</span>
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={form.retakeLimit}
-                onChange={e => setForm(f => ({ ...f, retakeLimit: Number(e.target.value) }))}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-400"
-              />
-            </div>
-          </div>
-
-          {/* Grand Test CSV Upload */}
-          {form.mode === 'grand' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 space-y-4">
-              <h4 className="text-sm font-black text-yellow-700 flex items-center gap-2">
-                <Trophy size={16} /> Grand Test — CSV Upload
-              </h4>
-
-              <div className="text-xs text-yellow-600 bg-yellow-100 rounded-lg p-3">
-                <p className="font-bold mb-1">📋 CSV Format:</p>
-                <code className="block">content, optionA, optionB, optionC, optionD, correctAnswer, subjectId, chapterId, difficulty, explanation</code>
-              </div>
-              <label className="block">
-                <div className="flex items-center gap-2 px-4 py-3 bg-white border-2 border-dashed border-yellow-300 rounded-xl cursor-pointer hover:border-yellow-500 transition-colors">
-                  <Upload size={18} className="text-yellow-500" />
-                  <span className="text-sm font-bold text-slate-600">
-                    {form.csvFile ? `📄 ${form.csvFile.name}` : 'Click to upload CSV file'}
-                  </span>
-                </div>
-                <input
-                  type="file"
-                  accept=".csv"
-                  className="hidden"
-                  onChange={e => setForm(f => ({ ...f, csvFile: e.target.files?.[0] || null }))}
-                  required={form.mode === 'grand'}
-                />
-              </label>
-            </div>
-          )}
-
-          {/* Instructions */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Instructions (Optional)</label>
-            <textarea
-              value={form.instructions}
-              onChange={e => setForm(f => ({ ...f, instructions: e.target.value }))}
-              rows={3}
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:border-emerald-400 resize-none"
-              placeholder="Any special instructions for students..."
-            />
-          </div>
-
-          {/* Anti-cheat notice */}
-          <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
-            <p>
-              <strong>Proctoring is enabled by default:</strong> Students are forced into fullscreen.
-              1st tab switch → warning. 2nd tab switch → exam auto-submitted.
-            </p>
-          </div>
-
-          {/* Error / Success */}
-          {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
-          {success && <p className="text-sm text-emerald-600 font-medium">{success}</p>}
-
-          {/* Submit */}
+      {/* ── 1. CONTROL BAR: CATEGORY TABS, FILTERS & + CREATE NEW TEST BUTTON ── */}
+      <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3 sm:p-4 rounded-xl shadow-sm border ${
+        isEnterprise
+          ? 'bg-white border-gray-200'
+          : 'bg-slate-950 border-slate-800/80'
+      }`}>
+        
+        {/* Category Tabs */}
+        <div className={`flex items-center overflow-x-auto w-full sm:w-auto p-1 rounded-xl no-scrollbar border ${
+          isEnterprise ? 'bg-gray-100 border-gray-200' : 'bg-slate-900 border-slate-800'
+        }`}>
           <button
-            type="submit"
-            disabled={saving || loading}
-            className={`w-full py-3.5 px-6 text-white rounded-xl font-black uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
-              editingTestId
-                ? 'bg-amber-600 hover:bg-amber-700'
-                : 'bg-slate-900 hover:bg-slate-800'
+            type="button"
+            onClick={() => setTestCategoryTab('all')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 font-black text-[11px] sm:text-xs uppercase tracking-wider cursor-pointer border rounded-lg transition-all whitespace-nowrap ${
+              testCategoryTab === 'all'
+                ? isEnterprise ? 'bg-[#166534] text-white border-[#166534] shadow-xs' : 'bg-emerald-500 text-black border-emerald-400 shadow-md'
+                : isEnterprise ? 'text-gray-600 border-transparent hover:text-gray-900' : 'text-slate-400 border-transparent hover:text-white'
             }`}
           >
-            {saving ? (
-              <><RotateCcw size={16} className="animate-spin" /> {editingTestId ? 'Saving Changes...' : 'Creating...'}</>
-            ) : editingTestId ? (
-              <><Edit3 size={16} /> 💾 Save Changes (Update Test)</>
-            ) : (
-              <><Plus size={16} /> Create {form.mode === 'grand' ? 'Grand' : 'Dynamic'} Test (as Draft)</>
-            )}
+            ALL TESTS ({tests.length})
           </button>
-        </form>
+          <button
+            type="button"
+            onClick={() => setTestCategoryTab('entrance')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 font-black text-[11px] sm:text-xs uppercase tracking-wider cursor-pointer border rounded-lg transition-all whitespace-nowrap ${
+              testCategoryTab === 'entrance'
+                ? isEnterprise ? 'bg-[#166534] text-white border-[#166534] shadow-xs' : 'bg-emerald-500 text-black border-emerald-400 shadow-md'
+                : isEnterprise ? 'text-gray-600 border-transparent hover:text-gray-900' : 'text-slate-400 border-transparent hover:text-white'
+            }`}
+          >
+            🎓 ENTRANCE ({tests.filter(t => !competitiveExamIds.some((id: string) => (t.examIds || []).map((e: any) => (e?._id || e?.id || e).toString()).includes(id))).length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTestCategoryTab('competitive')}
+            className={`px-3 py-1.5 sm:px-4 sm:py-2 font-black text-[11px] sm:text-xs uppercase tracking-wider cursor-pointer border rounded-lg transition-all whitespace-nowrap ${
+              testCategoryTab === 'competitive'
+                ? isEnterprise ? 'bg-cyan-700 text-white border-cyan-700 shadow-xs' : 'bg-cyan-500 text-black border-cyan-400 shadow-md'
+                : isEnterprise ? 'text-gray-600 border-transparent hover:text-gray-900' : 'text-slate-400 border-transparent hover:text-white'
+            }`}
+          >
+            🏆 COMPETITIVE ({tests.filter(t => competitiveExamIds.some((id: string) => (t.examIds || []).map((e: any) => (e?._id || e?.id || e).toString()).includes(id))).length})
+          </button>
+        </div>
+
+        {/* Right Side: Course Filter & + CREATE NEW TEST Button */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <select
+            value={filterExamId}
+            onChange={(e) => setFilterExamId(e.target.value)}
+            className={`px-3 py-2 text-[11px] sm:text-xs font-black uppercase focus:outline-none cursor-pointer rounded-xl flex-1 sm:w-auto border ${
+              isEnterprise
+                ? 'bg-white border-gray-300 text-gray-900 focus:border-[#166534]'
+                : 'bg-slate-900 border-slate-700 text-emerald-400 focus:border-emerald-400'
+            }`}
+          >
+            <option value="all">🎓 ALL COURSES / PLANS ({allExams.length})</option>
+            {allExams.map((ex: any) => {
+              const exId = (ex.id || ex._id).toString();
+              return (
+                <option key={exId} value={exId}>
+                  🎓 {ex.name}
+                </option>
+              );
+            })}
+          </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              handleCancelEdit();
+              setShowCreateModal(true);
+            }}
+            className={`px-4 py-2 font-black uppercase tracking-wider text-xs rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 transition-all shrink-0 w-full sm:w-auto ${
+              isEnterprise
+                ? 'bg-[#166534] hover:bg-[#14532d] text-white border border-[#166534]'
+                : 'bg-emerald-500 hover:bg-emerald-400 text-black border border-emerald-400 shadow-lg'
+            }`}
+          >
+            <Plus size={16} className="stroke-[3]" /> + CREATE NEW TEST
+          </button>
+        </div>
+
       </div>
 
-      {/* ── TESTS LIST ────────────────────────────────── */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center">
-              <FileQuestion size={18} className="text-slate-600" />
-            </div>
-            <h2 className="text-lg font-black text-slate-800">All Tests</h2>
-            <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">{filteredTests.length}</span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Filter by Course / Plan */}
-            <select
-              value={filterExamId}
-              onChange={e => setFilterExamId(e.target.value)}
-              className="text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
-            >
-              <option value="all">All Courses / Plans</option>
-              {targetExams && targetExams.map((ex: any) => {
-                const exId = (ex.id || ex._id).toString();
-                return (
-                  <option key={exId} value={exId}>{ex.name}</option>
-                );
-              })}
-            </select>
+      {/* ── 2. MAIN CONTENT: ALL CREATED TESTS LIST AT THE TOP ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <FileQuestion className={`w-5 h-5 ${isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}`} />
+            <h2 className={`text-base font-black uppercase tracking-wider ${isEnterprise ? 'text-gray-900 font-heading' : 'text-white'}`}>
+              ALL CREATED TESTS ({filteredTests.length})
+            </h2>
           </div>
         </div>
 
         {filteredTests.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">
-            <FileQuestion size={40} className="mx-auto mb-3 opacity-40" />
-            <p className="font-bold">No tests found. Create one above!</p>
+          <div className={`p-12 text-center rounded-xl border shadow-sm ${
+            isEnterprise
+              ? 'bg-white border-gray-200 text-gray-500'
+              : 'bg-slate-950/80 geom-grid-pattern-dark border-2 border-slate-800 text-slate-400 shadow-xl'
+          }`}>
+            <FileQuestion size={44} className={`mx-auto mb-3 ${isEnterprise ? 'text-gray-400' : 'text-slate-600'}`} />
+            <h3 className={`text-sm font-black uppercase tracking-wider ${isEnterprise ? 'text-gray-800 font-heading' : 'text-white'}`}>
+              No tests created yet
+            </h3>
+            <p className={`text-xs font-bold mt-1 max-w-sm mx-auto ${isEnterprise ? 'text-gray-500' : 'text-slate-400'}`}>
+              Click the <strong className={isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}>+ CREATE NEW TEST</strong> button above to configure your first exam!
+            </p>
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredTests.map(t => {
+          <div className="grid grid-cols-1 gap-3.5">
+            {filteredTests.map((t) => {
               const tid = (t as any)._id || t.id;
               const isPublished = t.status === 'Published';
               const isToggling = togglingId === tid;
               const isDeleting = deletingId === tid;
 
               return (
-                <div key={tid} className="px-6 py-4 flex items-start gap-4 hover:bg-slate-50 transition-colors">
-                  {/* Type icon */}
-                  <div className="mt-1">{getTypeIcon(t)}</div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-slate-800">{t.title}</h4>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wider ${getStatusColor(t.status)}`}>
-                        {t.status || 'Draft'}
-                      </span>
-                      <span className="text-[10px] font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full uppercase">
-                        {t.testType}
-                      </span>
+                <div
+                  key={tid}
+                  className={`p-4 sm:p-5 rounded-xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 group ${
+                    isEnterprise
+                      ? 'bg-white border-gray-200 hover:border-emerald-600/50 shadow-sm'
+                      : 'bg-slate-950/80 geom-grid-pattern-dark border-2 border-emerald-500/40 hover:border-emerald-400/80 shadow-[0_0_20px_rgba(16,185,129,0.12)]'
+                  }`}
+                >
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className={`p-2.5 rounded-xl border shrink-0 mt-0.5 ${
+                      isEnterprise
+                        ? 'bg-emerald-50 border-emerald-200 text-[#166534]'
+                        : 'bg-slate-900 border-slate-800 text-emerald-400'
+                    }`}>
+                      {getTypeIcon(t)}
                     </div>
-                    <div className="flex flex-wrap gap-3 mt-1.5 text-[11px] text-slate-500 font-medium">
-                      <span className="flex items-center gap-1"><Clock size={11} /> {t.duration} mins</span>
-                      <span className="flex items-center gap-1"><Award size={11} /> {t.marksPerQuestion ?? 4} pts/Q</span>
-                      <span className="flex items-center gap-1"><RotateCcw size={11} /> {t.retakeLimit === 0 ? '∞ retakes' : `${t.retakeLimit || 0} retake(s)`}</span>
-                      {t.isDynamic && <span className="text-blue-500">⚡ {t.dynamicTotalQuestions}Q random</span>}
-                      {t.isFullSyllabus && <span className="text-yellow-500">🏆 Grand Test</span>}
-                    </div>
-                    {/* Multi-subject configs preview badge */}
-                    {Array.isArray(t.subjectConfigs) && t.subjectConfigs.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {t.subjectConfigs.map((sc, i) => {
-                          const sObj = subjects.find(s => (s.id || (s as any)._id).toString() === (sc.subjectId?._id || sc.subjectId || '').toString());
-                          const sName = sc.subjectId?.name || sObj?.name || 'Subject';
-                          const qCount = sc.totalQuestions || sc.chapters?.reduce((acc: number, c: any) => acc + (c.questionCount || 0), 0);
-                          return (
-                            <span key={i} className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 rounded-md px-2 py-0.5 font-bold flex items-center gap-1">
-                              📖 {sName}: {qCount} Qs ({sc.chapters?.length || 0} chap)
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                    {/* Assigned student groups */}
-                    {Array.isArray((t as any).studentTypeIds) && (t as any).studentTypeIds.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {(t as any).studentTypeIds.map((sid: any, i: number) => {
-                          const st = studentTypes?.find((s: any) => (s.id || s._id) === (sid?._id || sid));
-                          const stName = st?.name;
-                          const stState = st?.state;
-                          return stName ? (
-                            <span key={i} className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 font-bold flex items-center gap-1">
-                              {stName} {stState && <span className="text-[8px] opacity-75 bg-emerald-200 text-emerald-800 px-1 rounded">{stState}</span>}
-                            </span>
-                          ) : null;
-                        })}
-                      </div>
-                    )}
 
-                    {/* Assigned courses/exams */}
-                    <div className="flex flex-wrap gap-1 mt-2 items-center">
-                      {Array.isArray((t as any).examIds) && (t as any).examIds.length > 0 ? (
-                        (t as any).examIds.map((eid: any, i: number) => {
-                          const exName = allExams.find((ex: any) => (ex.id || ex._id).toString() === (eid?._id || eid?.id || eid).toString())?.name;
-                          return exName ? (
-                            <span key={i} className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2.5 py-0.5 font-bold flex items-center gap-1">
-                              📘 {exName}
-                            </span>
-                          ) : null;
-                        })
-                      ) : (
-                        <span className="text-[10px] text-red-600 font-bold bg-red-50 border border-red-200 rounded-full px-2 py-0.5">⚠ No course assigned</span>
+                    <div className="min-w-0 space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className={`font-extrabold text-sm sm:text-base tracking-wide transition-colors ${
+                          isEnterprise
+                            ? 'text-gray-900 font-heading group-hover:text-[#166534]'
+                            : 'text-white group-hover:text-emerald-400'
+                        }`}>
+                          {t.title}
+                        </h3>
+                        <span
+                          className={`px-2.5 py-0.5 text-[10px] font-mono font-black uppercase tracking-wider rounded-md border ${
+                            isPublished
+                              ? isEnterprise
+                                ? 'bg-emerald-50 text-[#166534] border-emerald-200'
+                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                              : isEnterprise
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          }`}
+                        >
+                          {t.status || 'Draft'}
+                        </span>
+                        <span className={`px-2 py-0.5 text-[10px] font-mono font-bold border rounded-md uppercase ${
+                          isEnterprise
+                            ? 'bg-gray-100 text-gray-700 border-gray-200'
+                            : 'bg-slate-900 text-slate-300 border-slate-800'
+                        }`}>
+                          {t.testType}
+                        </span>
+                      </div>
+
+                      {/* Test Metrics Badges */}
+                      <div className={`flex flex-wrap items-center gap-3 text-xs font-mono ${
+                        isEnterprise ? 'text-gray-600 font-sans font-medium' : 'text-slate-300'
+                      }`}>
+                        <span className="flex items-center gap-1">
+                          <Clock size={13} className={isEnterprise ? 'text-[#166534]' : 'text-emerald-400'} /> {t.duration} Mins
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Award size={13} className={isEnterprise ? 'text-[#166534]' : 'text-emerald-400'} /> {t.marksPerQuestion ?? 4} pts/Q
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <RotateCcw size={13} className={isEnterprise ? 'text-gray-400' : 'text-slate-400'} />{' '}
+                          {t.retakeLimit === 0 ? '∞ Retakes' : `${t.retakeLimit || 0} Retake(s)`}
+                        </span>
+                        {t.isDynamic && <span className={`font-bold ${isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}`}>⚡ {t.dynamicTotalQuestions} Qs Random</span>}
+                        {t.isFullSyllabus && <span className={`font-bold ${isEnterprise ? 'text-cyan-700' : 'text-cyan-400'}`}>🏆 Grand Test</span>}
+                      </div>
+
+                      {/* Subject Configurations Preview */}
+                      {Array.isArray(t.subjectConfigs) && t.subjectConfigs.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {t.subjectConfigs.map((sc, i) => {
+                            const sObj = subjects.find(
+                              (s) => (s.id || (s as any)._id).toString() === (sc.subjectId?._id || sc.subjectId || '').toString()
+                            );
+                            const sName = sc.subjectId?.name || sObj?.name || 'Subject';
+                            const qCount =
+                              sc.totalQuestions ||
+                              sc.chapters?.reduce((acc: number, c: any) => acc + (c.questionCount || 0), 0);
+                            return (
+                              <span
+                                key={i}
+                                className={`text-[10px] border rounded-md px-2 py-0.5 font-bold flex items-center gap-1 ${
+                                  isEnterprise
+                                    ? 'bg-emerald-50 text-[#166534] border-emerald-200'
+                                    : 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80 font-mono'
+                                }`}
+                              >
+                                📖 {sName}: {qCount} Qs ({sc.chapters?.length || 0} chap)
+                              </span>
+                            );
+                          })}
+                        </div>
                       )}
+
+                      {/* Course / Exam Badges */}
+                      <div className="flex flex-wrap gap-1.5 pt-1 items-center">
+                        {Array.isArray((t as any).examIds) && (t as any).examIds.length > 0 ? (
+                          (t as any).examIds.map((eid: any, i: number) => {
+                            const exName = allExams.find(
+                              (ex: any) => (ex.id || ex._id).toString() === (eid?._id || eid?.id || eid).toString()
+                            )?.name;
+                            return exName ? (
+                              <span
+                                key={i}
+                                className={`text-[10px] border rounded-md px-2.5 py-0.5 font-bold flex items-center gap-1 ${
+                                  isEnterprise
+                                    ? 'bg-gray-100 text-gray-800 border-gray-300'
+                                    : 'bg-slate-900 text-emerald-400 border-slate-700'
+                                }`}
+                              >
+                                📘 {exName}
+                              </span>
+                            ) : null;
+                          })
+                        ) : (
+                          <span className={`text-[10px] font-bold rounded-md px-2 py-0.5 border ${
+                            isEnterprise
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-rose-950/40 text-rose-400 border-rose-800/50'
+                          }`}>
+                            ⚠ No Course Assigned
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {/* Edit Test Button */}
+                  {/* Actions Buttons */}
+                  <div className={`flex items-center gap-2 shrink-0 justify-end pt-2 md:pt-0 border-t md:border-t-0 ${
+                    isEnterprise ? 'border-gray-200' : 'border-slate-800/80'
+                  }`}>
                     <button
                       type="button"
                       onClick={() => handleStartEdit(t)}
-                      title="Edit this test"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300 cursor-pointer shadow-2xs"
+                      className={`px-3.5 py-1.5 border rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isEnterprise
+                          ? 'bg-white hover:bg-gray-50 text-gray-800 border-gray-300 shadow-xs'
+                          : 'bg-slate-900 hover:bg-slate-800 text-slate-200 hover:text-white border-slate-700'
+                      }`}
                     >
                       <Edit3 size={13} /> Edit
                     </button>
 
-                    {/* Publish / Draft Toggle */}
                     <button
                       type="button"
                       onClick={() => handleToggleStatus(tid)}
                       disabled={isToggling}
-                      title={isPublished ? 'Unpublish (set to Draft)' : 'Publish to students'}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 border cursor-pointer ${
                         isPublished
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                          : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                      } disabled:opacity-50 cursor-pointer shadow-2xs`}
+                          ? isEnterprise
+                            ? 'bg-emerald-50 text-[#166534] border-emerald-300 hover:bg-emerald-600 hover:text-white'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500 hover:text-black'
+                          : isEnterprise
+                            ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-500 hover:text-white'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500 hover:text-black'
+                      }`}
                     >
                       {isToggling ? (
                         <RotateCcw size={13} className="animate-spin" />
@@ -1241,12 +839,15 @@ export default function TestConfiguratorTab() {
                       )}
                     </button>
 
-                    {/* Delete */}
                     <button
                       type="button"
                       onClick={() => handleDelete(tid)}
                       disabled={isDeleting}
-                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        isEnterprise
+                          ? 'text-gray-400 hover:text-rose-600 hover:bg-rose-50'
+                          : 'text-slate-500 hover:text-rose-400 hover:bg-slate-900'
+                      }`}
                       title="Delete test"
                     >
                       {isDeleting ? <RotateCcw size={15} className="animate-spin" /> : <Trash2 size={15} />}
@@ -1258,6 +859,522 @@ export default function TestConfiguratorTab() {
           </div>
         )}
       </div>
+
+      {/* ── 3. TEST CREATION / EDIT MODAL (100% FULL SCREEN FIXED VIEW WITH INDEPENDENT SCROLL) ── */}
+      {showCreateModal && (
+        <div className={`fixed inset-0 z-50 flex flex-col overflow-hidden ${
+          isEnterprise
+            ? 'bg-[#FAFBFC] text-gray-900 font-sans'
+            : 'bg-slate-950 geom-grid-pattern-dark text-white'
+        }`}>
+          {/* Fullscreen Modal Header */}
+          <div className={`px-6 py-3.5 border-b flex items-center justify-between shrink-0 shadow-sm z-10 ${
+            isEnterprise
+              ? 'bg-white border-gray-200'
+              : 'bg-emerald-950/60 border-emerald-500/40'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl border ${
+                isEnterprise
+                  ? 'bg-emerald-50 text-[#166534] border-emerald-200'
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+              }`}>
+                {editingTestId ? <Edit3 size={20} /> : <Plus size={20} className="stroke-[3]" />}
+              </div>
+              <div>
+                <h2 className={`text-base font-black uppercase tracking-wider ${isEnterprise ? 'text-gray-900 font-heading' : 'text-white'}`}>
+                  {editingTestId ? `EDIT TEST: ${form.title || 'UNTITLED TEST'}` : 'CREATE NEW TEST CONFIGURATION'}
+                </h2>
+                <p className={`text-xs font-bold ${isEnterprise ? 'text-gray-500' : 'text-slate-400'}`}>
+                  Configure target course, multi-subject weightages, duration, and test rules.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCancelEdit}
+              className={`px-4 py-2 border rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs ${
+                isEnterprise
+                  ? 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                  : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300 hover:text-white'
+              }`}
+            >
+                        {/* Modal Form Body — 2 Column Layout with Independent Scrolling */}
+          <form onSubmit={handleSubmit} className="flex-1 overflow-hidden p-4 sm:p-6">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 h-full items-start">
+              
+              {/* LEFT COLUMN (Cols 1-5): Primary Form Controls (Independent Scroll) */}
+              <div className="lg:col-span-5 space-y-4 overflow-y-auto max-h-[calc(100vh-140px)] pr-2 no-scrollbar">
+                
+                {/* Target Course Selector */}
+                <div className={`p-4 rounded-xl border space-y-2 shadow-xs ${
+                  isEnterprise ? 'bg-white border-gray-200' : 'bg-slate-900/90 border-slate-800'
+                }`}>
+                  <label className={`block text-xs font-mono font-black uppercase tracking-widest ${
+                    isEnterprise ? 'text-[#166534] font-heading' : 'text-emerald-400'
+                  }`}>
+                    1. SELECT TARGET COURSE / EXAM PLAN *
+                  </label>
+                  {allExams && allExams.length > 0 ? (
+                    <select
+                      value={form.examIds.length > 0 ? form.examIds[0] : ''}
+                      onChange={(e) => handleExamChange(e.target.value)}
+                      className={`w-full p-3 rounded-xl border text-xs font-bold focus:outline-none cursor-pointer ${
+                        isEnterprise
+                          ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#166534]'
+                          : 'bg-slate-950 border-slate-700 text-white focus:border-emerald-400'
+                      }`}
+                      required
+                    >
+                      <option value="">-- Select Target Course / Exam Plan * --</option>
+                      {allExams.map((ex: any) => {
+                        const exId = (ex.id || ex._id).toString();
+                        return (
+                          <option key={exId} value={exId}>
+                            🎓 {ex.name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  ) : (
+                    <p className={`text-xs font-bold ${isEnterprise ? 'text-gray-500' : 'text-slate-400'}`}>No active courses/plans found.</p>
+                  )}
+                </div>
+
+                {/* Test Mode Toggle */}
+                <div className={`p-4 rounded-xl border space-y-2 shadow-xs ${
+                  isEnterprise ? 'bg-white border-gray-200' : 'bg-slate-900/90 border-slate-800'
+                }`}>
+                  <label className={`block text-xs font-mono font-black uppercase tracking-widest mb-1 ${
+                    isEnterprise ? 'text-gray-700 font-heading' : 'text-slate-400'
+                  }`}>
+                    2. TEST MODE
+                  </label>
+                  <div className="flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, mode: 'dynamic', testType: 'Chapter' }))}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-xl border-2 font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                        form.mode === 'dynamic'
+                          ? isEnterprise
+                            ? 'border-[#166534] bg-emerald-50 text-[#166534] shadow-xs'
+                            : 'border-emerald-500 bg-emerald-950/80 text-emerald-300 shadow-md'
+                          : isEnterprise
+                            ? 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+                            : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <Zap size={16} /> Dynamic / Chapter Test
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, mode: 'grand', testType: 'Grand', isFullSyllabus: true }))}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-xl border-2 font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                        form.mode === 'grand'
+                          ? isEnterprise
+                            ? 'border-cyan-700 bg-cyan-50 text-cyan-800 shadow-xs'
+                            : 'border-cyan-500 bg-cyan-950/80 text-cyan-300 shadow-md'
+                          : isEnterprise
+                            ? 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'
+                            : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <Trophy size={16} /> Grand Test (CSV)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Test Title */}
+                <div className={`p-4 rounded-xl border space-y-2 shadow-xs ${
+                  isEnterprise ? 'bg-white border-gray-200' : 'bg-slate-900/90 border-slate-800'
+                }`}>
+                  <label className={`block text-xs font-mono font-black uppercase tracking-widest ${
+                    isEnterprise ? 'text-gray-700 font-heading' : 'text-slate-400'
+                  }`}>
+                    3. TEST TITLE *
+                  </label>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    className={`w-full p-3 border rounded-xl font-bold text-xs focus:outline-none ${
+                      isEnterprise
+                        ? 'bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-[#166534]'
+                        : 'bg-slate-950 border-slate-700 text-white placeholder:text-slate-500 focus:border-emerald-400'
+                    }`}
+                    placeholder="e.g. Botany 1st Year - Chapter 1 Test"
+                    required
+                  />
+                </div>
+
+                {/* Grand Test CSV Upload (if mode === 'grand') */}
+                {form.mode === 'grand' && (
+                  <div className={`p-4 rounded-xl border space-y-3 shadow-xs ${
+                    isEnterprise ? 'bg-cyan-50 border-cyan-200' : 'bg-cyan-950/40 border-cyan-800/80'
+                  }`}>
+                    <h4 className={`text-xs font-black flex items-center gap-2 uppercase tracking-wider ${
+                      isEnterprise ? 'text-cyan-800 font-heading' : 'text-cyan-400'
+                    }`}>
+                      <Trophy size={15} /> Grand Test — CSV Upload
+                    </h4>
+                    <label className="block">
+                      <div className={`flex items-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
+                        isEnterprise
+                          ? 'bg-white border-cyan-300 hover:border-cyan-600'
+                          : 'bg-slate-900 border-cyan-500/40 hover:border-cyan-400'
+                      }`}>
+                        <Upload size={18} className={isEnterprise ? 'text-cyan-700' : 'text-cyan-400'} />
+                        <span className={`text-xs font-bold ${isEnterprise ? 'text-gray-800' : 'text-slate-300'}`}>
+                          {form.csvFile ? `📄 ${form.csvFile.name}` : 'Click to upload CSV question file'}
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={(e) => setForm((f) => ({ ...f, csvFile: e.target.files?.[0] || null }))}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {/* Test Parameters Grid (Duration, Marks, Negative, Retakes) */}
+                <div className={`p-4 rounded-xl border space-y-2 shadow-xs ${
+                  isEnterprise ? 'bg-white border-gray-200' : 'bg-slate-900/90 border-slate-800'
+                }`}>
+                  <label className={`block text-xs font-mono font-black uppercase tracking-widest mb-1 ${
+                    isEnterprise ? 'text-gray-700 font-heading' : 'text-slate-400'
+                  }`}>
+                    4. TEST PARAMETERS & RULES
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-[10px] font-mono font-black uppercase tracking-widest mb-1 ${
+                        isEnterprise ? 'text-gray-500' : 'text-slate-400'
+                      }`}>
+                        DURATION (MINS)
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        value={form.duration}
+                        onChange={(e) => setForm((f) => ({ ...f, duration: Number(e.target.value) }))}
+                        className={`w-full p-2.5 border rounded-xl font-mono font-bold text-xs focus:outline-none ${
+                          isEnterprise
+                            ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#166534]'
+                            : 'bg-slate-950 border-slate-700 text-white focus:border-emerald-400'
+                        }`}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-[10px] font-mono font-black uppercase tracking-widest mb-1 ${
+                        isEnterprise ? 'text-gray-500' : 'text-slate-400'
+                      }`}>
+                        MARKS / Q
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={form.marksPerQuestion}
+                        onChange={(e) => setForm((f) => ({ ...f, marksPerQuestion: Number(e.target.value) }))}
+                        className={`w-full p-2.5 border rounded-xl font-mono font-bold text-xs focus:outline-none ${
+                          isEnterprise
+                            ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#166534]'
+                            : 'bg-slate-950 border-slate-700 text-white focus:border-emerald-400'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-[10px] font-mono font-black uppercase tracking-widest mb-1 ${
+                        isEnterprise ? 'text-gray-500' : 'text-slate-400'
+                      }`}>
+                        NEGATIVE MARKS
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.25}
+                        value={form.negativeMarksPerQuestion}
+                        onChange={(e) => setForm((f) => ({ ...f, negativeMarksPerQuestion: Number(e.target.value) }))}
+                        className={`w-full p-2.5 border rounded-xl font-mono font-bold text-xs focus:outline-none ${
+                          isEnterprise
+                            ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#166534]'
+                            : 'bg-slate-950 border-slate-700 text-white focus:border-emerald-400'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-[10px] font-mono font-black uppercase tracking-widest mb-1 ${
+                        isEnterprise ? 'text-gray-500' : 'text-slate-400'
+                      }`}>
+                        RETAKE LIMIT (0=∞)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.retakeLimit}
+                        onChange={(e) => setForm((f) => ({ ...f, retakeLimit: Number(e.target.value) }))}
+                        className={`w-full p-2.5 border rounded-xl font-mono font-bold text-xs focus:outline-none ${
+                          isEnterprise
+                            ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#166534]'
+                            : 'bg-slate-950 border-slate-700 text-white focus:border-emerald-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Proctoring Notice */}
+                <div className={`flex items-start gap-2 text-xs border rounded-xl p-3 shadow-xs ${
+                  isEnterprise
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                    : 'bg-emerald-950/40 text-emerald-300 border-emerald-800/80'
+                }`}>
+                  <AlertTriangle size={15} className={`mt-0.5 shrink-0 ${isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}`} />
+                  <p>
+                    <strong>Proctoring Enabled:</strong> Students are forced into fullscreen mode during test.
+                  </p>
+                </div>
+
+                {/* Submit Buttons Row */}
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className={`px-5 py-3 border rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                      isEnterprise
+                        ? 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
+                        : 'bg-slate-900 hover:bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={saving || loading}
+                    className={`px-8 py-3 font-black text-xs uppercase tracking-wider rounded-xl shadow-sm transition-all cursor-pointer border flex items-center gap-2 active:scale-95 disabled:opacity-50 ${
+                      isEnterprise
+                        ? 'bg-[#166534] hover:bg-[#14532d] text-white border-[#166534]'
+                        : 'bg-emerald-500 hover:bg-emerald-400 text-black border-emerald-400 shadow-lg'
+                    }`}
+                  >
+                    {saving ? (
+                      <><RotateCcw size={16} className="animate-spin" /> Saving...</>
+                    ) : editingTestId ? (
+                      <><Edit3 size={16} /> Save Changes (Update Test)</>
+                    ) : (
+                      <><Plus size={16} className="stroke-[3]" /> Create Dynamic Test (Draft)</>
+                    )}
+                  </button>
+                </div>
+
+              </div>
+
+              {/* RIGHT COLUMN (Cols 6-12): Multi-Subject & Chapter Weightage (INDEPENDENT INTERNAL SCROLL) */}
+              <div className="lg:col-span-7 h-full flex flex-col overflow-hidden">
+                {form.mode === 'dynamic' && (
+                  <div className={`p-4 sm:p-5 rounded-xl border flex flex-col h-full max-h-[calc(100vh-140px)] shadow-xs ${
+                    isEnterprise ? 'bg-white border-gray-200' : 'bg-slate-900/90 border-slate-800'
+                  }`}>
+                    
+                    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b shrink-0 ${
+                      isEnterprise ? 'border-gray-200' : 'border-slate-800'
+                    }`}>
+                      <div className="flex items-center gap-2.5">
+                        <div className={`p-2 rounded-lg border ${
+                          isEnterprise
+                            ? 'bg-emerald-50 text-[#166534] border-emerald-200'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        }`}>
+                          <Zap size={16} />
+                        </div>
+                        <div>
+                          <h3 className={`text-xs font-black uppercase tracking-wider ${
+                            isEnterprise ? 'text-gray-900 font-heading' : 'text-white'
+                          }`}>
+                            5. MULTI-SUBJECT & CHAPTER WEIGHTAGE
+                          </h3>
+                          <p className={`text-[11px] font-bold mt-0.5 ${
+                            isEnterprise ? 'text-gray-500' : 'text-slate-400'
+                          }`}>
+                            {selectedExam
+                              ? `Course: ${selectedExam.name} (${filteredSubjects.length} Subjects)`
+                              : 'Select a target course on the left to configure subjects & chapters'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {filteredSubjects.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <label className={`text-xs font-mono font-bold ${isEnterprise ? 'text-gray-600' : 'text-slate-400'}`}>Difficulty:</label>
+                          <select
+                            value={form.targetDifficulty}
+                            onChange={(e) => setForm((f) => ({ ...f, targetDifficulty: e.target.value }))}
+                            className={`p-1.5 border rounded-lg font-bold text-xs focus:outline-none ${
+                              isEnterprise
+                                ? 'bg-gray-50 border-gray-300 text-gray-900 focus:border-[#166534]'
+                                : 'bg-slate-950 border-slate-700 text-emerald-400 focus:border-emerald-400'
+                            }`}
+                          >
+                            <option value="Mixed">Mixed</option>
+                            <option value="Easy">Easy Only</option>
+                            <option value="Medium">Medium Only</option>
+                            <option value="Hard">Hard Only</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Subjects & Chapters List Accordion Container (Only right column scrolls internally!) */}
+                    <div className="flex-1 overflow-y-auto pr-1.5 space-y-3 mt-3">
+                      {!selectedExam ? (
+                        <div className={`p-12 text-center border border-dashed rounded-xl space-y-2 ${
+                          isEnterprise ? 'bg-gray-50 border-gray-300 text-gray-500' : 'bg-slate-950/60 border-slate-800'
+                        }`}>
+                          <BookOpen className={`w-8 h-8 mx-auto ${isEnterprise ? 'text-gray-400' : 'text-slate-600'}`} />
+                          <h4 className={`text-xs font-black uppercase tracking-wider ${isEnterprise ? 'text-gray-800 font-heading' : 'text-white'}`}>Select a Target Course First</h4>
+                          <p className={`text-[11px] font-bold max-w-sm mx-auto ${isEnterprise ? 'text-gray-500' : 'text-slate-400'}`}>
+                            Please choose a Course / Exam Plan from the dropdown on the left. Its subjects & chapters will appear here.
+                          </p>
+                        </div>
+                      ) : filteredSubjects.length === 0 ? (
+                        <div className="p-8 text-center bg-amber-50 border border-dashed border-amber-300 rounded-xl text-amber-900 font-bold text-xs">
+                          No subjects linked to &quot;{selectedExam.name}&quot; yet. Please configure subjects in Subjects &amp; Chapters tab.
+                        </div>
+                      ) : (
+                        filteredSubjects.map((sub) => {
+                          const subId = (sub.id || (sub as any)._id).toString();
+                          const subChapters = chapters.filter(
+                            (c) => c.subjectId === subId || (c.subjectId as any)?._id === subId
+                          );
+                          const isExpanded = expandedSubjects.includes(subId);
+                          const subChapConfig = selectedSubjectChapters[subId] || {};
+                          const subTotalQuestions = Object.values(subChapConfig).reduce((a, b) => a + (Number(b) || 0), 0);
+
+                          return (
+                            <div
+                              key={subId}
+                              className={`rounded-xl border transition-all overflow-hidden ${
+                                subTotalQuestions > 0
+                                  ? isEnterprise ? 'border-emerald-400 bg-white shadow-xs' : 'border-emerald-500/60 bg-slate-950'
+                                  : isEnterprise ? 'border-gray-200 bg-gray-50/50' : 'border-slate-800 bg-slate-950/60'
+                              }`}
+                            >
+                              <div
+                                onClick={() =>
+                                  setExpandedSubjects((prev) =>
+                                    isExpanded ? prev.filter((id) => id !== subId) : [...prev, subId]
+                                  )
+                                }
+                                className={`p-3 flex items-center justify-between cursor-pointer select-none transition-colors ${
+                                  isEnterprise ? 'bg-white hover:bg-gray-50' : 'bg-slate-900/90 hover:bg-slate-900'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <BookOpen className={`w-4 h-4 ${isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}`} />
+                                  <span className={`font-extrabold text-xs uppercase tracking-wide ${
+                                    isEnterprise ? 'text-gray-900 font-heading' : 'text-white'
+                                  }`}>
+                                    {sub.name}
+                                  </span>
+                                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                                    isEnterprise ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-slate-950 text-slate-400 border-slate-800'
+                                  }`}>
+                                    {subChapters.length} Chapters
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  {subTotalQuestions > 0 && (
+                                    <span className={`px-2.5 py-0.5 border font-mono font-bold text-xs rounded-md ${
+                                      isEnterprise
+                                        ? 'bg-emerald-50 text-[#166534] border-emerald-300'
+                                        : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                                    }`}>
+                                      {subTotalQuestions} Qs Selected
+                                    </span>
+                                  )}
+                                  {isExpanded ? (
+                                    <ChevronUp className={`w-4 h-4 ${isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}`} />
+                                  ) : (
+                                    <ChevronDown className={`w-4 h-4 ${isEnterprise ? 'text-gray-400' : 'text-slate-400'}`} />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Chapter Weightage Rows (Rendered in Compact 2-Column Grid!) */}
+                              {isExpanded && (
+                                <div className={`p-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-2 ${
+                                  isEnterprise ? 'bg-gray-50 border-gray-200' : 'bg-slate-950 border-slate-800/80'
+                                }`}>
+                                  {subChapters.map((chap) => {
+                                    const chapId = (chap.id || (chap as any)._id).toString();
+                                    const curVal = subChapConfig[chapId] || 0;
+                                    const availCount = chapterQuestionCounts[subId]?.[chapId] ?? (chap.questionCount || 15);
+
+                                    return (
+                                      <div
+                                        key={chapId}
+                                        className={`flex items-center justify-between gap-2 p-2 rounded-lg border ${
+                                          isEnterprise
+                                            ? 'bg-white border-gray-200 shadow-2xs'
+                                            : 'bg-slate-900/80 border-slate-800'
+                                        }`}
+                                      >
+                                        <div className="min-w-0 flex-1">
+                                          <h5 className={`font-extrabold text-[11px] truncate ${
+                                            isEnterprise ? 'text-gray-800 font-heading' : 'text-slate-200'
+                                          }`}>{chap.name}</h5>
+                                          <span className={`text-[9px] font-mono font-bold ${
+                                            isEnterprise ? 'text-gray-500' : 'text-slate-400'
+                                          }`}>
+                                            DB: <strong className={isEnterprise ? 'text-[#166534]' : 'text-emerald-400'}>{availCount}</strong> Qs
+                                          </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <label className={`text-[9px] font-mono font-bold uppercase ${
+                                            isEnterprise ? 'text-gray-500' : 'text-slate-400'
+                                          }`}>
+                                            Qs:
+                                          </label>
+                                          <input
+                                            type="number"
+                                            min={0}
+                                            max={availCount}
+                                            value={curVal}
+                                            onChange={(e) =>
+                                              handleSubjectChapterQuestionChange(subId, chapId, Number(e.target.value))
+                                            }
+                                            className={`w-14 p-1 border rounded-md font-mono font-bold text-xs text-center focus:outline-none ${
+                                              isEnterprise
+                                                ? 'bg-white border-gray-300 text-gray-900 focus:border-[#166534]'
+                                                : 'bg-slate-950 border-emerald-500/40 text-emerald-400 focus:border-emerald-400'
+                                            }`}
+                                          />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

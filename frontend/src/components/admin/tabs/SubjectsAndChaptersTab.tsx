@@ -719,24 +719,24 @@ export default function SubjectsAndChaptersTab() {
       {!activeSubject ? (
         <div className="space-y-6">
           {/* TOP FILTER BAR & RIGHT ADD SUBJECT BUTTON */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-950 p-4 border border-slate-800 shadow-xl">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-950 p-3 sm:p-4 rounded-xl border border-slate-800/80 shadow-xl">
             
             {/* Category Segment Tabs */}
-            <div className="flex flex-wrap items-center bg-slate-900 border border-slate-800 p-1">
+            <div className="flex items-center overflow-x-auto w-full sm:w-auto bg-slate-900 border border-slate-800 p-1 rounded-xl no-scrollbar">
               <button
                 onClick={() => setCategoryFilter('all')}
-                className={`px-4 py-2 font-black text-xs uppercase tracking-wider cursor-pointer border rounded-none transition-all ${
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 font-black text-[11px] sm:text-xs uppercase tracking-wider cursor-pointer border rounded-lg transition-all whitespace-nowrap ${
                   categoryFilter === 'all'
                     ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
                     : 'text-slate-400 border-transparent hover:text-white'
                 }`}
               >
-                ALL SUBJECTS ({subjects.length})
+                ALL ({subjects.length})
               </button>
               
               <button
                 onClick={() => setCategoryFilter('entrance')}
-                className={`px-4 py-2 font-black text-xs uppercase tracking-wider cursor-pointer border rounded-none transition-all ${
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 font-black text-[11px] sm:text-xs uppercase tracking-wider cursor-pointer border rounded-lg transition-all whitespace-nowrap ${
                   categoryFilter === 'entrance'
                     ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
                     : 'text-slate-400 border-transparent hover:text-white'
@@ -747,7 +747,7 @@ export default function SubjectsAndChaptersTab() {
 
               <button
                 onClick={() => setCategoryFilter('competitive')}
-                className={`px-4 py-2 font-black text-xs uppercase tracking-wider cursor-pointer border rounded-none transition-all ${
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 font-black text-[11px] sm:text-xs uppercase tracking-wider cursor-pointer border rounded-lg transition-all whitespace-nowrap ${
                   categoryFilter === 'competitive'
                     ? 'bg-cyan-500 text-black border-cyan-400 shadow-md'
                     : 'text-slate-400 border-transparent hover:text-white'
@@ -758,36 +758,37 @@ export default function SubjectsAndChaptersTab() {
             </div>
 
             {/* Search Bar, Course Selector & Add Subject Button */}
-            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               
-              {/* Course Filter Dropdown */}
-              <select
-                value={courseFilter}
-                onChange={(e) => setCourseFilter(e.target.value)}
-                className="bg-slate-900 border border-slate-700 px-3 py-2 text-xs font-black uppercase text-emerald-400 focus:outline-none focus:border-emerald-400 cursor-pointer rounded-none"
-              >
-                <option value="all">🎓 ALL COURSES ({coursesList.length})</option>
-                {coursesList.map((course: any) => (
-                  <option key={course.id} value={course.id}>
-                    🎓 {course.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <select
+                  value={courseFilter}
+                  onChange={(e) => setCourseFilter(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 px-3 py-2 text-[11px] sm:text-xs font-black uppercase text-emerald-400 focus:outline-none focus:border-emerald-400 cursor-pointer rounded-xl flex-1 sm:w-auto"
+                >
+                  <option value="all">🎓 ALL COURSES ({coursesList.length})</option>
+                  {coursesList.map((course: any) => (
+                    <option key={course.id} value={course.id}>
+                      🎓 {course.name}
+                    </option>
+                  ))}
+                </select>
 
-              <div className="relative flex-1 sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search subjects..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-400"
-                />
+                <div className="relative flex-1 sm:w-48">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
               </div>
 
               <button
                 onClick={handleOpenAddSubject}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-wider text-xs rounded-none border border-emerald-400 shadow-lg cursor-pointer flex items-center gap-1.5 active:scale-95 transition-all shrink-0"
+                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black uppercase tracking-wider text-xs rounded-xl border border-emerald-400 shadow-lg cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 transition-all shrink-0 w-full sm:w-auto"
               >
                 <Plus className="w-4 h-4 stroke-[3]" /> ADD SUBJECT(S)
               </button>
@@ -799,9 +800,9 @@ export default function SubjectsAndChaptersTab() {
           {(() => {
             if (filteredSubjects.length === 0) {
               return (
-                <div className="p-12 text-center rounded-none bg-slate-950 border border-slate-800">
-                  <BookOpen className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <h3 className="text-base font-black text-white uppercase tracking-wider">No subjects found</h3>
+                <div className="p-8 sm:p-12 text-center rounded-xl bg-slate-950 border border-slate-800">
+                  <BookOpen className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">No subjects found</h3>
                   <p className="text-xs text-slate-400 font-bold mt-1">
                     Click <strong className="text-emerald-400">ADD SUBJECT(S)</strong> to create subjects for your courses!
                   </p>
@@ -846,134 +847,194 @@ export default function SubjectsAndChaptersTab() {
                       {/* ACCORDION COURSE HEADER */}
                       <div
                         onClick={() => setCollapsedCourses(prev => ({ ...prev, [group.courseName]: !isCollapsed }))}
-                        className="p-4 bg-emerald-950/40 hover:bg-emerald-950/60 border-b border-slate-800/80 flex items-center justify-between cursor-pointer transition-all select-none"
+                        className="p-3 sm:p-4 bg-emerald-950/40 hover:bg-emerald-950/60 border-b border-slate-800/80 flex items-center justify-between cursor-pointer transition-all select-none"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                            <GraduationCap className="w-5 h-5 text-emerald-400" />
+                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                          <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                           </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h2 className="text-sm sm:text-base font-black text-white uppercase tracking-wider">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h2 className="text-xs sm:text-base font-black text-white uppercase tracking-wider truncate">
                                 {group.courseName}
                               </h2>
-                              <span className="px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-bold text-xs rounded-md">
+                              <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-bold text-[10px] sm:text-xs rounded-md">
                                 {group.subjects.length} Subjects
                               </span>
                             </div>
-                            <p className="text-[11px] font-bold text-slate-400 mt-0.5">
+                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 mt-0.5 hidden sm:block">
                               Manage all subjects and chapters by course.
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 text-slate-400">
+                        <div className="flex items-center gap-2 text-slate-400 shrink-0">
                           {isCollapsed ? (
-                            <ChevronDown className="w-5 h-5 text-slate-400" />
+                            <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
                           ) : (
-                            <ChevronUp className="w-5 h-5 text-emerald-400" />
+                            <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                           )}
                         </div>
                       </div>
 
-                      {/* SUBJECT DATA TABLE (WHEN EXPANDED) */}
+                      {/* SUBJECT CONTENT (DESKTOP TABLE & MOBILE ROW LIST) */}
                       {!isCollapsed && (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                              <tr className="border-b border-slate-800 text-slate-400 font-mono font-bold uppercase tracking-wider text-[11px] bg-slate-900/60">
-                                <th className="py-3.5 px-5">Subject</th>
-                                <th className="py-3.5 px-4 text-center">Chapters</th>
-                                <th className="py-3.5 px-4 text-center">Topics</th>
-                                <th className="py-3.5 px-4 text-center">Questions</th>
-                                <th className="py-3.5 px-5 text-right">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/60 font-semibold text-slate-200">
-                              {group.subjects.map((subject: Subject) => {
-                                const subId = subject.id || (subject as any)._id;
-                                const subjectChapters = chapters.filter((c: any) => {
-                                  const chSubId = typeof c.subjectId === 'object' ? c.subjectId?._id || c.subjectId?.id : c.subjectId;
-                                  return chSubId === subId;
-                                });
+                        <div>
+                          {/* DESKTOP TABLE VIEW (hidden on mobile) */}
+                          <div className="hidden sm:block overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-800 text-slate-400 font-mono font-bold uppercase tracking-wider text-[11px] bg-slate-900/60">
+                                  <th className="py-3.5 px-5">Subject</th>
+                                  <th className="py-3.5 px-4 text-center">Chapters</th>
+                                  <th className="py-3.5 px-4 text-center">Topics</th>
+                                  <th className="py-3.5 px-4 text-center">Questions</th>
+                                  <th className="py-3.5 px-5 text-right">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/60 font-semibold text-slate-200">
+                                {group.subjects.map((subject: Subject) => {
+                                  const subId = subject.id || (subject as any)._id;
+                                  const subjectChapters = chapters.filter((c: any) => {
+                                    const chSubId = typeof c.subjectId === 'object' ? c.subjectId?._id || c.subjectId?.id : c.subjectId;
+                                    return chSubId === subId;
+                                  });
 
-                                let topicsCount = 0;
-                                subjectChapters.forEach((ch: any) => {
-                                  if (Array.isArray(ch.topics)) {
-                                    topicsCount += ch.topics.length;
-                                  } else if (ch.topicsCount) {
-                                    topicsCount += ch.topicsCount;
-                                  } else {
-                                    topicsCount += 12; // fallback baseline display
-                                  }
-                                });
+                                  let topicsCount = 0;
+                                  subjectChapters.forEach((ch: any) => {
+                                    if (Array.isArray(ch.topics)) {
+                                      topicsCount += ch.topics.length;
+                                    } else if (ch.topicsCount) {
+                                      topicsCount += ch.topicsCount;
+                                    } else {
+                                      topicsCount += 12;
+                                    }
+                                  });
 
-                                const subQuestionsCount = (questions || []).filter((q: any) => {
-                                  const qSubId = typeof q.subjectId === 'object' ? q.subjectId?._id || q.subjectId?.id : q.subjectId;
-                                  return qSubId === subId;
-                                }).length;
+                                  const subQuestionsCount = (questions || []).filter((q: any) => {
+                                    const qSubId = typeof q.subjectId === 'object' ? q.subjectId?._id || q.subjectId?.id : q.subjectId;
+                                    return qSubId === subId;
+                                  }).length;
 
-                                const meta = getSubjectMeta(subject.name);
+                                  const meta = getSubjectMeta(subject.name);
 
-                                return (
-                                  <tr key={subId} className="hover:bg-slate-900/60 transition-colors group">
-                                    {/* SUBJECT NAME & ICON */}
-                                    <td className="py-3.5 px-5">
-                                      <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white border ${meta.badgeBg} shrink-0`}>
-                                          {meta.icon}
+                                  return (
+                                    <tr key={subId} className="hover:bg-slate-900/60 transition-colors group">
+                                      <td className="py-3.5 px-5">
+                                        <div className="flex items-center gap-3">
+                                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white border ${meta.badgeBg} shrink-0`}>
+                                            {meta.icon}
+                                          </div>
+                                          <span className="font-extrabold text-sm text-white tracking-wide group-hover:text-emerald-400 transition-colors">
+                                            {subject.name}
+                                          </span>
                                         </div>
-                                        <span className="font-extrabold text-sm text-white tracking-wide group-hover:text-emerald-400 transition-colors">
-                                          {subject.name}
-                                        </span>
+                                      </td>
+                                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-300 text-xs">
+                                        {subjectChapters.length}
+                                      </td>
+                                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-300 text-xs">
+                                        {topicsCount || 10}
+                                      </td>
+                                      <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-400 text-xs">
+                                        {subQuestionsCount ? subQuestionsCount.toLocaleString() : (subjectChapters.length * 105).toLocaleString()}
+                                      </td>
+                                      <td className="py-3.5 px-5 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                          <button
+                                            onClick={() => setActiveSubject(subject)}
+                                            className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                                          >
+                                            Open <ArrowRight className="w-3 h-3 stroke-[2.5]" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => handleOpenEditSubject(e, subject)}
+                                            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                                            title="Edit Subject"
+                                          >
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={(e) => handleDeleteSubject(e, subject.id, subject.name)}
+                                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                                            title="Delete Subject"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* MOBILE ROW LIST VIEW (sm:hidden) */}
+                          <div className="sm:hidden divide-y divide-slate-800/60 bg-slate-950">
+                            {group.subjects.map((subject: Subject) => {
+                              const subId = subject.id || (subject as any)._id;
+                              const subjectChapters = chapters.filter((c: any) => {
+                                const chSubId = typeof c.subjectId === 'object' ? c.subjectId?._id || c.subjectId?.id : c.subjectId;
+                                return chSubId === subId;
+                              });
+
+                              let topicsCount = 0;
+                              subjectChapters.forEach((ch: any) => {
+                                if (Array.isArray(ch.topics)) topicsCount += ch.topics.length;
+                                else if (ch.topicsCount) topicsCount += ch.topicsCount;
+                                else topicsCount += 12;
+                              });
+
+                              const subQuestionsCount = (questions || []).filter((q: any) => {
+                                const qSubId = typeof q.subjectId === 'object' ? q.subjectId?._id || q.subjectId?.id : q.subjectId;
+                                return qSubId === subId;
+                              }).length;
+
+                              const meta = getSubjectMeta(subject.name);
+
+                              return (
+                                <div key={subId} className="p-3 hover:bg-slate-900/60 flex items-center justify-between gap-2.5 transition-colors">
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white border ${meta.badgeBg} shrink-0`}>
+                                      {meta.icon}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="font-extrabold text-xs text-white truncate leading-snug">{subject.name}</h4>
+                                      <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 mt-0.5">
+                                        <span>{subjectChapters.length} Ch</span>
+                                        <span>•</span>
+                                        <span>{topicsCount || 10} Top</span>
+                                        <span>•</span>
+                                        <span className="text-emerald-400 font-bold">{subQuestionsCount || subjectChapters.length * 105} Qs</span>
                                       </div>
-                                    </td>
+                                    </div>
+                                  </div>
 
-                                    {/* CHAPTERS */}
-                                    <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-300 text-xs">
-                                      {subjectChapters.length}
-                                    </td>
-
-                                    {/* TOPICS */}
-                                    <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-300 text-xs">
-                                      {topicsCount || 10}
-                                    </td>
-
-                                    {/* QUESTIONS */}
-                                    <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-400 text-xs">
-                                      {subQuestionsCount ? subQuestionsCount.toLocaleString() : (subjectChapters.length * 105).toLocaleString()}
-                                    </td>
-
-                                    {/* ACTION BUTTONS */}
-                                    <td className="py-3.5 px-5 text-right">
-                                      <div className="flex items-center justify-end gap-2">
-                                        <button
-                                          onClick={() => setActiveSubject(subject)}
-                                          className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-xs"
-                                        >
-                                          Open <ArrowRight className="w-3 h-3 stroke-[2.5]" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => handleOpenEditSubject(e, subject)}
-                                          className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-                                          title="Edit Subject"
-                                        >
-                                          <Edit2 className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={(e) => handleDeleteSubject(e, subject.id, subject.name)}
-                                          className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-                                          title="Delete Subject"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      onClick={() => setActiveSubject(subject)}
+                                      className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border border-emerald-500/30 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-0.5 cursor-pointer"
+                                    >
+                                      Open <ArrowRight className="w-2.5 h-2.5 stroke-[2.5]" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleOpenEditSubject(e, subject)}
+                                      className="p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={(e) => handleDeleteSubject(e, subject.id, subject.name)}
+                                      className="p-1 text-slate-500 hover:text-rose-400 rounded-md hover:bg-slate-800 transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>

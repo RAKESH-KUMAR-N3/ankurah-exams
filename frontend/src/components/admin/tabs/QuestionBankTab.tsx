@@ -400,10 +400,10 @@ export default function QuestionBankTab() {
       )}
 
       {/* ── COMPACT ULTRA-EFFICIENT CONTROL PANEL ── */}
-      <div className="p-4 bg-slate-950/60 geom-grid-pattern-dark border-2 border-emerald-500/40 rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.12)] space-y-2.5">
+      <div className="p-3 sm:p-4 bg-slate-950/60 geom-grid-pattern-dark border-2 border-emerald-500/40 rounded-xl sm:rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.12)] space-y-2.5">
         {/* Row 1: Category Toggle Switch & Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80">
-          <div className="flex items-center bg-slate-900 p-1 border border-slate-800 shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80">
+          <div className="flex items-center overflow-x-auto bg-slate-900 p-1 border border-slate-800 rounded-xl no-scrollbar w-full sm:w-auto">
             <button
               onClick={() => {
                 setQTab('entrance');
@@ -411,13 +411,13 @@ export default function QuestionBankTab() {
                 setSelectedSubjectFilter('');
                 setSelectedChapterFilter('all');
               }}
-              className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer border ${
+              className={`px-3 py-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer border rounded-lg whitespace-nowrap ${
                 qTab === 'entrance'
                   ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
                   : 'text-slate-400 border-transparent hover:text-white'
               }`}
             >
-              🎓 ENTRANCE EXAM QUESTIONS ({entranceExams.length})
+              🎓 ENTRANCE ({entranceExams.length})
             </button>
             <button
               onClick={() => {
@@ -426,33 +426,33 @@ export default function QuestionBankTab() {
                 setSelectedSubjectFilter('');
                 setSelectedChapterFilter('all');
               }}
-              className={`px-3.5 py-1.5 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer border ${
+              className={`px-3 py-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer border rounded-lg whitespace-nowrap ${
                 qTab === 'competitive'
                   ? 'bg-cyan-500 text-black border-cyan-400 shadow-md'
                   : 'text-slate-400 border-transparent hover:text-white'
               }`}
             >
-              🏆 COMPETITIVE EXAM QUESTIONS ({competitiveExams.length})
+              🏆 COMPETITIVE ({competitiveExams.length})
             </button>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 justify-end w-full sm:w-auto">
             <button
               onClick={fetchQuestions}
-              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition-colors cursor-pointer"
+              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 transition-colors cursor-pointer rounded-lg"
               title="Refresh Question Bank"
             >
               <RefreshCw className={`w-4 h-4 ${listLoading ? 'animate-spin' : ''}`} />
             </button>
             <button
               onClick={() => handleOpenBulkModal()}
-              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-[11px] sm:text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer rounded-lg"
             >
               <Upload className="w-3.5 h-3.5 text-emerald-400" /> BULK CSV
             </button>
             <button
               onClick={() => handleOpenAddModal()}
-              className="px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black uppercase tracking-wider shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-400 active:scale-95"
+              className="px-3 sm:px-4 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-md transition-all flex items-center gap-1.5 cursor-pointer border border-emerald-400 active:scale-95 rounded-lg"
             >
               <PlusCircle className="w-3.5 h-3.5 stroke-[3]" /> + ADD QUESTION
             </button>
@@ -460,7 +460,7 @@ export default function QuestionBankTab() {
         </div>
 
         {/* Row 2: 4-Column Cascading Filter Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
           {/* 1. SELECT COURSE */}
           <div>
             <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
@@ -473,7 +473,7 @@ export default function QuestionBankTab() {
                 setSelectedSubjectFilter('');
                 setSelectedChapterFilter('all');
               }}
-              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
+              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
             >
               <option value="">-- Choose Course ({currentCourses.length}) --</option>
               {currentCourses.map((c: any) => (
@@ -494,7 +494,7 @@ export default function QuestionBankTab() {
                 setSelectedSubjectFilter(e.target.value);
                 setSelectedChapterFilter('all');
               }}
-              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <option value="">
                 {!selectedCourseFilter ? '-- Select Course First --' : `-- Choose Subject (${availableCourseSubjects.length}) --`}
@@ -514,7 +514,7 @@ export default function QuestionBankTab() {
               value={selectedChapterFilter}
               disabled={!selectedSubjectFilter}
               onChange={(e) => setSelectedChapterFilter(e.target.value)}
-              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-xl text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <option value="all">
                 {!selectedSubjectFilter ? '-- Select Subject First --' : `All Chapters in Subject (${availableSubjectChapters.length})`}
@@ -537,7 +537,7 @@ export default function QuestionBankTab() {
                 placeholder="Search text..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-7 py-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-400"
+                className="w-full pl-8 pr-7 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-400"
               />
               {searchTerm && (
                 <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white">

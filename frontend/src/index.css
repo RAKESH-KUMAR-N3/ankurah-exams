@@ -1,8 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Poppins", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Poppins", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Sora", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   /* Custom Geometric Balance Theme Tokens */
@@ -115,6 +116,96 @@ input[type="number"] {
   background-size: 32px 32px;
   background-image: linear-gradient(to right, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
                     linear-gradient(to bottom, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+}
+
+/* ════════════════════════════════════════════════════
+   PREMIUM ENTERPRISE EDUCATION THEME UTILITIES & OVERRIDES
+   ════════════════════════════════════════════════════ */
+.theme-enterprise {
+  background-color: #FAFBFC !important;
+  color: #111827 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.theme-enterprise,
+.theme-enterprise .geom-grid-pattern,
+.theme-enterprise .geom-grid-pattern-dark {
+  background-image: none !important;
+}
+
+.theme-enterprise h1,
+.theme-enterprise h2,
+.theme-enterprise h3,
+.theme-enterprise h4,
+.theme-enterprise .font-heading {
+  font-family: 'Sora', sans-serif !important;
+}
+
+.theme-enterprise .bg-slate-950,
+.theme-enterprise .bg-slate-950\/80,
+.theme-enterprise .bg-slate-950\/60,
+.theme-enterprise .bg-slate-950\/40,
+.theme-enterprise .bg-slate-900,
+.theme-enterprise .bg-slate-900\/90,
+.theme-enterprise .bg-slate-900\/80,
+.theme-enterprise .bg-slate-900\/60 {
+  background-color: #FFFFFF !important;
+  border-color: #E5E7EB !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+}
+
+.theme-enterprise .text-white {
+  color: #111827 !important;
+}
+
+.theme-enterprise .text-slate-400,
+.theme-enterprise .text-slate-300,
+.theme-enterprise .text-slate-200 {
+  color: #6B7280 !important;
+}
+
+.theme-enterprise .border-emerald-500\/40,
+.theme-enterprise .border-emerald-500\/50,
+.theme-enterprise .border-slate-800,
+.theme-enterprise .border-slate-700 {
+  border-color: #E5E7EB !important;
+}
+
+.ent-card {
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.ent-btn-primary {
+  height: 44px;
+  border-radius: 8px;
+  background-color: #166534;
+  color: #FFFFFF;
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.ent-btn-primary:hover {
+  background-color: #14532d;
+}
+
+.ent-btn-secondary {
+  height: 44px;
+  border-radius: 8px;
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  color: #111827;
+  font-family: 'Sora', sans-serif;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.ent-btn-secondary:hover {
+  background-color: #F9FAFB;
+  border-color: #D1D5DB;
 }
 
 /* ════════════════════════════════════════════════════

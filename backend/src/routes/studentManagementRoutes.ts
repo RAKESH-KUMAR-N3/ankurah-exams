@@ -4,7 +4,8 @@ import {
   getStudents,
   getStudentProfile,
   activateStudent,
-  deactivateStudent
+  deactivateStudent,
+  deleteStudent
 } from '../controllers/studentManagementController';
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.get('/', getStudents);
 router.get('/:id', getStudentProfile);
 router.put('/:id/activate', activateStudent);
 router.put('/:id/deactivate', deactivateStudent);
+router.delete('/:id', deleteStudent);
 
 export default router;
