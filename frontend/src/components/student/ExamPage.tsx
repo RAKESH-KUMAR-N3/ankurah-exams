@@ -333,7 +333,7 @@ export default function ExamPage({
     const totalQuestions = test?.questions?.length || test?.dynamicTotalQuestions || 30;
 
     return (
-      <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto font-sans">
+      <div className="fixed inset-0 z-[100] bg-slate-900/75 backdrop-blur-md flex items-center justify-center p-3 pb-24 sm:p-4 overflow-y-auto font-sans">
         <div className="w-full max-w-2xl bg-white border border-slate-200/90 rounded-2xl p-5 sm:p-8 shadow-2xl space-y-5 text-slate-900 relative overflow-hidden my-auto">
           
           {/* Glowing Spine Accent */}
@@ -527,7 +527,7 @@ export default function ExamPage({
   if (phase === 'scorecard') {
     if (loading && !result) {
       return (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-emerald-950/90 to-slate-900 flex items-center justify-center p-8 font-sans text-white">
+        <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-emerald-950/90 to-slate-900 flex items-center justify-center p-8 font-sans text-white">
           <div className="text-center space-y-3">
             <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-emerald-300 font-black text-base tracking-wider uppercase">Evaluating Scorecard & Performance Analysis...</p>
@@ -538,7 +538,7 @@ export default function ExamPage({
 
     if (!result) {
       return (
-        <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-950 via-emerald-950/90 to-slate-900 flex items-center justify-center p-8 font-sans text-white">
+        <div className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-950 via-emerald-950/90 to-slate-900 flex items-center justify-center p-8 font-sans text-white">
           <div className="text-center space-y-4 max-w-md bg-slate-900/90 p-6 rounded-2xl border border-slate-800 shadow-2xl backdrop-blur-xl">
             <XCircle className="w-12 h-12 text-rose-500 mx-auto" />
             <h3 className="font-black text-white text-lg">Unable to load scorecard</h3>
@@ -572,7 +572,7 @@ export default function ExamPage({
     const attempted = !!currentReviewResp.selectedOption;
 
     return (
-      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
+      <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
         
         {/* TOP COMPACT SCORE & METRICS BAR */}
         <header className="p-3 bg-white border-b border-slate-200 shrink-0 shadow-2xs space-y-2.5">
@@ -684,7 +684,7 @@ export default function ExamPage({
 
           {/* Mobile Review Palette Drawer Overlay */}
           {showMobileReviewPalette && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 sm:p-4 md:hidden">
+            <div className="fixed inset-0 z-[110] bg-slate-900/40 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 sm:p-4 md:hidden">
               <div className="w-full max-w-lg bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl space-y-4 text-slate-900 max-h-[85vh] overflow-y-auto my-auto">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                   <div className="flex items-center gap-2">
@@ -872,7 +872,7 @@ export default function ExamPage({
 
         {/* Doubt Modal Overlay */}
         {doubtModal.open && (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl space-y-4 text-slate-900">
               <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                 <h3 className="text-base font-black text-slate-900">Raise a Doubt</h3>
@@ -942,7 +942,7 @@ export default function ExamPage({
     };
 
     return (
-      <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
+      <div className="fixed inset-0 z-[100] bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
         
         {/* TOP BAR */}
         <header className="h-14 sm:h-16 px-4 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-xs">
@@ -1071,7 +1071,7 @@ export default function ExamPage({
 
           {/* MOBILE PALETTE DRAWER OVERLAY */}
           {showMobilePalette && (
-            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 sm:p-4 md:hidden">
+            <div className="fixed inset-0 z-[110] bg-slate-900/40 backdrop-blur-sm flex flex-col justify-end sm:justify-center p-3 sm:p-4 md:hidden">
               <div className="w-full max-w-lg bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl space-y-4 text-slate-900 max-h-[85vh] overflow-y-auto my-auto">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                   <div className="flex items-center gap-2">
@@ -1294,7 +1294,7 @@ export default function ExamPage({
 
         {/* SUBMISSION CONFIRMATION MODAL OVERLAY */}
         {showConfirmModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="w-full max-w-lg bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl space-y-5 text-slate-900 my-auto">
               <div className="flex items-center gap-3 pb-3 border-b border-slate-200">
                 <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center font-bold shrink-0">

@@ -198,7 +198,7 @@ export default function TimetableTab() {
         
         {/* ─── LEFT COLUMN: TIMETABLE FORM ────────────────────────────────────────── */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-xl backdrop-blur-md">
+          <div className="p-6 rounded-2xl bg-slate-900/90 geom-grid-pattern-dark border-2 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.12)] backdrop-blur-md">
             
             <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
               <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -496,7 +496,7 @@ export default function TimetableTab() {
               return (
                 <div 
                   key={tb.id || tb._id} 
-                  className="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl shadow-xl flex flex-col gap-2.5 hover:border-slate-700 transition-all"
+                  className="p-4 bg-slate-900/90 geom-grid-pattern-dark border-2 border-emerald-500/40 hover:border-emerald-400 rounded-2xl shadow-[0_0_15px_rgba(16,185,129,0.15)] flex flex-col gap-2.5 transition-all"
                 >
                   <div className="flex justify-between items-start">
                     <div>

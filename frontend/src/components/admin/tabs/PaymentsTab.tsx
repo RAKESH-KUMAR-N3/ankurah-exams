@@ -6,7 +6,7 @@ export default function PaymentsTab() {
   return (
     <div className="space-y-6 text-slate-100">
       <h3 className="text-lg font-black text-white uppercase tracking-wider">Student Transaction History</h3>
-      <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/90 shadow-xl">
+      <div className="overflow-x-auto rounded-2xl border-2 border-emerald-500/40 bg-slate-900/90 geom-grid-pattern-dark shadow-[0_0_25px_rgba(16,185,129,0.12)]">
         <table className="w-full text-left border-collapse text-xs text-slate-200">
           <thead>
             <tr className="bg-slate-800/80 border-b border-slate-700/80 text-slate-300 font-bold uppercase tracking-wider">

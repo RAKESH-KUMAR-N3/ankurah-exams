@@ -60,15 +60,19 @@ export const studentTypeSchema = Joi.object({
 
 // ─── Subject ──────────────────────────────────────────────────────────────────
 export const subjectSchema = Joi.object({
-  name: Joi.string().min(2).max(100).required(),
+  name: Joi.string().min(2).max(100).optional(),
+  names: Joi.array().items(Joi.string()).optional(),
   examId: Joi.string().allow(null, '').optional(),
+  examIds: Joi.array().items(Joi.string()).optional(),
   subjectCategory: Joi.string().valid('entrance', 'competitive').optional(),
   applicableFor: Joi.array().items(Joi.string()).optional(),
+  state: Joi.string().optional(),
 }).unknown(true);
 
 // ─── Chapter ──────────────────────────────────────────────────────────────────
 export const chapterSchema = Joi.object({
-  title: Joi.string().min(2).max(200).required(),
+  title: Joi.string().min(2).max(200).optional(),
+  titles: Joi.array().items(Joi.string()).optional(),
   subjectId: Joi.string().required(),
 }).unknown(true);
 

@@ -131,7 +131,7 @@ export default function StudentDashboard({
             whileHover={{ scale: 1.015, y: -2 }}
             animate={{ boxShadow: ['0 0 0px rgba(245,158,11,0)', '0 0 25px rgba(245,158,11,0.25)', '0 0 0px rgba(245,158,11,0)'] }}
             transition={{ repeat: Infinity, duration: 4 }}
-            className="p-4 rounded-xl bg-amber-500/15 border border-amber-400/50 backdrop-blur-md flex items-center justify-between gap-4 flex-wrap shadow-none"
+            className="hidden md:flex p-4 rounded-xl bg-amber-500/15 border border-amber-400/50 backdrop-blur-md items-center justify-between gap-4 flex-wrap shadow-none"
           >
             <div className="flex items-center gap-3">
               <motion.div 

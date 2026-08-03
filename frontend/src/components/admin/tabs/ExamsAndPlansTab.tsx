@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { FileText, Award, Edit2, Trash2, BookOpen, AlertCircle, Check, Clock, DollarSign } from 'lucide-react';
-import { Plan, Subject } from '../../../types';
+import { FileText, Award, Edit2, Trash2, BookOpen, AlertCircle, Check, Clock, DollarSign, Plus, X, Search } from 'lucide-react';
+import { Plan } from '../../../types';
 import { useAdminContext } from '../../../context/AdminContext';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -13,9 +13,21 @@ export default function ExamsAndPlansTab() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const [selectedExamCategory, setSelectedExamCategory] = useState<'entrance' | 'competitive' | null>(null);
+  // Default to 'entrance' category by default
+  const [selectedExamCategory, setSelectedExamCategory] = useState<'entrance' | 'competitive'>('entrance');
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
-  const [examForm, setExamForm] = useState<{ id: string; name: string; description: string; type: string; price: string; subjects: string[]; validityMonths: number }>({
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [subjectSearchQuery, setSubjectSearchQuery] = useState('');
+
+  const [examForm, setExamForm] = useState<{
+    id: string;
+    name: string;
+    description: string;
+    type: string;
+    price: string;
+    subjects: string[];
+    validityMonths: number;
+  }>({
     id: '',
     name: '',
     description: '',
@@ -43,13 +55,20 @@ export default function ExamsAndPlansTab() {
       id: '',
       name: '',
       description: '',
-      type: selectedExamCategory || 'entrance',
+      type: selectedExamCategory,
       price: '',
       subjects: [],
       validityMonths: 12
     });
     setEditingExamId(null);
     setSelectedExamId(null);
+    setSubjectSearchQuery('');
+  };
+
+  const handleOpenCreateModal = () => {
+    resetForm();
+    setExamForm(prev => ({ ...prev, type: selectedExamCategory }));
+    setIsFormModalOpen(true);
   };
 
   const handleCreateExam = async (e: React.FormEvent) => {
@@ -92,6 +111,7 @@ export default function ExamsAndPlansTab() {
         throw new Error(d.error || 'Failed to save course plan');
       }
       resetForm();
+      setIsFormModalOpen(false);
       showSuccess(editingExamId ? "Course Plan updated successfully!" : "Course Plan created successfully!");
     } catch (err: any) {
       showError(err.message);
@@ -109,12 +129,12 @@ export default function ExamsAndPlansTab() {
       id: examId,
       name: exam.name,
       description: exam.description || '',
-      type: exam.type,
+      type: exam.type || selectedExamCategory,
       price: plan ? String(plan.price) : (exam.price || ''),
       subjects: (exam.subjects || []).map((s: any) => typeof s === 'string' ? s : (s._id || s.id)),
       validityMonths: exam.validityMonths || plan?.validityMonths || 12
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsFormModalOpen(true);
   };
 
   const handleDeleteExam = async (id: string) => {
@@ -128,16 +148,19 @@ export default function ExamsAndPlansTab() {
       showSuccess("Course Plan deleted successfully.");
       if (editingExamId === id) {
         resetForm();
+        setIsFormModalOpen(false);
       }
     } catch (err: any) {
       showError(err.message);
     }
   };
 
-  // Filter subjects by category for the multi-select
-  const currentCategorySubjects = (subjects || []).filter((s: any) => 
-    selectedExamCategory === 'competitive' ? s.subjectCategory === 'competitive' : s.subjectCategory !== 'competitive'
-  );
+  // Filter and sort subjects by category for the multi-select (Strict Alphabetical Order A to Z)
+  const currentCategorySubjects = (subjects || [])
+    .filter((s: any) => 
+      selectedExamCategory === 'competitive' ? s.subjectCategory === 'competitive' : s.subjectCategory !== 'competitive'
+    )
+    .sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
   const currentExams = selectedExamCategory === 'entrance' ? entranceExams : competitiveExams;
 
@@ -155,232 +178,349 @@ export default function ExamsAndPlansTab() {
           <span className="font-bold">{successMsg}</span>
         </div>
       )}
-      {!selectedExamCategory ? (
-        <div className="flex flex-col items-center justify-center min-h-[400px] gap-8">
-          <h2 className="text-2xl font-black text-slate-800">Select Exam Category</h2>
-          <div className="flex gap-6">
+
+      {/* ── HEADER TOOLBAR: CATEGORY TOGGLE & ADD BUTTON ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        {/* Left: Category Toggle Switch */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-slate-950/80 geom-grid-pattern-dark p-1 border-2 border-emerald-500/40 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.12)]">
             <button
-              onClick={() => { setSelectedExamCategory('entrance'); }}
-              className="px-8 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-500 transition-all flex flex-col items-center gap-3 cursor-pointer group"
+              onClick={() => { setSelectedExamCategory('entrance'); resetForm(); }}
+              className={`px-4 py-2 text-xs font-black uppercase tracking-wider rounded-none transition-all flex items-center gap-2 cursor-pointer border ${
+                selectedExamCategory === 'entrance'
+                  ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
+                  : 'text-slate-400 border-transparent hover:text-white'
+              }`}
             >
-              <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
-                <FileText className="w-6 h-6 text-emerald-600" />
-              </div>
-              <span className="font-bold text-slate-800 group-hover:text-emerald-700">Entrance Tests</span>
+              <FileText className="w-3.5 h-3.5" /> Entrance Tests ({entranceExams.length})
             </button>
             <button
-              onClick={() => { setSelectedExamCategory('competitive'); }}
-              className="px-8 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-500 transition-all flex flex-col items-center gap-3 cursor-pointer group"
+              onClick={() => { setSelectedExamCategory('competitive'); resetForm(); }}
+              className={`px-4 py-2 text-xs font-black uppercase tracking-wider rounded-none transition-all flex items-center gap-2 cursor-pointer border ${
+                selectedExamCategory === 'competitive'
+                  ? 'bg-cyan-500 text-black border-cyan-400 shadow-md'
+                  : 'text-slate-400 border-transparent hover:text-white'
+              }`}
             >
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
-                <Award className="w-6 h-6 text-blue-600" />
-              </div>
-              <span className="font-bold text-slate-800 group-hover:text-blue-700">Competitive Exams</span>
+              <Award className="w-3.5 h-3.5" /> Competitive Exams ({competitiveExams.length})
             </button>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-4 border-b border-slate-200 pb-4">
-            <button 
-              onClick={() => { 
-                setSelectedExamCategory(null); 
-                resetForm(); 
-              }} 
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
-            >
-              <span className="text-lg leading-none">&larr;</span> Back
-            </button>
-            <h2 className="text-xl font-black text-slate-800">
-              {selectedExamCategory === 'entrance' ? 'Entrance Test Courses' : 'Competitive Exam Courses'}
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Create / Edit Form */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-slate-800">
-                {editingExamId ? 'Update Course Plan' : 'Create New Course Plan'}
-              </h3>
-              <form onSubmit={handleCreateExam} className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Course Name</label>
-                  <input 
-                    type="text" 
-                    value={examForm.name} 
-                    onChange={(e) => setExamForm({ ...examForm, name: e.target.value })} 
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-500" 
-                    required 
-                    placeholder="e.g. NEET Inter 1st Year, JEE Main 2026, AP EAPCET MPC" 
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Plan Fee (₹)</label>
-                    <input 
-                      type="number" 
-                      placeholder="e.g. 1500" 
-                      value={examForm.price} 
-                      onChange={(e) => setExamForm({ ...examForm, price: e.target.value })} 
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-500" 
-                      required 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Validity (Months)</label>
-                    <input 
-                      type="number" 
-                      min="1" 
-                      max="60" 
-                      placeholder="e.g. 12" 
-                      value={examForm.validityMonths || 12} 
-                      onChange={(e) => setExamForm({ ...examForm, validityMonths: parseInt(e.target.value) || 12 })} 
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:border-emerald-500" 
-                      required 
-                    />
-                  </div>
-                </div>
 
-                {/* Course Subjects Multi-select */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                      <BookOpen className="w-3.5 h-3.5" /> Included Course Subjects
-                    </label>
-                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
-                      {(examForm.subjects || []).length} selected
-                    </span>
-                  </div>
-                  <div className="max-h-56 overflow-y-auto p-2 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-                    {currentCategorySubjects.length === 0 ? (
-                      <p className="text-slate-400 italic text-[11px] p-2">No subjects available. Create subjects in the Subjects tab first.</p>
-                    ) : (
-                      currentCategorySubjects.map((sub: any) => {
-                        const subId = sub._id || sub.id;
-                        const isChecked = (examForm.subjects || []).includes(subId);
-                        return (
-                          <label key={subId} className={`flex items-center gap-2.5 cursor-pointer p-2 rounded-lg transition-colors border ${isChecked ? 'bg-emerald-50/60 border-emerald-300 text-emerald-950 font-bold' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 text-emerald-600 rounded border-slate-300 flex-shrink-0 cursor-pointer"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                const newSubs = e.target.checked
-                                  ? [...(examForm.subjects || []), subId]
-                                  : (examForm.subjects || []).filter((id: string) => id !== subId);
-                                setExamForm({ ...examForm, subjects: newSubs });
-                              }}
-                            />
-                            <span className="text-xs">{sub.name}</span>
-                          </label>
-                        );
-                      })
+        {/* Right: Add New Course Button */}
+        <button
+          onClick={handleOpenCreateModal}
+          className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black uppercase tracking-wider rounded-none border border-emerald-400 shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 shrink-0"
+        >
+          <Plus className="w-4 h-4 stroke-[3]" /> ADD NEW COURSE
+        </button>
+      </div>
+
+      {/* ── COURSE PLANS GRID ── */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base md:text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-emerald-400" />
+            {selectedExamCategory === 'entrance' ? 'Entrance Test Courses' : 'Competitive Exam Courses'}
+          </h2>
+          <span className="text-xs font-black bg-slate-950 border border-slate-800 text-emerald-400 px-3 py-1 rounded-none uppercase tracking-widest">
+            Total {currentExams.length} Active Courses
+          </span>
+        </div>
+
+        {currentExams.length === 0 ? (
+          <div className="p-12 text-center bg-slate-950 border border-slate-800 rounded-none space-y-3">
+            <BookOpen size={44} className="mx-auto text-slate-600" />
+            <p className="text-slate-400 text-xs font-bold">No {selectedExamCategory} course plans created yet.</p>
+            <button
+              onClick={handleOpenCreateModal}
+              className="px-4 py-2 bg-emerald-500 text-black text-xs font-black uppercase tracking-wider rounded-none hover:bg-emerald-400 transition-all inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[3]" /> CREATE FIRST COURSE
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {currentExams.map((ex: any) => {
+              const exId = ex.id || ex._id;
+              const plan = allPlans.find((p: Plan) => String(p.examId) === String(exId) || String(p.examId?._id) === String(exId));
+              const isSelected = editingExamId === exId || selectedExamId === exId;
+
+              return (
+                <div
+                  key={exId}
+                  className={`flex flex-col justify-between p-5 bg-slate-950/60 geom-grid-pattern-dark border-2 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.12)] hover:border-emerald-400 hover:shadow-[0_0_25px_rgba(16,185,129,0.2)] transition-all group ${
+                    isSelected ? 'border-emerald-400 ring-2 ring-emerald-500/30 bg-slate-900/80' : 'border-emerald-500/40'
+                  }`}
+                >
+                  <div className="space-y-3.5">
+                    <div className="flex justify-between items-start gap-2">
+                      <div>
+                        <span className="px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono font-black text-[9px] rounded-none uppercase tracking-widest mb-1.5 inline-block">
+                          {ex.type || selectedExamCategory}
+                        </span>
+                        <h4 className="font-black text-white text-base uppercase tracking-wider leading-snug group-hover:text-emerald-400 transition-colors">
+                          {ex.name}
+                        </h4>
+                        {ex.description && <p className="text-xs text-slate-400 font-bold mt-1 line-clamp-2">{ex.description}</p>}
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={() => handleEditExamClick(ex)}
+                          className="p-1.5 text-slate-400 hover:text-white cursor-pointer transition-colors"
+                          title="Edit Course"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteExam(exId)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 cursor-pointer transition-colors"
+                          title="Delete Course"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 bg-slate-900 p-3 rounded-none border border-slate-800 text-xs">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <div>
+                          <span className="font-black text-slate-400 uppercase tracking-widest text-[9px] block">Fee</span>
+                          <span className="font-black text-white font-mono text-sm">
+                            ₹{plan?.price || ex.price || 0}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 justify-end text-right">
+                        <div>
+                          <span className="font-black text-slate-400 uppercase tracking-widest text-[9px] block">Validity</span>
+                          <span className="font-black text-white font-mono text-sm">
+                            {ex.validityMonths || plan?.validityMonths || 12} Months
+                          </span>
+                        </div>
+                        <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                      </div>
+                    </div>
+
+                    {ex.subjects && ex.subjects.length > 0 && (
+                      <div className="pt-3 border-t border-slate-900">
+                        <span className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-2 block">
+                          Included Subjects ({ex.subjects.length}):
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {ex.subjects.map((subObjOrId: any) => {
+                            const subId = typeof subObjOrId === 'string' ? subObjOrId : (subObjOrId._id || subObjOrId.id);
+                            const subObj = typeof subObjOrId === 'object' && subObjOrId.name
+                              ? subObjOrId
+                              : subjects?.find((s: any) => (s.id || s._id) === subId);
+
+                            return subObj?.name ? (
+                              <span key={subId} className="px-2.5 py-1 bg-slate-900 text-emerald-400 border border-slate-800 rounded-none text-[10px] font-black uppercase tracking-wider">
+                                {subObj.name}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button 
-                    type="submit" 
-                    disabled={loading} 
-                    className="py-2.5 px-6 bg-slate-900 text-white rounded-xl font-bold uppercase tracking-wider cursor-pointer hover:bg-slate-800 transition-colors flex-1"
-                  >
-                    {editingExamId ? 'Update Course Plan' : 'Publish Course Plan'}
-                  </button>
-                  {editingExamId && (
-                    <button 
-                      type="button" 
-                      onClick={resetForm} 
-                      className="py-2.5 px-6 bg-red-100 text-red-600 rounded-xl font-bold uppercase tracking-wider cursor-pointer hover:bg-red-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  )}
+      {/* ── CREATE / EDIT COURSE PLAN POPUP MODAL (NO SCROLLBARS - CLEAN FULL VIEW) ── */}
+      {isFormModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto font-sans">
+          <div className="bg-slate-950 border border-emerald-500/40 rounded-none p-6 shadow-2xl w-full max-w-4xl space-y-4 text-slate-100 relative my-auto">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-none">
+                  <BookOpen className="w-5 h-5" />
                 </div>
-              </form>
-            </div>
-
-            {/* Active Course Plans List */}
-            <div className="space-y-4 flex flex-col h-full">
-              <div className="flex items-center justify-between shrink-0">
-                <h3 className="text-lg font-bold text-slate-800">Active Course Plans</h3>
-                <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
-                  {currentExams.length} Courses
-                </span>
+                <div>
+                  <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                    {editingExamId ? 'Edit Course Plan' : 'Create New Course Plan'}
+                  </h3>
+                  <span className="text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest">
+                    CATEGORY: {selectedExamCategory === 'entrance' ? 'ENTRANCE TEST' : 'COMPETITIVE EXAM'}
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-3 h-[450px] overflow-y-auto pr-1 pb-4">
-                {currentExams.length === 0 ? (
-                  <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl text-slate-400">
-                    <BookOpen size={36} className="mx-auto mb-2 opacity-30" />
-                    <p className="text-xs font-semibold">No course plans created yet. Use the form on the left to add one.</p>
+              <button
+                onClick={() => { setIsFormModalOpen(false); resetForm(); }}
+                className="p-2 text-slate-400 hover:text-white rounded-none hover:bg-slate-900 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form onSubmit={handleCreateExam} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-3">
+                  <label className="block text-slate-300 font-black uppercase tracking-wider mb-1">Course Name</label>
+                  <input
+                    type="text"
+                    value={examForm.name}
+                    onChange={(e) => setExamForm({ ...examForm, name: e.target.value })}
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-bold focus:outline-none focus:border-emerald-400 text-xs placeholder:text-slate-500"
+                    required
+                    placeholder="e.g. NEET Inter 1st Year, JEE Main 2026, AP EAPCET MPC"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-black uppercase tracking-wider mb-1">Plan Fee (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 1500"
+                    value={examForm.price}
+                    onChange={(e) => setExamForm({ ...examForm, price: e.target.value })}
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-bold focus:outline-none focus:border-emerald-400 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-black uppercase tracking-wider mb-1">Validity (Months)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    placeholder="e.g. 12"
+                    value={examForm.validityMonths || 12}
+                    onChange={(e) => setExamForm({ ...examForm, validityMonths: parseInt(e.target.value) || 12 })}
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-bold focus:outline-none focus:border-emerald-400 text-xs"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-black uppercase tracking-wider mb-1">Description (Optional)</label>
+                  <input
+                    type="text"
+                    value={examForm.description}
+                    onChange={(e) => setExamForm({ ...examForm, description: e.target.value })}
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-bold focus:outline-none focus:border-emerald-400 text-xs placeholder:text-slate-500"
+                    placeholder="e.g. Complete syllabus coverage"
+                  />
+                </div>
+              </div>
+
+              {/* Course Subjects Multi-select Header with Quick Select All / Deselect All Buttons */}
+              <div className="space-y-2 pt-1 border-t border-slate-800">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="text-slate-300 font-black uppercase tracking-wider flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-emerald-400" /> Included Course Subjects
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSubIds = currentCategorySubjects.map((s: any) => s._id || s.id);
+                        setExamForm({ ...examForm, subjects: allSubIds });
+                      }}
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      + SELECT ALL ({currentCategorySubjects.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExamForm({ ...examForm, subjects: [] })}
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-400 border border-slate-700 text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      DESELECT ALL
+                    </button>
+                    <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-none border border-emerald-500/40 uppercase tracking-widest">
+                      {(examForm.subjects || []).length} SELECTED
+                    </span>
                   </div>
-                ) : (
-                  currentExams.map((ex: any) => {
-                    const exId = ex.id || ex._id;
-                    const plan = allPlans.find((p: Plan) => String(p.examId) === String(exId) || String(p.examId?._id) === String(exId));
-                    const isSelected = editingExamId === exId || selectedExamId === exId;
-                    
-                    return (
-                      <div 
-                        key={exId} 
-                        className={`flex flex-col p-4 bg-white border rounded-2xl text-xs shadow-2xs hover:border-emerald-300 transition-all cursor-pointer ${isSelected ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/10' : 'border-slate-200'}`} 
-                        onClick={() => { setSelectedExamId(exId); handleEditExamClick(ex); }}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h4 className="font-extrabold text-slate-800 text-sm">{ex.name}</h4>
-                            {ex.description && <p className="text-[11px] text-slate-400 mt-0.5">{ex.description}</p>}
-                          </div>
-                          <div className="flex gap-1.5">
-                             <button onClick={(e) => { e.stopPropagation(); handleEditExamClick(ex); }} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded-lg cursor-pointer transition-colors" title="Edit Course"><Edit2 className="w-3.5 h-3.5" /></button>
-                             <button onClick={(e) => { e.stopPropagation(); handleDeleteExam(exId); }} className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg cursor-pointer transition-colors" title="Delete Course"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </div>
+                </div>
 
-                        <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-[11px]">
-                          <div className="flex items-center gap-1.5">
-                            <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Fee:</span>
-                            <span className="font-black text-slate-800">
-                              ₹{plan?.price || ex.price || 0}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 justify-end">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Validity:</span>
-                            <span className="font-black text-slate-800">
-                              {ex.validityMonths || plan?.validityMonths || 12} Mos
-                            </span>
-                          </div>
-                        </div>
+                {/* SUBJECT SEARCH BAR */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search subject name to filter (e.g. Physics, NEET, TG)..."
+                    value={subjectSearchQuery}
+                    onChange={(e) => setSubjectSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
 
-                        {ex.subjects && ex.subjects.length > 0 && (
-                          <div className="mt-2.5 pt-2 border-t border-slate-100">
-                            <span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] mb-1 block">Included Subjects:</span>
-                            <div className="flex flex-wrap gap-1">
-                              {ex.subjects.map((subObjOrId: any) => {
-                                const subId = typeof subObjOrId === 'string' ? subObjOrId : (subObjOrId._id || subObjOrId.id);
-                                const subObj = typeof subObjOrId === 'object' && subObjOrId.name 
-                                  ? subObjOrId 
-                                  : subjects?.find((s: any) => (s.id || s._id) === subId);
-                                
-                                return subObj?.name ? (
-                                  <span key={subId} className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded-md text-[10px] font-semibold">
-                                    {subObj.name}
-                                  </span>
-                                ) : null;
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
+                {/* Subjects Checkboxes Grid (NO SCROLLBARS - CLEAN 3-COLUMN / 4-COLUMN DISPLAY) */}
+                <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-none grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  {(() => {
+                    const filtered = currentCategorySubjects
+                      .filter((s: any) => s.name.toLowerCase().includes(subjectSearchQuery.toLowerCase()))
+                      .sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+                    if (filtered.length === 0) {
+                      return (
+                        <p className="text-slate-400 italic text-[11px] p-2 col-span-4 text-center">
+                          {subjectSearchQuery ? `No subjects match "${subjectSearchQuery}"` : "No subjects available. Create subjects in Subjects tab first."}
+                        </p>
+                      );
+                    }
+
+                    return filtered.map((sub: any) => {
+                      const subId = sub._id || sub.id;
+                      const isChecked = (examForm.subjects || []).includes(subId);
+                      return (
+                        <label
+                          key={subId}
+                          className={`flex items-center gap-2.5 cursor-pointer p-2 rounded-none transition-all border ${
+                            isChecked 
+                              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 font-black shadow-md' 
+                              : 'bg-slate-950 border-slate-800/80 text-slate-300 hover:border-slate-700 hover:text-white'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 text-emerald-500 rounded-none border-slate-600 flex-shrink-0 cursor-pointer accent-emerald-500"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const newSubs = e.target.checked
+                                ? [...(examForm.subjects || []), subId]
+                                : (examForm.subjects || []).filter((id: string) => id !== subId);
+                              setExamForm({ ...examForm, subjects: newSubs });
+                            }}
+                          />
+                          <span className="text-[11px] uppercase tracking-wider font-bold truncate">{sub.name}</span>
+                        </label>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
-            </div>
+
+              {/* Form Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => { setIsFormModalOpen(false); resetForm(); }}
+                  className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-300 font-black text-xs uppercase tracking-wider rounded-none transition-all cursor-pointer border border-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-black text-xs uppercase tracking-wider rounded-none shadow-lg transition-all cursor-pointer border border-emerald-400 disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : editingExamId ? 'Update Course Plan' : 'Publish Course Plan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

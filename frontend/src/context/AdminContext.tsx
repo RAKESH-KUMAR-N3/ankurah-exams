@@ -124,7 +124,11 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }).catch(console.error).finally(checkDone);
 
     fetchStudentTypes({ limit: '1000' }).then(res => setStudentTypes((Array.isArray(res) ? res : res?.data || []).map(mapStudentType))).catch(console.error).finally(checkDone);
-    fetchSubjects({ limit: '1000' }).then(res => setSubjects((Array.isArray(res) ? res : res?.data || []).map(mapSubject))).catch(console.error).finally(checkDone);
+    fetchSubjects({ limit: '1000' }).then(res => {
+      const mapped = (Array.isArray(res) ? res : res?.data || []).map(mapSubject);
+      const sorted = mapped.sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+      setSubjects(sorted);
+    }).catch(console.error).finally(checkDone);
     fetchChapters({ limit: '1000' }).then(res => setChapters((Array.isArray(res) ? res : res?.data || []).map(mapChapter))).catch(console.error).finally(checkDone);
     fetchQuestions({ limit: '1000' }).then(res => setQuestions((Array.isArray(res) ? res : res?.data || []).map(mapQuestion))).catch(console.error).finally(checkDone);
     fetchTests({ limit: '1000' }).then(res => setTests((Array.isArray(res) ? res : res?.data || []).map(mapTest))).catch(console.error).finally(checkDone);

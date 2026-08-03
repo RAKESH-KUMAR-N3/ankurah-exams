@@ -29,7 +29,7 @@ export default function ProfileModal({
   const purchasedPlans = user.purchasedPlans || [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pb-24 sm:p-4 overflow-y-auto bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-emerald-900 to-teal-900 p-6 text-white relative">

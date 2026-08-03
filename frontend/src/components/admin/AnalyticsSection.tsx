@@ -28,6 +28,8 @@ export default function AnalyticsSection({
 }: AnalyticsSectionProps) {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [reviewAttemptId, setReviewAttemptId] = useState<string | null>(null);
+  const [subjectPage, setSubjectPage] = useState(0);
+  const SUBJECTS_PER_PAGE = 10;
 
   // 1. Calculate Chapter & Subject performance from real attempts
   const totalAttempts = attempts.length;
@@ -118,35 +120,39 @@ export default function AnalyticsSection({
   return (
     <div id="analytics_section" className="space-y-6 font-sans pb-10 max-w-full overflow-x-hidden">
       
-      {/* ─── HEADER ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      {/* ─── HEADER ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-emerald-100">
         <div>
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
-            <Award className="w-7 h-7 text-emerald-600 shrink-0" />
-            Performance & Weakness Report
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-md">
+              <Award className="w-5 h-5 text-white shrink-0" />
+            </div>
+            Performance & Growth Report
           </h1>
-          <p className="text-slate-600 text-xs sm:text-sm font-medium mt-1">
-            Review your test scores directly and click any subject to see chapter weakness breakdown.
+          <p className="text-slate-500 text-xs sm:text-sm font-medium mt-1 ml-0.5">
+            Review your scores and discover areas to improve and boost your rank.
           </p>
         </div>
       </div>
 
       {/* ─── SECTION 1: RECENT TEST ATTEMPTED RESULTS ──────────────────────────── */}
       <div className="space-y-3.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-emerald-600" /> Test Attempted Results ({attempts.length})
+        {/* Section Label */}
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-5 bg-gradient-to-b from-emerald-500 to-teal-400 rounded-full" />
+          <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-emerald-600" /> Test Attempted Results ({attempts.length})
           </h2>
         </div>
 
         {attempts.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl bg-white border border-slate-200 shadow-2xs">
+          <div className="p-6 text-center rounded-xl bg-slate-900/10 backdrop-blur-md border border-emerald-500/30">
             <p className="text-slate-700 text-xs font-bold">No test attempts recorded yet.</p>
             <p className="text-slate-500 text-[11px] mt-0.5">Attempt a test to see your scorecards here.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {attempts.map((attempt) => {
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 sm:gap-4">
+            {attempts.map((attempt, idx) => {
               const aid = (attempt as any)._id || attempt.id;
               const testTitle = (attempt as any).testId?.title || 'Practice Test';
               const score = (attempt as any).score ?? 0;
@@ -154,40 +160,45 @@ export default function AnalyticsSection({
               const percentage = totalMarks > 0 ? Math.round((score / totalMarks) * 100) : Math.round((attempt as any).percentage || 0);
 
               return (
-                <div
+                <motion.div
                   key={aid}
+                  whileHover={{ y: -3, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setReviewAttemptId(aid)}
-                  className="p-4 rounded-2xl border border-slate-200 hover:border-emerald-500 bg-white flex items-center justify-between gap-3 shadow-2xs transition-all cursor-pointer group"
+                  className="p-3.5 sm:p-5 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md border border-emerald-500/40 hover:border-emerald-600 cursor-pointer transition-all flex flex-col justify-between space-y-2.5 sm:space-y-3.5 group shadow-xs"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-12 h-12 rounded-xl border flex flex-col items-center justify-center font-mono font-black text-xs shrink-0 shadow-2xs ${
-                      percentage >= 70 ? 'border-emerald-200 bg-emerald-50 text-emerald-800' :
-                      percentage >= 40 ? 'border-amber-200 bg-amber-50 text-amber-900' :
-                      'border-rose-200 bg-rose-50 text-rose-800'
-                    }`}>
-                      <span>{percentage}%</span>
-                    </div>
-
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-black text-slate-900 leading-snug line-clamp-1 group-hover:text-emerald-700 transition-colors">
-                        {testTitle}
-                      </h4>
-                      <p className="text-xs font-bold text-slate-500 mt-0.5">
-                        Score: {score} / {totalMarks} marks
-                      </p>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <span className="px-2 py-0.5 bg-emerald-100/80 border border-emerald-300 text-emerald-800 font-mono font-black text-[9px] sm:text-[10px] rounded-md">
+                      RESULT #{String(idx + 1).padStart(2, '0')}
+                    </span>
+                    <Award className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-emerald-600" />
                   </div>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setReviewAttemptId(aid);
-                    }}
-                    className="px-3.5 py-2 bg-slate-900 group-hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Eye className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Scorecard</span><span className="sm:hidden">View</span>
-                  </button>
-                </div>
+                  <div>
+                    <h3 className="font-black text-slate-900 text-xs sm:text-base group-hover:text-emerald-700 transition-colors flex items-center justify-between leading-tight line-clamp-1">
+                      {testTitle} <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-emerald-600 hidden sm:inline-block" />
+                    </h3>
+                    <p className="text-slate-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium truncate">
+                      {score} / {totalMarks} marks
+                    </p>
+                  </div>
+
+                  {/* Dashboard-style Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-xs pt-0.5">
+                      <span className="font-bold text-slate-500 text-[9px] sm:text-[11px]">Score</span>
+                      <span className="font-extrabold text-emerald-700 uppercase text-[9px] sm:text-[10px] font-mono">
+                        {percentage}% VIEW 🚀
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
               );
             })}
           </div>
@@ -207,54 +218,91 @@ export default function AnalyticsSection({
               exit={{ opacity: 0, y: -10 }}
               className="space-y-3.5"
             >
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                  <BookOpen className="w-4 h-4 text-emerald-600" /> Click a Subject to See Chapter Weaknesses
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 bg-gradient-to-b from-emerald-500 to-teal-400 rounded-full" />
+                <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Tap a Subject to Track Your Progress
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {subjectPerformance.map(subj => (
-                  <motion.div
-                    key={subj.id}
-                    whileHover={{ y: -3, scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => setSelectedSubjectId(subj.id)}
-                    className="p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 bg-white cursor-pointer transition-all flex flex-col justify-between space-y-4 shadow-2xs group"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="px-2.5 py-0.5 bg-slate-100 text-slate-800 border border-slate-200 font-mono font-extrabold text-[10px] rounded-md uppercase">
-                          {subj.totalChapters} Chapters
-                        </span>
+              {/* Subjects Grid with Pagination */}
+              {(() => {
+                const totalPages = Math.ceil(subjectPerformance.length / SUBJECTS_PER_PAGE);
+                const paged = subjectPerformance.slice(subjectPage * SUBJECTS_PER_PAGE, (subjectPage + 1) * SUBJECTS_PER_PAGE);
+                return (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {paged.map(subj => (
+                        <motion.div
+                          key={subj.id}
+                          whileHover={{ y: -3, scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => setSelectedSubjectId(subj.id)}
+                          className="p-3.5 sm:p-5 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md border border-teal-500/40 hover:border-teal-600 cursor-pointer transition-all flex flex-col justify-between space-y-2.5 sm:space-y-3.5 group shadow-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="px-2 py-0.5 bg-teal-100/80 border border-teal-300 text-teal-800 font-mono font-black text-[9px] sm:text-[10px] rounded-md">
+                              {subj.totalChapters} CHAPTERS
+                            </span>
+                            <BookOpen className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-teal-600 group-hover:scale-110 transition-transform" />
+                          </div>
 
-                        {subj.weakCount > 0 ? (
-                          <span className="px-2.5 py-0.5 bg-rose-50 text-rose-800 border border-rose-200 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3 text-rose-600" /> {subj.weakCount} Weak
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Strong
-                          </span>
-                        )}
+                          <div>
+                            <h3 className="font-black text-slate-900 text-xs sm:text-base group-hover:text-teal-700 transition-colors flex items-center justify-between leading-tight truncate">
+                              {subj.name} <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-teal-600 hidden sm:inline-block" />
+                            </h3>
+                            <p className="text-slate-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium truncate">
+                              {subj.weakCount > 0 ? `${subj.weakCount} Focus Areas` : 'Strong Concept Mastery'}
+                            </p>
+                          </div>
+
+                          {/* Dashboard-style Progress Bar */}
+                          <div className="space-y-1">
+                            <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full"
+                                style={{ width: `${subj.percentage}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-xs pt-0.5">
+                              <span className="font-bold text-slate-500 text-[9px] sm:text-[11px]">Mastery</span>
+                              <span className="font-extrabold text-teal-700 uppercase text-[9px] sm:text-[10px] font-mono">
+                                {subj.percentage}% MASTERY ⚡
+                              </span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Pagination — only if > 10 subjects */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-2">
+                        <p className="text-xs font-bold text-slate-500">
+                          Showing {subjectPage * SUBJECTS_PER_PAGE + 1}–{Math.min((subjectPage + 1) * SUBJECTS_PER_PAGE, subjectPerformance.length)} of {subjectPerformance.length} subjects
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSubjectPage(p => Math.max(0, p - 1))}
+                            disabled={subjectPage === 0}
+                            className="px-3 py-1.5 rounded-lg text-xs font-black border border-slate-200 bg-white text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:border-emerald-400 hover:text-emerald-700 transition-all cursor-pointer"
+                          >
+                            ← Prev
+                          </button>
+                          <span className="text-xs font-black text-slate-600 px-1">{subjectPage + 1} / {totalPages}</span>
+                          <button
+                            onClick={() => setSubjectPage(p => Math.min(totalPages - 1, p + 1))}
+                            disabled={subjectPage >= totalPages - 1}
+                            className="px-3 py-1.5 rounded-lg text-xs font-black border border-slate-200 bg-white text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:border-emerald-400 hover:text-emerald-700 transition-all cursor-pointer"
+                          >
+                            Next →
+                          </button>
+                        </div>
                       </div>
-
-                      <h3 className="text-xl font-black text-slate-900 tracking-tight group-hover:text-emerald-700 transition-colors">
-                        {subj.name}
-                      </h3>
-                      
-                      <p className="text-xs font-bold text-slate-500">
-                        Overall Mastery Score: <span className="font-mono text-slate-900 font-black">{subj.percentage}%</span>
-                      </p>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-200 flex items-center justify-between text-xs font-black text-emerald-600">
-                      <span>View Chapter Breakdown</span>
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    )}
+                  </>
+                );
+              })()}
             </motion.div>
           ) : (
 
@@ -281,66 +329,53 @@ export default function AnalyticsSection({
               </div>
 
               {/* Subject Title Card */}
-              <div className="p-4 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between gap-3 shadow-2xs">
+              <div className="p-3.5 sm:p-5 rounded-xl bg-slate-900/10 backdrop-blur-md border border-emerald-500/40 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-base sm:text-lg font-black text-slate-900">{selectedSubject?.name}</h3>
-                  <p className="text-xs font-medium text-slate-600">Chapter-wise performance analysis based on test results.</p>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900">{selectedSubject?.name}</h3>
+                  <p className="text-[10px] sm:text-xs font-medium text-slate-600">Chapter-wise progress analysis based on your test results.</p>
                 </div>
-                <span className="px-3 py-1 bg-emerald-600 text-white font-mono font-black text-xs rounded-xl shadow-xs">
-                  {selectedSubjectChapters.length} Chapters
+                <span className="px-2 py-0.5 bg-emerald-100 border border-emerald-300 text-emerald-800 font-mono font-black text-[9px] sm:text-[10px] rounded-md shrink-0">
+                  {selectedSubjectChapters.length} CHAPTERS
                 </span>
               </div>
 
               {/* Chapters Cards List */}
-              <div className="space-y-3 pt-1">
+              <div className="space-y-2.5 pt-1">
                 {selectedSubjectChapters.length === 0 ? (
                   <p className="text-slate-500 text-xs font-bold italic">No chapters listed for this subject.</p>
                 ) : (
                   selectedSubjectChapters.map((ch, idx) => (
-                    <div 
+                    <motion.div
                       key={ch.id}
-                      className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs ${
-                        ch.isWeak 
-                          ? 'border-rose-300 bg-rose-50/70' 
-                          : 'border-slate-200 bg-white'
-                      }`}
+                      whileHover={{ x: 2 }}
+                      className="p-3 sm:p-4 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md border border-blue-500/30 hover:border-blue-500 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group shadow-xs"
                     >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <span className={`w-8 h-8 rounded-lg font-mono font-black text-xs flex items-center justify-center shrink-0 ${
-                          ch.isWeak ? 'bg-rose-600 text-white' : 'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {idx + 1}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="px-2 py-0.5 bg-blue-100/80 border border-blue-300 text-blue-800 font-mono font-black text-[9px] rounded-md shrink-0">
+                          CH #{String(idx + 1).padStart(2, '0')}
                         </span>
-
                         <div className="min-w-0">
-                          <h4 className="text-sm sm:text-base font-black text-slate-900 tracking-tight truncate">
+                          <h4 className="text-xs sm:text-sm font-black text-slate-900 tracking-tight truncate group-hover:text-blue-700 transition-colors">
                             {ch.name}
                           </h4>
-                          <p className="text-xs font-bold text-slate-500 mt-0.5">
-                            Accuracy Score: <span className="font-mono text-slate-900 font-black">{ch.percentage}%</span>
+                          <p className="text-[10px] sm:text-xs font-bold text-slate-500 mt-0.5">
+                            Accuracy: <span className="font-mono text-blue-700 font-black">{ch.percentage}%</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        {ch.isWeak ? (
-                          <span className="px-3 py-1 bg-rose-100 text-rose-800 border border-rose-200 font-mono font-black text-[10px] rounded-lg uppercase tracking-wider flex items-center gap-1">
-                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Weak Chapter
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono font-black text-[10px] rounded-md uppercase tracking-wider flex items-center gap-1">
-                            <Check className="w-3.5 h-3.5 text-emerald-600" /> Strong
-                          </span>
-                        )}
-
+                      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                        <span className="px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-800 font-mono font-black text-[9px] rounded-md uppercase">
+                          {ch.isWeak ? 'PRACTICE MORE' : 'STRONG'}
+                        </span>
                         <button
                           onClick={() => onNavigate('tests')}
-                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1"
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1"
                         >
-                          Practice Exam <Play className="w-3 h-3 fill-white" />
+                          Practice <Play className="w-2.5 h-2.5 fill-white" />
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))
                 )}
               </div>

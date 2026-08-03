@@ -15,7 +15,7 @@ export default function StudentsTab() {
   return (
     <div className="space-y-6 text-slate-100 font-sans">
       {/* Header & Search */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/90 p-6 rounded-2xl border border-slate-800 shadow-xl backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/90 geom-grid-pattern-dark p-6 rounded-2xl border-2 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.12)] backdrop-blur-md">
         <div>
           <h3 className="text-xl font-black text-white flex items-center gap-2">
             <UserCheck className="w-5 h-5 text-emerald-400" /> Enrolled Students & Subscription Tracker
@@ -35,7 +35,7 @@ export default function StudentsTab() {
       </div>
 
       {/* Table */}
-      <div className="bg-slate-900/90 rounded-2xl border border-slate-800 shadow-xl overflow-hidden backdrop-blur-md">
+      <div className="bg-slate-900/90 geom-grid-pattern-dark rounded-2xl border-2 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.12)] overflow-hidden backdrop-blur-md">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>

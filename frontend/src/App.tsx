@@ -25,6 +25,7 @@ import ContactPage from './pages/public/ContactPage';
 import StudentProfilePage from './pages/student/StudentProfilePage';
 import ProfileModal from './components/student/ProfileModal';
 import logo from './assets/logo.png';
+import mobileLogo from './assets/mobile-logo.png';
 import {
   Sparkles, Award, Calendar, BookOpen, FileText, Shield,
   LogOut, Menu, X, Flame, TrendingUp, HelpCircle, Users, LayoutDashboard, Layers, Database, Bell, Layout, MessageCircle, User as UserIcon
@@ -640,16 +641,82 @@ export default function App() {
       </aside>
 
       <div className={`flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden ${isUserAdmin ? 'bg-[#070A11] text-slate-100' : ''}`}>
-        <header className="bg-transparent px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0 relative z-20">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-white hover:text-white bg-emerald-800/90 rounded-xl border border-emerald-700 shadow-xs cursor-pointer active:scale-95"
-              title="Open Navigation Menu"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
 
+        {/* ── MOBILE HEADER ─────────────────────────────────── */}
+        {isStudent && (
+          <header className="lg:hidden shrink-0 bg-gradient-to-r from-emerald-950 to-emerald-900 relative z-20 shadow-lg">
+            <div className="flex items-center justify-between px-4 py-3">
+
+              {/* Logo — mobile-logo.png, pure white via brightness-0 invert */}
+              <img
+                src={mobileLogo}
+                alt="Ankurah Exams"
+                className="h-14 w-auto object-contain brightness-0 invert"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+
+              {/* Profile + Logout */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleTabChange('profile')}
+                  className="w-9 h-9 rounded-xl bg-white/15 border border-white/30 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer"
+                  title="View My Profile"
+                >
+                  <UserIcon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleSignOut}
+                  className="w-9 h-9 rounded-xl bg-rose-500 border border-rose-400/50 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-md"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </header>
+        )}
+
+        {/* ── MOBILE SUB-NAV — floating card-style buttons on page bg ── */}
+        {isStudent && (
+          <div className="lg:hidden shrink-0 bg-[#F7F7F8] px-4 py-2.5 z-10">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleTabChange('store')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all active:scale-95 cursor-pointer border shadow-sm ${
+                  activeTab === 'store'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
+                }`}
+              >
+                <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'store' ? 'text-white' : 'text-emerald-500'}`} /> Plans
+              </button>
+              <button
+                onClick={() => handleTabChange('doubts')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all active:scale-95 cursor-pointer border shadow-sm ${
+                  activeTab === 'doubts'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
+                }`}
+              >
+                <MessageCircle className={`w-3.5 h-3.5 ${activeTab === 'doubts' ? 'text-white' : 'text-emerald-500'}`} /> Doubts
+              </button>
+              <button
+                onClick={() => handleTabChange('analytics')}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all active:scale-95 cursor-pointer border shadow-sm ${
+                  activeTab === 'analytics'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-100'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-emerald-300 hover:text-emerald-700'
+                }`}
+              >
+                <TrendingUp className={`w-3.5 h-3.5 ${activeTab === 'analytics' ? 'text-white' : 'text-emerald-500'}`} /> Performance
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── DESKTOP HEADER (hidden on mobile) ─────────────── */}
+        <header className={`hidden lg:flex bg-transparent px-6 py-4 items-center justify-between shrink-0 relative z-20`}>
+          <div className="flex items-center gap-4">
             {/* Header Title */}
             <div className="flex items-center">
               {isUserAdmin ? (
@@ -657,7 +724,7 @@ export default function App() {
                   ADMIN
                 </h1>
               ) : (
-                <h1 className="hidden sm:block text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                   Welcome, <span className="text-emerald-700">{currentUser?.name}</span>
                 </h1>
               )}
@@ -665,30 +732,124 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* User Profile Avatar Icon Button */}
             <button
               onClick={() => handleTabChange('profile')}
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md border-2 border-emerald-400/40 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md border-2 border-emerald-400/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
               title="View My Profile"
             >
               <UserIcon className="w-5 h-5 text-white" />
             </button>
-
-            {/* Logout Button (Side-by-Side with Profile Icon) */}
             <button
               onClick={handleSignOut}
-              className="px-3.5 py-2.5 sm:px-4 sm:py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95"
+              className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               title="Logout of Account"
             >
               <LogOut className="w-4 h-4 text-white" />
-              <span className="hidden sm:inline">Logout</span>
+              <span>Logout</span>
             </button>
           </div>
         </header>
 
-        <main ref={mainRef} className={`flex-grow overflow-y-auto p-4 md:p-6 max-w-7xl w-full mx-auto ${isUserAdmin ? 'geom-grid-pattern-dark bg-[#06090F]' : 'geom-grid-pattern'}`}>
+        <main ref={mainRef} className={`flex-grow overflow-y-auto p-4 md:p-6 max-w-7xl w-full mx-auto pb-24 lg:pb-6 ${isUserAdmin ? 'geom-grid-pattern-dark bg-[#06090F]' : 'geom-grid-pattern'}`}>
           {renderActiveView()}
         </main>
+
+        {/* ── MOBILE BOTTOM NAVIGATION BAR — PREMIUM ──────── */}
+        {isStudent && (
+          <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-[0_-8px_40px_rgba(0,0,0,0.12)]">
+            <div className="grid grid-cols-4 h-[68px]">
+
+              {/* Home */}
+              <button
+                onClick={() => handleTabChange('dashboard')}
+                className="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer relative group"
+              >
+                {activeTab === 'dashboard' && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] rounded-b-full bg-gradient-to-r from-emerald-500 to-teal-400" />
+                )}
+                <div className={`w-11 h-8 rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                  activeTab === 'dashboard'
+                    ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-200'
+                    : 'group-hover:bg-emerald-50'
+                }`}>
+                  <Flame className={`w-5 h-5 transition-all ${
+                    activeTab === 'dashboard' ? 'text-white fill-white' : 'text-slate-800'
+                  }`} />
+                </div>
+                <span className={`text-[10px] font-black tracking-wide transition-all ${
+                  activeTab === 'dashboard' ? 'text-emerald-600' : 'text-slate-800'
+                }`}>Home</span>
+              </button>
+
+              {/* Timetable */}
+              <button
+                onClick={() => handleTabChange('timetable')}
+                className="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer relative group"
+              >
+                {activeTab === 'timetable' && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] rounded-b-full bg-gradient-to-r from-emerald-500 to-teal-400" />
+                )}
+                <div className={`w-11 h-8 rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                  activeTab === 'timetable'
+                    ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-200'
+                    : 'group-hover:bg-emerald-50'
+                }`}>
+                  <Calendar className={`w-5 h-5 transition-all ${
+                    activeTab === 'timetable' ? 'text-white' : 'text-slate-800'
+                  }`} />
+                </div>
+                <span className={`text-[10px] font-black tracking-wide transition-all ${
+                  activeTab === 'timetable' ? 'text-emerald-600' : 'text-slate-800'
+                }`}>Timetable</span>
+              </button>
+
+              {/* Subjects */}
+              <button
+                onClick={() => handleTabChange('subjects')}
+                className="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer relative group"
+              >
+                {(activeTab === 'subjects' || activeTab === 'syllabus') && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] rounded-b-full bg-gradient-to-r from-emerald-500 to-teal-400" />
+                )}
+                <div className={`w-11 h-8 rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                  activeTab === 'subjects' || activeTab === 'syllabus'
+                    ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-200'
+                    : 'group-hover:bg-emerald-50'
+                }`}>
+                  <Layers className={`w-5 h-5 transition-all ${
+                    activeTab === 'subjects' || activeTab === 'syllabus' ? 'text-white' : 'text-slate-800'
+                  }`} />
+                </div>
+                <span className={`text-[10px] font-black tracking-wide transition-all ${
+                  activeTab === 'subjects' || activeTab === 'syllabus' ? 'text-emerald-600' : 'text-slate-800'
+                }`}>Subjects</span>
+              </button>
+
+              {/* Exams */}
+              <button
+                onClick={() => handleTabChange('tests')}
+                className="flex flex-col items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer relative group"
+              >
+                {activeTab === 'tests' && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-[3px] rounded-b-full bg-gradient-to-r from-emerald-500 to-teal-400" />
+                )}
+                <div className={`w-11 h-8 rounded-2xl flex items-center justify-center transition-all duration-200 ${
+                  activeTab === 'tests'
+                    ? 'bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-200'
+                    : 'group-hover:bg-emerald-50'
+                }`}>
+                  <FileText className={`w-5 h-5 transition-all ${
+                    activeTab === 'tests' ? 'text-white' : 'text-slate-800'
+                  }`} />
+                </div>
+                <span className={`text-[10px] font-black tracking-wide transition-all ${
+                  activeTab === 'tests' ? 'text-emerald-600' : 'text-slate-800'
+                }`}>Exams</span>
+              </button>
+
+            </div>
+          </nav>
+        )}
 
         {/* Profile Modal */}
         {currentUser && (

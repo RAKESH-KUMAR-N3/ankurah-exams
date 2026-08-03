@@ -214,7 +214,7 @@ export default function DashboardOverviewTab({
         whileInView={{ opacity: 1, y: 0, scale: 1 }}
         viewport={{ once: false, amount: 0.15 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-5 rounded-xl bg-slate-950/40 border border-slate-800/80 backdrop-blur-md gap-3 shadow-lg"
+        className="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-5 rounded-xl bg-slate-950/60 geom-grid-pattern-dark border-2 border-emerald-500/40 backdrop-blur-md gap-3 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
       >
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
@@ -266,7 +266,7 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(16,185,129,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('payments')}
-          className="p-4 rounded-xl bg-slate-950/30 border border-slate-800/80 hover:border-emerald-500/60 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-md cursor-pointer"
+          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-emerald-500/50 hover:border-emerald-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(16,185,129,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
@@ -293,7 +293,7 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(6,182,212,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('students')}
-          className="p-4 rounded-xl bg-slate-950/30 border border-slate-800/80 hover:border-cyan-500/60 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-md cursor-pointer"
+          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-cyan-500/50 hover:border-cyan-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(6,182,212,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400 flex items-center gap-1">
@@ -320,7 +320,7 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(139,92,246,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('exams')}
-          className="p-4 rounded-xl bg-slate-950/30 border border-slate-800/80 hover:border-purple-500/60 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-md cursor-pointer"
+          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-purple-500/50 hover:border-purple-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(139,92,246,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-purple-400 flex items-center gap-1">
@@ -347,7 +347,7 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(245,158,11,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('questions')}
-          className="p-4 rounded-xl bg-slate-950/30 border border-slate-800/80 hover:border-amber-500/60 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-md cursor-pointer"
+          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-amber-500/50 hover:border-amber-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(245,158,11,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1">
@@ -374,7 +374,7 @@ export default function DashboardOverviewTab({
           whileHover={{ y: -5, scale: 1.02, boxShadow: "0 12px 30px rgba(244,63,94,0.15)" }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onNavigate && onNavigate('tests')}
-          className="p-4 rounded-xl bg-slate-950/30 border border-slate-800/80 hover:border-rose-500/60 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-md cursor-pointer"
+          className="p-4 rounded-xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-rose-500/50 hover:border-rose-400 backdrop-blur-md transition-all flex flex-col justify-between relative overflow-hidden group shadow-[0_0_20px_rgba(244,63,94,0.18)] cursor-pointer"
         >
           <div className="flex justify-between items-start">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1">
@@ -403,7 +403,7 @@ export default function DashboardOverviewTab({
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: false, amount: 0.15 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="lg:col-span-2 p-5 rounded-2xl bg-slate-950/30 border border-slate-800/80 backdrop-blur-md shadow-lg"
+          className="lg:col-span-2 p-5 rounded-2xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-emerald-500/40 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.12)]"
         >
           <div className="flex justify-between items-center mb-5">
             <div>
@@ -454,7 +454,7 @@ export default function DashboardOverviewTab({
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: false, amount: 0.15 }}
           transition={{ duration: 0.45, ease: 'easeOut', delay: 0.1 }}
-          className="p-5 rounded-2xl bg-slate-950/30 border border-slate-800/80 backdrop-blur-md shadow-lg flex flex-col justify-between"
+          className="p-5 rounded-2xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-cyan-500/40 backdrop-blur-md shadow-[0_0_25px_rgba(6,182,212,0.12)] flex flex-col justify-between"
         >
           <div>
             <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 mb-0.5">
@@ -509,7 +509,7 @@ export default function DashboardOverviewTab({
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: false, amount: 0.15 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="p-5 rounded-2xl bg-slate-950/30 border border-slate-800/80 backdrop-blur-md shadow-lg"
+          className="p-5 rounded-2xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-amber-500/40 backdrop-blur-md shadow-[0_0_25px_rgba(245,158,11,0.12)]"
         >
           <div className="flex justify-between items-center mb-5">
             <div>
@@ -542,7 +542,7 @@ export default function DashboardOverviewTab({
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: false, amount: 0.15 }}
           transition={{ duration: 0.45, ease: 'easeOut', delay: 0.1 }}
-          className="p-5 rounded-2xl bg-slate-950/30 border border-slate-800/80 backdrop-blur-md shadow-lg flex flex-col justify-between"
+          className="p-5 rounded-2xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-rose-500/40 backdrop-blur-md shadow-[0_0_25px_rgba(244,63,94,0.12)] flex flex-col justify-between"
         >
           <div>
             <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2 mb-0.5">
@@ -595,7 +595,7 @@ export default function DashboardOverviewTab({
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: false, amount: 0.15 }}
           transition={{ duration: 0.45, ease: 'easeOut' }}
-          className="lg:col-span-2 p-5 rounded-2xl bg-slate-950/30 border border-slate-800/80 backdrop-blur-md shadow-lg"
+          className="lg:col-span-2 p-5 rounded-2xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-emerald-500/40 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.12)]"
         >
           <div className="flex justify-between items-center mb-5">
             <div>
@@ -633,7 +633,7 @@ export default function DashboardOverviewTab({
           whileInView={{ opacity: 1, y: 0, scale: 1 }}
           viewport={{ once: false, amount: 0.15 }}
           transition={{ duration: 0.45, ease: 'easeOut', delay: 0.1 }}
-          className="p-5 rounded-2xl bg-slate-950/30 border border-slate-800/80 backdrop-blur-md shadow-lg flex flex-col justify-between"
+          className="p-5 rounded-2xl bg-slate-950/40 geom-grid-pattern-dark border-2 border-emerald-500/40 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.12)] flex flex-col justify-between"
         >
           <div className="flex justify-between items-center mb-3">
             <div>
