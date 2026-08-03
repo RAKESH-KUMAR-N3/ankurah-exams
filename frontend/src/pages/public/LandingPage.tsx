@@ -242,30 +242,16 @@ const SubtleSplashAnimations = () => (
 
 const MobileSplashScreen = () => {
   const navigate = useNavigate();
-  const { isStandalone, isInstalled, isIOS, promptInstall } = usePWAInstall();
-  const [showInstallGuide, setShowInstallGuide] = useState(false);
-  const [installGuideType, setInstallGuideType] = useState<'android' | 'ios'>(isIOS ? 'ios' : 'android');
+  const { isStandalone, isInstalled, promptInstall } = usePWAInstall();
   const [installSuccess, setInstallSuccess] = useState(false);
 
   const handleInstallClick = async () => {
-    if (isIOS) {
-      setInstallGuideType('ios');
-      setShowInstallGuide(true);
-      return;
-    }
     const result = await promptInstall();
     if (result === 'accepted') {
       setInstallSuccess(true);
       setTimeout(() => {
         navigate('/login');
-      }, 1200);
-    } else if (result === 'ios_manual') {
-      setInstallGuideType('ios');
-      setShowInstallGuide(true);
-    } else if (result === 'unavailable' || result === 'dismissed') {
-      // Browser didn't trigger native prompt (e.g. testing over HTTP / local network IP or menu install required)
-      setInstallGuideType('android');
-      setShowInstallGuide(true);
+      }, 1000);
     }
   };
 
@@ -337,105 +323,6 @@ const MobileSplashScreen = () => {
           </div>
         )}
       </motion.div>
-
-      {/* Universal Mobile Install Instructions Modal (Android & iOS) */}
-      {showInstallGuide && (
-        <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40 }}
-            className="w-full max-w-sm bg-slate-900/95 border border-emerald-500/40 rounded-3xl p-5 text-white shadow-2xl relative mb-2"
-          >
-            <button
-              onClick={() => setShowInstallGuide(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-full bg-slate-800/80 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                <Smartphone className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm text-white">Install Ankurah App</h3>
-                <p className="text-[11px] text-emerald-300">Add to your Mobile Home Screen</p>
-              </div>
-            </div>
-
-            {/* Platform Selector Tabs */}
-            <div className="flex bg-slate-800/80 p-1 rounded-xl mb-3.5 border border-slate-700/60 text-xs">
-              <button
-                type="button"
-                onClick={() => setInstallGuideType('android')}
-                className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  installGuideType === 'android'
-                    ? 'bg-emerald-600 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Android / Chrome
-              </button>
-              <button
-                type="button"
-                onClick={() => setInstallGuideType('ios')}
-                className={`flex-1 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                  installGuideType === 'ios'
-                    ? 'bg-emerald-600 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                iPhone / iPad
-              </button>
-            </div>
-
-            {/* Step-by-Step Instructions */}
-            {installGuideType === 'android' ? (
-              <div className="space-y-2 text-xs text-slate-200 mb-4">
-                <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">1</span>
-                  <span>Tap the <strong>3 dots ⋮</strong> menu in top right corner of Chrome.</span>
-                </div>
-                <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">2</span>
-                  <span>Tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</span>
-                </div>
-                <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">3</span>
-                  <span>Tap <strong>Install</strong> to add the App icon to your phone!</span>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2 text-xs text-slate-200 mb-4">
-                <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">1</span>
-                  <span>Tap the <strong>Share</strong> button <Share className="inline w-3.5 h-3.5 text-blue-400 mx-1" /> in Safari browser.</span>
-                </div>
-                <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">2</span>
-                  <span>Scroll down and tap <strong>"Add to Home Screen"</strong> <PlusSquare className="inline w-3.5 h-3.5 text-emerald-400 mx-1" />.</span>
-                </div>
-                <div className="flex items-center gap-2.5 bg-slate-800/60 p-2.5 rounded-xl border border-slate-700/50">
-                  <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0">3</span>
-                  <span>Tap <strong>Add</strong> in the top right corner.</span>
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={() => {
-                setShowInstallGuide(false);
-                navigate('/login');
-              }}
-              className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-bold text-xs py-2.5 rounded-xl text-center shadow cursor-pointer uppercase tracking-wider transition-colors"
-            >
-              Continue to App
-            </button>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 };
