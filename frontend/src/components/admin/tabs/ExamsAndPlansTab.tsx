@@ -303,27 +303,33 @@ export default function ExamsAndPlansTab() {
                       </div>
                     </div>
 
-                    {ex.subjects && ex.subjects.length > 0 && (
-                      <div className="pt-3 border-t border-slate-900">
-                        <span className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-2 block">
-                          Included Subjects ({ex.subjects.length}):
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {ex.subjects.map((subObjOrId: any) => {
-                            const subId = typeof subObjOrId === 'string' ? subObjOrId : (subObjOrId._id || subObjOrId.id);
-                            const subObj = typeof subObjOrId === 'object' && subObjOrId.name
-                              ? subObjOrId
-                              : subjects?.find((s: any) => (s.id || s._id) === subId);
+                    {(() => {
+                      const validExamSubjects = (ex.subjects || [])
+                        .map((subObjOrId: any) => {
+                          const subId = typeof subObjOrId === 'string' ? subObjOrId : (subObjOrId._id || subObjOrId.id);
+                          return typeof subObjOrId === 'object' && subObjOrId.name
+                            ? subObjOrId
+                            : subjects?.find((s: any) => (s.id || s._id) === subId);
+                        })
+                        .filter(Boolean);
 
-                            return subObj?.name ? (
-                              <span key={subId} className="px-2.5 py-1 bg-slate-900 text-emerald-400 border border-slate-800 rounded-none text-[10px] font-black uppercase tracking-wider">
+                      if (validExamSubjects.length === 0) return null;
+
+                      return (
+                        <div className="pt-3 border-t border-slate-900">
+                          <span className="font-black text-slate-400 uppercase tracking-widest text-[9px] mb-2 block">
+                            Included Subjects ({validExamSubjects.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {validExamSubjects.map((subObj: any) => (
+                              <span key={subObj.id || subObj._id} className="px-2.5 py-1 bg-slate-900 text-emerald-400 border border-slate-800 rounded-none text-[10px] font-black uppercase tracking-wider">
                                 {subObj.name}
                               </span>
-                            ) : null;
-                          })}
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               );

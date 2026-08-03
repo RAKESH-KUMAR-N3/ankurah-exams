@@ -19,18 +19,40 @@ export default function TimetableTab() {
   // Deduplicate and extract unique real courses created by Admin - sorted Alphabetically A to Z
   const plansList = useMemo(() => {
     const rawPlans = [...allPlans, ...entranceExams, ...competitiveExams];
-    const map = new Map<string, { id: string; name: string; subjects: any[] }>();
+    const map = new Map<string, { id: string; name: string; subjects: any[]; examId?: string; allIds: string[] }>();
     
     rawPlans.forEach((p: any) => {
       const cleanName = (p.name || '').replace(/\s*Plan\s*$/i, '').trim();
       if (!cleanName) return;
       const key = cleanName.toLowerCase();
+      const pId = String(p.id || p._id || '');
+      const pExamId = p.examId ? String(typeof p.examId === 'object' ? p.examId._id || p.examId.id : p.examId) : '';
+      const pSubs = Array.isArray(p.subjects) ? p.subjects : [];
+
       if (!map.has(key)) {
+        const idList = [pId];
+        if (pExamId && !idList.includes(pExamId)) idList.push(pExamId);
         map.set(key, {
-          id: p.id || p._id,
+          id: pId,
           name: cleanName,
-          subjects: p.subjects || []
+          subjects: pSubs,
+          examId: pExamId,
+          allIds: idList
         });
+      } else {
+        const existing = map.get(key)!;
+        if (!existing.allIds.includes(pId)) existing.allIds.push(pId);
+        if (pExamId && !existing.allIds.includes(pExamId)) existing.allIds.push(pExamId);
+        if (pSubs.length > 0) {
+          const mergedSubs = [...existing.subjects];
+          pSubs.forEach((sub: any) => {
+            const subId = String(typeof sub === 'string' ? sub : (sub._id || sub.id || ''));
+            if (subId && !mergedSubs.some(s => String(typeof s === 'string' ? s : (s._id || s.id || '')) === subId)) {
+              mergedSubs.push(sub);
+            }
+          });
+          existing.subjects = mergedSubs;
+        }
       }
     });
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
@@ -68,38 +90,33 @@ export default function TimetableTab() {
     setTimeout(() => setErrorMsg(null), 5000);
   };
 
-  // Subjects belonging to the selected course (sorted A-Z)
+  // Subjects belonging STRICTLY to the selected course as configured in Courses/Plans
   const courseSubjects = useMemo(() => {
     if (!selectedCourseId) return [];
-    const courseObj = plansList.find(p => p.id === selectedCourseId);
-    const targetCId = String(selectedCourseId);
+    const courseObj = plansList.find(p => p.id === selectedCourseId || (p.allIds && p.allIds.includes(selectedCourseId)));
+    if (!courseObj) return [];
+
+    const targetIds = courseObj.allIds || [String(selectedCourseId)];
 
     return subjects.filter((s: any) => {
       const sId = String(s.id || s._id || '');
-      const sMongoId = String(s._id || s.id || '');
       const sExamId = s.examId ? String(typeof s.examId === 'object' ? s.examId._id || s.examId.id : s.examId) : '';
       const sExamIds = Array.isArray(s.examIds) ? s.examIds.map((e: any) => String(typeof e === 'object' ? e._id || e.id : e)) : [];
+      const sApplicable = Array.isArray(s.applicableFor) ? s.applicableFor.map((a: any) => String(typeof a === 'object' ? a._id || a.id : a)) : [];
 
-      const matchedByExamId = sExamId === targetCId || sExamIds.includes(targetCId);
+      // 1. Direct match by Subject's assigned examId / examIds / applicableFor
+      const matchedByExamId = targetIds.some(tId => tId && (sExamId === tId || sExamIds.includes(tId) || sApplicable.includes(tId)));
 
+      // 2. Direct match by Course/Exam's included subjects array
       let matchedByCourseSubjects = false;
-      if (courseObj && Array.isArray(courseObj.subjects)) {
+      if (Array.isArray(courseObj.subjects)) {
         matchedByCourseSubjects = courseObj.subjects.some((sub: any) => {
           const subId = String(typeof sub === 'string' ? sub : (sub._id || sub.id || ''));
-          return subId === sId || subId === sMongoId;
+          return subId && (subId === sId);
         });
       }
 
-      let matchedByKeyword = false;
-      if (courseObj && courseObj.name) {
-        const cNameLower = courseObj.name.toLowerCase();
-        const sNameLower = (s.name || '').toLowerCase();
-        if (cNameLower.includes('neet') && sNameLower.includes('neet')) matchedByKeyword = true;
-        else if ((cNameLower.includes('eapcet') || cNameLower.includes('tg') || cNameLower.includes('ap')) && (sNameLower.includes('tg') || sNameLower.includes('ap') || sNameLower.includes('eapcet'))) matchedByKeyword = true;
-        else if (cNameLower.includes('jee') && sNameLower.includes('jee')) matchedByKeyword = true;
-      }
-
-      return matchedByExamId || matchedByCourseSubjects || matchedByKeyword;
+      return matchedByExamId || matchedByCourseSubjects;
     }).sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
   }, [selectedCourseId, plansList, subjects]);
 
