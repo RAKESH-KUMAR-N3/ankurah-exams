@@ -3,10 +3,11 @@ import { User, Timetable, Test, TestAttempt, Subject, Announcement, Notification
 import { 
   Flame, Award, Calendar, BookOpen, Clock, FileText, CheckCircle2, 
   TrendingUp, AlertCircle, ArrowRight, BookMarked, Brain, Bell, Volume2, Check, Sparkles,
-  Zap, Target, Layers, ArrowUpRight, Compass, HelpCircle, ChevronRight, Activity, ShieldCheck
+  Zap, Target, Layers, ArrowUpRight, Compass, HelpCircle, ChevronRight, Activity, ShieldCheck,
+  PieChart as PieChartIcon, BarChart2, Milestone, Route
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
 interface StudentDashboardProps {
   user: User;
@@ -40,605 +41,502 @@ export default function StudentDashboard({
   const attemptedTestIds = attempts.map(a => a.testId);
   const pendingTests = availableTests.filter(t => !attemptedTestIds.includes(t.id));
 
-  // 3. Compute Stats
-  const completedTestsCount = attempts.length;
+  // Helper for human-readable plan name
+  const getReadablePlanName = (planId?: string) => {
+    if (!planId) return 'Enrolled Course Plan';
+    if (/^[0-9a-fA-F]{24}$/.test(planId)) return 'Active Course Plan';
+    return planId;
+  };
+
+  // 3. Check Purchased Plan & Student State
+  const hasPurchasedPlan = Boolean(user.purchasedPlans && user.purchasedPlans.length > 0);
+  const activePlanObj = hasPurchasedPlan ? user.purchasedPlans![0] : null;
+  const activePlanName = activePlanObj ? getReadablePlanName(activePlanObj.planId) : 'Free Explorer Mode';
+
+  // 4. Compute Real Student Performance Stats from Attempts
+  const completedAttempts = attempts.filter(a => a.status === 'Completed' || a.score !== undefined);
+  const completedTestsCount = completedAttempts.length;
   const getAttemptPct = (a: any) => (a.totalMarks && a.totalMarks > 0) ? Math.round((a.score / a.totalMarks) * 100) : 0;
+  
   const averageScore = completedTestsCount > 0 
-    ? Math.round(attempts.reduce((acc, curr) => acc + getAttemptPct(curr), 0) / completedTestsCount)
+    ? Math.round(completedAttempts.reduce((acc, curr) => acc + getAttemptPct(curr), 0) / completedTestsCount)
     : 0;
   
   const highestScore = completedTestsCount > 0
-    ? Math.max(...attempts.map(a => getAttemptPct(a)))
+    ? Math.max(...completedAttempts.map(a => getAttemptPct(a)))
     : 0;
 
-  const syllabusProgress = completedTestsCount > 0 ? Math.min(18 + completedTestsCount * 10, 96) : 20;
+  const syllabusProgress = completedTestsCount > 0 
+    ? Math.min(20 + completedTestsCount * 12, 98) 
+    : (hasPurchasedPlan ? 25 : 15);
 
-  // Filter announcements for this student
+  // 5. Dynamic Roadmap & Pillar Data for Charts
+  const roadmapPieData = [
+    { name: 'Course Plan', value: hasPurchasedPlan ? 100 : 25, color: '#10b981' },
+    { name: 'Daily Timetable', value: todayTimetables.length > 0 ? 85 : 40, color: '#14b8a6' },
+    { name: 'Syllabus Coverage', value: syllabusProgress, color: '#3b82f6' },
+    { name: 'Exam Marks Avg', value: averageScore > 0 ? averageScore : (completedTestsCount > 0 ? 30 : 20), color: '#f59e0b' }
+  ];
+
+  const roadmapBarData = [
+    { name: 'Plan Status', target: 100, achieved: hasPurchasedPlan ? 100 : 25 },
+    { name: 'Timetable Goal', target: 100, achieved: todayTimetables.length > 0 ? 85 : 40 },
+    { name: 'Syllabus Progress', target: 100, achieved: syllabusProgress },
+    { name: 'Exam Score Avg', target: 100, achieved: averageScore > 0 ? averageScore : 20 }
+  ];
+
+  // Filter announcements & notifications
   const relevantAnnouncements = announcements.filter(ann => {
     if (!ann.targetExams || ann.targetExams.length === 0) return true;
     const userExams = [...(user.selectedEntranceExams || []), ...(user.selectedCompetitiveExams || [])];
     return ann.targetExams.some(id => userExams.includes(id));
   });
 
-  // Filter notifications for this student
   const studentNotifications = notifications.filter(n => n.userId === user.uid || n.userId === 'all' || !n.userId);
 
-  const handleMarkAsRead = async (notifId: string) => {
-    const token = localStorage.getItem('token');
-    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/notifications/${notifId}/read`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => {});
+  const containerVariants = {
+    hidden: { opacity: 0, y: 30, scale: 0.97 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.7,
+        staggerChildren: 0.12,
+        ease: [0.16, 1, 0.3, 1] as any
+      }
+    }
   };
 
-  // Format chart data from attempts
-  const chartData = attempts
-    .sort((a, b) => new Date(a.submittedAt || '').getTime() - new Date(b.submittedAt || '').getTime())
-    .map((attempt, index) => {
-      const test = availableTests.find(t => t.id === attempt.testId);
-      return {
-        name: `Test ${index + 1}`,
-        title: test ? test.title.substring(0, 15) + '...' : `Attempt ${index + 1}`,
-        score: getAttemptPct(attempt)
-      };
-    });
-
-  const defaultChartData = [
-    { name: 'Diagnostic', score: 50 },
-    { name: 'Practice 1', score: 65 },
-    { name: 'Weekly 1', score: 78 },
-    { name: 'Practice 2', score: 88 }
-  ];
-
-  // Time of day greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5 } }
   };
 
   return (
     <div id="student_dashboard" className="space-y-8 font-sans pb-10">
       
-      {/* ─── 1. HERO COMMAND HUB BANNER ─────────────────────────────────────────── */}
+      {/* ─── 1. HIGH-IMPACT ANIMATED ACADEMIC ROADMAP ─────────────────────────────── */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-900 text-white p-7 md:p-10 border border-emerald-500/30 shadow-[0_20px_50px_rgba(6,78,59,0.3)]"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="relative z-10 space-y-8 bg-transparent"
       >
-        {/* Decorative Ambient Aura Glows */}
-        <div className="absolute top-[-30%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
-        <div className="absolute bottom-[-40%] left-[-10%] w-[450px] h-[450px] bg-teal-400/15 rounded-full blur-[100px] pointer-events-none"></div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-          
-          {/* Welcome Text & Status Tag */}
-          <div className="space-y-3.5 max-w-2xl">
+        {/* FREE EXPLORER BANNER WITH PULSING GLOW (Shown if No Plan Purchased) */}
+        {!hasPurchasedPlan && (
+          <motion.div 
+            variants={itemVariants}
+            whileHover={{ scale: 1.015, y: -2 }}
+            animate={{ boxShadow: ['0 0 0px rgba(245,158,11,0)', '0 0 25px rgba(245,158,11,0.25)', '0 0 0px rgba(245,158,11,0)'] }}
+            transition={{ repeat: Infinity, duration: 4 }}
+            className="p-4 rounded-xl bg-amber-500/15 border border-amber-400/50 backdrop-blur-md flex items-center justify-between gap-4 flex-wrap shadow-none"
+          >
+            <div className="flex items-center gap-3">
+              <motion.div 
+                animate={{ rotate: [0, 15, -15, 0], scale: [1, 1.1, 1] }}
+                transition={{ repeat: Infinity, duration: 3 }}
+                className="w-10 h-10 rounded-lg bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-600 shrink-0"
+              >
+                <Sparkles className="w-5 h-5" />
+              </motion.div>
+              <div>
+                <h4 className="font-black text-sm text-slate-900 flex items-center gap-2">
+                  Free Explorer Mode — Unlock Full Academic Roadmap
+                </h4>
+                <p className="text-slate-600 text-xs font-medium mt-0.5">
+                  Subscribe to an official course plan to access full chapter mock tests, daily timetables & performance tracking.
+                </p>
+              </div>
+            </div>
+
+            <motion.button 
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onNavigate('store')}
+              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all shadow-md cursor-pointer shrink-0 flex items-center gap-1.5"
+            >
+              Browse Plans <ArrowRight className="w-4 h-4 animate-pulse" />
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Roadmap Title & Live Dynamic Stat Chips */}
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-200/80">
+          <div className="space-y-2">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="px-3.5 py-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 rounded-full text-xs font-black tracking-widest uppercase flex items-center gap-1.5 backdrop-blur-md shadow-inner">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                Student Command Hub
+              <span className="px-3.5 py-1 bg-emerald-100/90 border border-emerald-300/80 text-emerald-800 rounded-lg text-xs font-black tracking-widest uppercase flex items-center gap-1.5 shadow-xs">
+                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 10, ease: "linear" }}>
+                  <Compass className="w-3.5 h-3.5 text-emerald-600" />
+                </motion.div>
+                Preparation Success Journey
               </span>
 
-              {user.purchasedPlans && user.purchasedPlans.length > 0 ? (
-                <span className="px-3 py-1 bg-teal-500/20 border border-teal-400/30 text-teal-200 rounded-full text-[11px] font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-teal-300" /> Active Plan Enrolled
+              {hasPurchasedPlan ? (
+                <span className="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-bold flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Plan Enrolled: <strong className="text-slate-900">{activePlanName}</strong>
                 </span>
               ) : (
-                <span className="px-3 py-1 bg-amber-500/20 border border-amber-400/30 text-amber-200 rounded-full text-[11px] font-bold flex items-center gap-1">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Free Explorer Mode
+                <span className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] font-bold flex items-center gap-1">
+                  <motion.div animate={{ y: [0, -3, 0], scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>
+                    <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                  </motion.div>
+                  {user.streak || 1} Day Streak
                 </span>
               )}
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white leading-tight">
-              {getGreeting()}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-emerald-400">{user.name}</span> 👋
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-900 flex items-center gap-3">
+              Preparation Progress Roadmap
             </h1>
-
-            <p className="text-emerald-100/80 text-sm sm:text-base leading-relaxed font-medium">
-              {user.purchasedPlans && user.purchasedPlans.length > 0 
-                ? 'Your learning streak is live! Tackle today\'s practice sessions & mock tests to climb the leaderboard.'
-                : 'Subscribe to a course plan to unlock full mock tests, grand evaluations, and chapter-wise study materials.'}
+            <p className="text-slate-600 text-xs sm:text-sm max-w-2xl font-medium leading-relaxed">
+              {hasPurchasedPlan 
+                ? `Live performance milestones tailored to your enrolled plan (${activePlanName}).` 
+                : 'Showing baseline diagnostic milestones. Enroll in a course plan to record full exam progress.'}
             </p>
-
-            <div className="pt-2 flex items-center gap-3 flex-wrap">
-              <button 
-                onClick={() => onNavigate('tests')}
-                className="px-6 py-3 bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-400 hover:from-emerald-300 hover:to-teal-200 text-slate-950 rounded-xl font-black text-xs uppercase tracking-wider shadow-[0_10px_25px_rgba(16,185,129,0.4)] transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-2"
-              >
-                <Zap className="w-4 h-4 text-slate-950 fill-slate-950" /> Start Practice Test
-              </button>
-
-              <button 
-                onClick={() => onNavigate('timetable')}
-                className="px-5 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl font-bold text-xs uppercase tracking-wider backdrop-blur-md transition-all cursor-pointer flex items-center gap-2"
-              >
-                <Calendar className="w-4 h-4 text-emerald-300" /> Today's Schedule
-              </button>
-            </div>
           </div>
 
-          {/* Floating High-Impact Stat Pills */}
-          <div className="grid grid-cols-3 lg:flex lg:flex-col gap-3 shrink-0">
-            
-            {/* Streak Chip */}
+          {/* Single Row 3-Columns Stat Chips on Mobile */}
+          <div className="grid grid-cols-3 gap-2 w-full lg:w-auto shrink-0">
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="p-4 bg-slate-900/80 border border-emerald-500/30 rounded-2xl text-center backdrop-blur-xl shadow-lg relative overflow-hidden group min-w-[120px]"
+              animate={{ y: [0, -3, 0] }}
+              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              className="p-2 sm:px-4.5 sm:py-3 bg-white/70 border border-emerald-400/60 hover:border-emerald-500 rounded-xl text-center backdrop-blur-xs transition-all shadow-xs flex flex-col items-center justify-center min-w-0"
             >
-              <div className="absolute top-0 right-0 w-12 h-12 bg-amber-500/10 rounded-full blur-md group-hover:bg-amber-500/20 transition-all"></div>
-              <Flame className="w-5 h-5 text-amber-400 mx-auto mb-1 animate-bounce" />
-              <span className="block text-2xl md:text-3xl font-black text-white font-mono">{user.streak || 1}</span>
-              <span className="text-[10px] font-black text-amber-300/80 uppercase tracking-widest block mt-0.5">Day Streak</span>
+              <span className="block text-lg sm:text-2xl font-black font-mono text-emerald-600 leading-tight">{syllabusProgress}%</span>
+              <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-tight block truncate w-full">Syllabus</span>
             </motion.div>
 
-            {/* Avg Score Chip */}
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="p-4 bg-slate-900/80 border border-emerald-500/30 rounded-2xl text-center backdrop-blur-xl shadow-lg relative overflow-hidden group min-w-[120px]"
+              animate={{ y: [0, -3, 0] }}
+              transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 0.3 }}
+              className="p-2 sm:px-4.5 sm:py-3 bg-white/70 border border-teal-400/60 hover:border-teal-500 rounded-xl text-center backdrop-blur-xs transition-all shadow-xs flex flex-col items-center justify-center min-w-0"
             >
-              <div className="absolute top-0 right-0 w-12 h-12 bg-emerald-500/10 rounded-full blur-md group-hover:bg-emerald-500/20 transition-all"></div>
-              <Target className="w-5 h-5 text-emerald-400 mx-auto mb-1" />
-              <span className="block text-2xl md:text-3xl font-black text-white font-mono">{averageScore}%</span>
-              <span className="text-[10px] font-black text-emerald-300/80 uppercase tracking-widest block mt-0.5">Avg Score</span>
+              <span className="block text-lg sm:text-2xl font-black font-mono text-teal-600 leading-tight">{averageScore}%</span>
+              <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-tight block truncate w-full">Avg Score</span>
             </motion.div>
 
-            {/* Completed Tests Chip */}
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="p-4 bg-slate-900/80 border border-emerald-500/30 rounded-2xl text-center backdrop-blur-xl shadow-lg relative overflow-hidden group min-w-[120px]"
+              animate={{ y: [0, -3, 0] }}
+              transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 0.6 }}
+              className="p-2 sm:px-4.5 sm:py-3 bg-white/70 border border-amber-400/60 hover:border-amber-500 rounded-xl text-center backdrop-blur-xs transition-all shadow-xs flex flex-col items-center justify-center min-w-0"
             >
-              <div className="absolute top-0 right-0 w-12 h-12 bg-teal-500/10 rounded-full blur-md group-hover:bg-teal-500/20 transition-all"></div>
-              <Award className="w-5 h-5 text-teal-300 mx-auto mb-1" />
-              <span className="block text-2xl md:text-3xl font-black text-white font-mono">{completedTestsCount}</span>
-              <span className="text-[10px] font-black text-teal-300/80 uppercase tracking-widest block mt-0.5">Exams Done</span>
+              <span className="block text-lg sm:text-2xl font-black font-mono text-amber-500 leading-tight">{completedTestsCount}</span>
+              <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-500 uppercase tracking-tight block truncate w-full font-mono">Completed</span>
             </motion.div>
-
           </div>
-
-        </div>
-      </motion.div>
-
-      {/* ─── 2. QUICK WORKSPACE LAUNCHPAD (6 Glass Feature Cards) ──────────────── */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-            <Compass className="w-4 h-4 text-emerald-600" /> Academic Workspace Launchpad
-          </h3>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+        {/* 4 DYNAMIC STAGE NODES — 2 IN A ROW ON MOBILE (grid-cols-2) */}
+        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
           
-          {[
-            { id: 'timetable', title: 'Timetable', desc: 'Daily Schedule', icon: Calendar, color: 'emerald', badge: todayTimetables.length > 0 ? `${todayTimetables.length} Today` : null },
-            { id: 'tests', title: 'Test Center', desc: 'Mock Exams', icon: FileText, color: 'teal', badge: pendingTests.length > 0 ? `${pendingTests.length} Pending` : null },
-            { id: 'subjects', title: 'Syllabus', desc: 'Chapters & Notes', icon: BookOpen, color: 'blue', badge: null },
-            { id: 'doubts', title: 'Ask Doubts', desc: 'Expert Help', icon: Brain, color: 'purple', badge: null },
-            { id: 'analytics', title: 'Analytics', desc: 'Rank & Performance', icon: TrendingUp, color: 'amber', badge: null },
-            { id: 'store', title: 'Plan Store', desc: 'Enroll Courses', icon: Sparkles, color: 'rose', badge: null },
-          ].map((item, idx) => {
-            const IconComponent = item.icon;
-            return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: idx * 0.05 }}
-                whileHover={{ y: -4, scale: 1.02 }}
-                onClick={() => onNavigate(item.id)}
-                className="group relative p-4 rounded-2xl bg-white border border-slate-200/80 hover:border-emerald-500/50 shadow-sm hover:shadow-xl transition-all cursor-pointer overflow-hidden flex flex-col justify-between"
-              >
-                {item.badge && (
-                  <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold text-[9px] rounded-md tracking-wider">
-                    {item.badge}
-                  </span>
-                )}
-
-                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 group-hover:bg-emerald-600 group-hover:text-white group-hover:border-emerald-600 flex items-center justify-center transition-colors mb-3">
-                  <IconComponent className="w-5 h-5 text-emerald-600 group-hover:text-white transition-colors" />
-                </div>
-
-                <div>
-                  <h4 className="font-black text-slate-900 text-sm group-hover:text-emerald-700 transition-colors flex items-center gap-1">
-                    {item.title} <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </h4>
-                  <p className="text-slate-400 text-[11px] font-medium leading-tight mt-0.5">{item.desc}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-
-        </div>
-      </div>
-
-      {/* ─── 3. MAIN DASHBOARD CONTENT GRID ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* LEFT 2 COLUMNS: Today's Schedule + Pending Evaluations + Bulletins */}
-        <div className="lg:col-span-2 space-y-6">
-          
-          {/* A) TODAY'S FOCUS & STUDY SCHEDULE */}
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow"
+          {/* Stage 01: Course Plan */}
+          <motion.div
+            variants={itemVariants}
+            animate={{ y: [0, -4, 0] }}
+            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+            whileHover={{ y: -6, scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onNavigate('store')}
+            className={`p-3.5 sm:p-5 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md border cursor-pointer transition-all flex flex-col justify-between space-y-2.5 sm:space-y-3.5 group ${
+              hasPurchasedPlan 
+                ? 'border-emerald-500/40 hover:border-emerald-600' 
+                : 'border-amber-500/40 hover:border-amber-600'
+            }`}
           >
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
-                  <Calendar className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="font-extrabold text-slate-900 text-lg sm:text-xl">Today's Mission Schedule</h2>
-                  <p className="text-slate-400 text-xs font-semibold">Your daily mapped study targets and MCQ goals</p>
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => onNavigate('timetable')}
-                className="text-emerald-600 hover:text-emerald-800 text-xs font-extrabold flex items-center gap-1 cursor-pointer transition-all bg-emerald-50 hover:bg-emerald-100 px-3.5 py-2 rounded-xl border border-emerald-200/60"
-              >
-                Full Timetable <ChevronRight className="w-4 h-4" />
-              </button>
+            <div className="flex items-center justify-between">
+              <span className="px-2 py-0.5 bg-emerald-100/80 border border-emerald-300 text-emerald-800 font-mono font-black text-[9px] sm:text-[10px] rounded-md">
+                STAGE 01
+              </span>
+              <motion.div animate={{ rotate: [0, 20, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
+                <Sparkles className={`w-4 h-4 sm:w-4.5 sm:h-4.5 ${hasPurchasedPlan ? 'text-emerald-600' : 'text-amber-600'}`} />
+              </motion.div>
             </div>
 
-            {todayTimetables.length === 0 ? (
-              <div className="text-center py-10 px-4 bg-gradient-to-br from-slate-50 to-emerald-50/20 rounded-2xl border border-dashed border-slate-200">
-                <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-xs">
-                  <CheckCircle2 className="w-7 h-7 text-emerald-500" />
-                </div>
-                <h4 className="text-slate-900 font-extrabold text-base">No Schedule Mapped For Today</h4>
-                <p className="text-slate-500 text-xs max-w-sm mx-auto mt-1 font-medium leading-relaxed">
-                  You're all caught up! Use this time to revise previous chapters or take practice tests.
-                </p>
-                <button 
-                  onClick={() => onNavigate('tests')}
-                  className="mt-4 px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
-                >
-                  Browse Practice Tests
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                {todayTimetables.map((item) => {
-                  const subjectObj = subjects.find(s => s.id === item.subjectId);
-                  return (
-                    <div key={item.id} className="p-5 rounded-2xl border border-slate-200/90 hover:border-emerald-500/50 hover:shadow-md transition-all bg-gradient-to-r from-slate-50/60 via-white to-slate-50/40 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-200 font-black text-[10px] rounded-lg tracking-wider uppercase">
-                            {subjectObj ? subjectObj.name : 'General'}
-                          </span>
-                          <span className="text-slate-400 text-xs flex items-center gap-1 font-semibold">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" /> 1-2 Hours Target
-                          </span>
-                        </div>
-                        <h3 className="font-black text-slate-900 text-base sm:text-lg">{item.title}</h3>
-                        <p className="text-slate-600 text-xs sm:text-sm font-medium leading-relaxed">{item.studyTopic}</p>
-                        {item.revisionTopic && (
-                          <div className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-md border border-amber-200/60">
-                            <span>Revision:</span> {item.revisionTopic}
-                          </div>
-                        )}
-                      </div>
+            <div>
+              <h3 className="font-black text-slate-900 text-xs sm:text-base group-hover:text-emerald-700 transition-colors flex items-center justify-between leading-tight">
+                Course Plan <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-emerald-600 hidden sm:inline-block" />
+              </h3>
+              <p className="text-slate-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium truncate">
+                {hasPurchasedPlan ? activePlanName : 'No Plan Enrolled'}
+              </p>
+            </div>
 
-                      <div className="flex items-center gap-3 shrink-0 bg-white p-3.5 rounded-xl border border-slate-200 text-sm shadow-xs">
-                        <div className="text-right">
-                          <span className="block font-black text-emerald-700 text-lg font-mono">{item.practiceMCQsCount}</span>
-                          <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider block">MCQ Target</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+            {/* Animated Progress Bar */}
+            <div className="space-y-1">
+              <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: hasPurchasedPlan ? '100%' : '25%' }}
+                  transition={{ duration: 1.2, delay: 0.2, ease: "easeOut" }}
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                />
               </div>
-            )}
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <span className="font-bold text-slate-500 text-[9px] sm:text-[11px]">Status</span>
+                <span className={`font-extrabold uppercase text-[9px] sm:text-[10px] ${hasPurchasedPlan ? 'text-emerald-600' : 'text-amber-600 animate-pulse'}`}>
+                  {hasPurchasedPlan ? 'ENROLLED ⚡' : 'BUY PLAN 🚀'}
+                </span>
+              </div>
+            </div>
           </motion.div>
 
-          {/* B) PENDING EVALUATIONS & MOCK EXAMS */}
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow"
+          {/* Stage 02: Time Tables */}
+          <motion.div
+            variants={itemVariants}
+            animate={{ y: [0, -4, 0] }}
+            transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 0.3 }}
+            whileHover={{ y: -6, scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onNavigate('timetable')}
+            className="p-3.5 sm:p-5 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md border border-teal-500/40 hover:border-teal-600 cursor-pointer transition-all flex flex-col justify-between space-y-2.5 sm:space-y-3.5 group"
           >
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-100">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="font-extrabold text-slate-900 text-lg sm:text-xl">Pending Evaluations</h2>
-                  <p className="text-slate-400 text-xs font-semibold">Available tests ready for your attempt</p>
-                </div>
-              </div>
-
-              <button 
-                onClick={() => onNavigate('tests')}
-                className="text-teal-600 hover:text-teal-800 text-xs font-extrabold flex items-center gap-1 cursor-pointer transition-all bg-teal-50 hover:bg-teal-100 px-3.5 py-2 rounded-xl border border-teal-200/60"
-              >
-                Test Portal <ChevronRight className="w-4 h-4" />
-              </button>
+            <div className="flex items-center justify-between">
+              <span className="px-2 py-0.5 bg-teal-100/80 border border-teal-300 text-teal-800 font-mono font-black text-[9px] sm:text-[10px] rounded-md">
+                STAGE 02
+              </span>
+              <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: 2.5 }}>
+                <Calendar className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-teal-600" />
+              </motion.div>
             </div>
 
-            {pendingTests.length === 0 ? (
-              <div className="text-center py-10 px-4 bg-gradient-to-br from-slate-50 to-teal-50/20 rounded-2xl border border-dashed border-slate-200">
-                <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center mx-auto mb-3 shadow-xs">
-                  <Award className="w-7 h-7 text-teal-500" />
-                </div>
-                <h4 className="text-slate-900 font-extrabold text-base">You Are All Caught Up!</h4>
-                <p className="text-slate-500 text-xs max-w-sm mx-auto mt-1 font-medium leading-relaxed">
-                  Great work completing all available evaluations. Check back soon for new grand tests.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {pendingTests.slice(0, 4).map((test) => (
-                  <motion.div 
-                    key={test.id} 
-                    whileHover={{ y: -3 }}
-                    className="p-5 rounded-2xl border border-slate-200 hover:border-teal-500/50 hover:shadow-lg bg-gradient-to-b from-white to-slate-50/50 flex flex-col justify-between space-y-4 transition-all"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className="px-2.5 py-0.5 bg-teal-100 text-teal-800 border border-teal-200 font-black text-[10px] rounded-md uppercase tracking-wider">
-                          {test.testType || 'Practice'}
-                        </span>
-                        <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" /> {test.duration} mins
-                        </span>
-                      </div>
-                      <h3 className="font-black text-slate-900 text-base line-clamp-1">{test.title}</h3>
-                      <p className="text-slate-500 text-xs mt-1 line-clamp-2 leading-relaxed font-medium">
-                        {test.instructions || 'Standard assessment examination'}
-                      </p>
-                    </div>
+            <div>
+              <h3 className="font-black text-slate-900 text-xs sm:text-base group-hover:text-teal-700 transition-colors flex items-center justify-between leading-tight">
+                Daily Timetable <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-teal-600 hidden sm:inline-block" />
+              </h3>
+              <p className="text-slate-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium truncate">
+                {todayTimetables.length > 0 ? `${todayTimetables.length} Timetable Slots` : 'Daily Schedule Target'}
+              </p>
+            </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                      <span className="text-xs font-extrabold text-slate-700">{test.questions?.length || 'MCQ'} Questions</span>
-                      <button 
-                        onClick={() => onAttemptTest(test)}
-                        className="py-2 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold cursor-pointer transition-all shadow-sm flex items-center gap-1.5"
-                      >
-                        Start Test <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+            {/* Animated Progress Bar */}
+            <div className="space-y-1">
+              <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: todayTimetables.length > 0 ? '85%' : '40%' }}
+                  transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
+                  className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full"
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <span className="font-bold text-slate-500 text-[9px] sm:text-[11px]">MCQs Goal</span>
+                <span className="font-extrabold text-teal-700 uppercase text-[9px] sm:text-[10px] font-mono truncate">
+                  {todayTimetables.length > 0 ? `${todayTimetables.reduce((acc, t) => acc + (t.practiceMCQsCount || 0), 0)} MCQs` : 'View Today'}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Stage 03: Subject Chapters */}
+          <motion.div
+            variants={itemVariants}
+            animate={{ y: [0, -4, 0] }}
+            transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 0.6 }}
+            whileHover={{ y: -6, scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onNavigate('subjects')}
+            className="p-3.5 sm:p-5 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md border border-blue-500/40 hover:border-blue-600 cursor-pointer transition-all flex flex-col justify-between space-y-2.5 sm:space-y-3.5 group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="px-2 py-0.5 bg-blue-100/80 border border-blue-300 text-blue-800 font-mono font-black text-[9px] sm:text-[10px] rounded-md">
+                STAGE 03
+              </span>
+              <BookOpen className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-blue-600 group-hover:scale-110 transition-transform" />
+            </div>
+
+            <div>
+              <h3 className="font-black text-slate-900 text-xs sm:text-base group-hover:text-blue-700 transition-colors flex items-center justify-between leading-tight">
+                Subject Chapters <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-blue-600 hidden sm:inline-block" />
+              </h3>
+              <p className="text-slate-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium truncate">
+                {subjects.length > 0 ? `${subjects.length} Subjects Mapped` : 'Syllabus Coverage'}
+              </p>
+            </div>
+
+            {/* Animated Progress Bar */}
+            <div className="space-y-1">
+              <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${syllabusProgress}%` }}
+                  transition={{ duration: 1.2, delay: 0.4, ease: "easeOut" }}
+                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full"
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <span className="font-bold text-slate-500 text-[9px] sm:text-[11px]">Coverage</span>
+                <span className="font-extrabold text-blue-700 font-mono text-[9px] sm:text-[11px]">{syllabusProgress}%</span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Stage 04: Exams & Mocks */}
+          <motion.div
+            variants={itemVariants}
+            animate={{ y: [0, -4, 0] }}
+            transition={{ repeat: Infinity, duration: 5.5, ease: "easeInOut", delay: 0.9 }}
+            whileHover={{ y: -6, scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onNavigate('tests')}
+            className="p-3.5 sm:p-5 rounded-xl bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md border border-amber-500/40 hover:border-amber-600 cursor-pointer transition-all flex flex-col justify-between space-y-2.5 sm:space-y-3.5 group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="px-2 py-0.5 bg-amber-100/80 border border-amber-300 text-amber-800 font-mono font-black text-[9px] sm:text-[10px] rounded-md">
+                STAGE 04
+              </span>
+              <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
+                <Award className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-amber-600" />
+              </motion.div>
+            </div>
+
+            <div>
+              <h3 className="font-black text-slate-900 text-xs sm:text-base group-hover:text-amber-700 transition-colors flex items-center justify-between leading-tight">
+                Exams & Mocks <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-amber-600 hidden sm:inline-block" />
+              </h3>
+              <p className="text-slate-600 text-[10px] sm:text-xs mt-0.5 sm:mt-1 font-medium truncate">
+                {pendingTests.length > 0 ? `${pendingTests.length} Pending` : 'Evaluations Done'}
+              </p>
+            </div>
+
+            {/* Animated Progress Bar */}
+            <div className="space-y-1">
+              <div className="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${averageScore > 0 ? averageScore : 25}%` }}
+                  transition={{ duration: 1.2, delay: 0.5, ease: "easeOut" }}
+                  className="h-full bg-gradient-to-r from-amber-500 to-orange-400 rounded-full"
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <span className="font-bold text-slate-500 text-[9px] sm:text-[11px]">Performance</span>
+                <span className="font-extrabold text-amber-700 font-mono text-[9px] sm:text-[11px] truncate">
+                  {completedTestsCount > 0 ? `${averageScore}% Avg` : '0 Done'}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+        </div>
+
+        {/* DUAL REAL-TIME CHARTS WITH ANIMATED DRAW-IN */}
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-6 pt-4 border-t border-slate-200/80">
+          
+          {/* PIE / DONUT CHART */}
+          <motion.div 
+            variants={itemVariants} 
+            whileHover={{ scale: 1.015 }}
+            className="bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md rounded-xl p-5 border border-slate-300/80 flex flex-col justify-between shadow-none transition-all"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <PieChartIcon className="w-4 h-4 text-emerald-600" />
+                <h4 className="font-black text-sm text-slate-900">Preparation Pillar Balance</h4>
+              </div>
+              <span className="text-[10px] font-bold text-slate-600 bg-slate-200/60 border border-slate-300 px-2.5 py-0.5 rounded-md">
+                {hasPurchasedPlan ? 'Live Plan Track' : 'Explorer Mode'}
+              </span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-2">
+              <div className="h-48 w-48 relative shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={roadmapPieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={74}
+                      paddingAngle={5}
+                      dataKey="value"
+                      isAnimationActive={true}
+                      animationDuration={1400}
+                      animationEasing="ease-out"
+                    >
+                      {roadmapPieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" strokeWidth={0} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ background: '#0f172a', borderRadius: '10px', border: '1px solid #10b981', color: '#fff', fontSize: '11px' }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Donut Center Readout */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.8, delay: 0.5, type: "spring" }}
+                    className="text-2xl font-black text-emerald-700 font-mono"
+                  >
+                    {syllabusProgress}%
+                  </motion.span>
+                  <span className="text-[9px] font-bold uppercase text-slate-500 tracking-wider">Overall</span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5 w-full">
+                {roadmapPieData.map((item, idx) => (
+                  <motion.div 
+                    key={item.name} 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 0.2 + idx * 0.1 }}
+                    className="flex items-center justify-between text-xs p-2.5 rounded-lg bg-slate-100/60 border border-slate-200/80 hover:border-emerald-400 transition-all"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></span>
+                      <span className="font-bold text-slate-800">{item.name}</span>
                     </div>
+                    <span className="font-black font-mono text-slate-900">{item.value}%</span>
                   </motion.div>
                 ))}
               </div>
-            )}
+            </div>
           </motion.div>
 
-          {/* C) ACADEMIC BULLETINS & ANNOUNCEMENTS */}
+          {/* BAR CHART */}
           <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-sm"
+            variants={itemVariants} 
+            whileHover={{ scale: 1.015 }}
+            className="bg-slate-900/10 dark:bg-slate-900/40 backdrop-blur-md rounded-xl p-5 border border-slate-300/80 flex flex-col justify-between shadow-none transition-all"
           >
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100">
-              <div className="p-2.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-100">
-                <Volume2 className="w-5 h-5" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <BarChart2 className="w-4 h-4 text-teal-600" />
+                <h4 className="font-black text-sm text-slate-900">Student Milestone Realization</h4>
               </div>
-              <div>
-                <h2 className="font-extrabold text-slate-900 text-lg sm:text-xl">Academic Bulletins</h2>
-                <p className="text-slate-400 text-xs font-semibold">Official updates & coordinator notifications</p>
-              </div>
+              <span className="text-[10px] font-bold text-teal-800 bg-teal-100/80 px-2 py-0.5 rounded-md border border-teal-300">
+                Target vs Achieved
+              </span>
             </div>
 
-            {relevantAnnouncements.length === 0 ? (
-              <div className="text-center py-6 bg-slate-50/50 rounded-2xl border border-slate-200 text-xs text-slate-400 font-bold">
-                No active announcements for your target exam tracks.
-              </div>
-            ) : (
-              <div className="space-y-3.5">
-                {relevantAnnouncements.map((ann) => (
-                  <div key={ann.id} className="p-4.5 rounded-2xl border border-slate-200/80 bg-gradient-to-r from-slate-50 via-white to-slate-50 relative">
-                    <div className="flex items-center justify-between gap-4 flex-wrap mb-1.5">
-                      <h4 className="font-black text-slate-900 text-sm sm:text-base">{ann.title}</h4>
-                      <span className="text-[10px] font-mono font-bold text-slate-400 bg-white border border-slate-200 px-2 py-0.5 rounded-md">
-                        {new Date(ann.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-slate-600 text-xs leading-relaxed font-medium">{ann.content}</p>
-                    {ann.targetExams && ann.targetExams.length > 0 && (
-                      <div className="mt-2.5 flex gap-1.5 flex-wrap">
-                        {ann.targetExams.map(exId => (
-                          <span key={exId} className="px-2 py-0.5 bg-slate-900 text-emerald-300 font-bold text-[9px] rounded-md uppercase tracking-wider">
-                            {exId}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </motion.div>
-
-        </div>
-
-        {/* RIGHT 1 COLUMN: Performance Chart + Syllabus Tracker + Alerts */}
-        <div className="space-y-6">
-          
-          {/* A) PERFORMANCE RANK GROWTH CHART */}
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-sm flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-600" />
-                  <h3 className="font-extrabold text-slate-900 text-lg">Performance Trend</h3>
-                </div>
-                <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[10px] rounded-full uppercase">
-                  {averageScore}% Avg
-                </span>
-              </div>
-              <p className="text-slate-400 text-xs font-medium">Estimated rank growth percentile across evaluations</p>
-            </div>
-
-            <div className="h-44 w-full mt-4">
+            <div className="h-48 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData.length > 0 ? chartData : defaultChartData}>
-                  <defs>
-                    <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} fontWeight="bold" tickLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={10} fontWeight="bold" tickLine={false} domain={[0, 100]} />
+                <BarChart data={roadmapBarData} barGap={6}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cbd5e1" />
+                  <XAxis dataKey="name" stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} />
+                  <YAxis stroke="#475569" fontSize={10} fontWeight="bold" tickLine={false} domain={[0, 100]} />
                   <Tooltip 
-                    contentStyle={{ background: '#0f172a', borderRadius: '12px', border: '1px solid #10b981', color: '#fff' }}
-                    labelStyle={{ fontWeight: 'black', fontSize: '11px', color: '#34d399' }}
-                    itemStyle={{ fontSize: '12px', fontWeight: 'bold' }}
+                    contentStyle={{ background: '#0f172a', borderRadius: '10px', border: '1px solid #14b8a6', color: '#fff', fontSize: '11px' }}
                   />
-                  <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
-                </AreaChart>
+                  <Bar dataKey="achieved" name="Achieved %" fill="#10b981" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={1400} />
+                  <Bar dataKey="target" name="Target %" fill="#94a3b8" radius={[4, 4, 0, 0]} isAnimationActive={true} animationDuration={1400} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-100 text-center">
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">Highest Score</span>
-                <span className="text-base font-black text-emerald-600 font-mono">{highestScore}%</span>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider">Evaluations</span>
-                <span className="text-base font-black text-slate-900 font-mono">{completedTestsCount}</span>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => onNavigate('analytics')}
-              className="w-full text-center py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer mt-4 uppercase tracking-wider flex items-center justify-center gap-1.5"
-            >
-              Chapter Mastery Breakdown <ArrowRight className="w-3.5 h-3.5 text-emerald-400" />
-            </button>
-          </motion.div>
-
-          {/* B) SYLLABUS PROGRESS VISUALIZER */}
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-sm space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
-                <Brain className="w-5 h-5 text-emerald-600" /> Syllabus Progress
-              </h3>
-              <span className="text-sm font-black text-emerald-600 font-mono">{syllabusProgress}%</span>
-            </div>
-            
-            <div className="overflow-hidden h-3.5 rounded-full bg-slate-100 border border-slate-200 p-0.5">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${syllabusProgress}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-                className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-sm"
-              ></motion.div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
-              <div 
-                onClick={() => onNavigate('subjects')}
-                className="p-3 bg-slate-50 hover:bg-emerald-50/60 border border-slate-200/80 hover:border-emerald-400 rounded-xl text-center cursor-pointer transition-all group"
-              >
-                <BookOpen className="w-4 h-4 text-emerald-600 mx-auto mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-black text-slate-700 block uppercase tracking-wider">Subjects</span>
-              </div>
-              <div 
-                onClick={() => onNavigate('timetable')}
-                className="p-3 bg-slate-50 hover:bg-emerald-50/60 border border-slate-200/80 hover:border-emerald-400 rounded-xl text-center cursor-pointer transition-all group"
-              >
-                <Calendar className="w-4 h-4 text-emerald-600 mx-auto mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-black text-slate-700 block uppercase tracking-wider">Timetable</span>
-              </div>
-              <div 
-                onClick={() => onNavigate('study_materials')}
-                className="p-3 bg-slate-50 hover:bg-emerald-50/60 border border-slate-200/80 hover:border-emerald-400 rounded-xl text-center cursor-pointer transition-all group"
-              >
-                <BookMarked className="w-4 h-4 text-emerald-600 mx-auto mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-black text-slate-700 block uppercase tracking-wider">Notes</span>
-              </div>
-              <div 
-                onClick={() => onNavigate('tests')}
-                className="p-3 bg-slate-50 hover:bg-emerald-50/60 border border-slate-200/80 hover:border-emerald-400 rounded-xl text-center cursor-pointer transition-all group"
-              >
-                <Award className="w-4 h-4 text-emerald-600 mx-auto mb-1 group-hover:scale-110 transition-transform" />
-                <span className="text-[11px] font-black text-slate-700 block uppercase tracking-wider">Exams</span>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* C) COORDINATOR ALERTS & NOTIFICATIONS */}
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-sm space-y-4"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Bell className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-extrabold text-slate-900 text-base sm:text-lg">Alerts & Notices</h3>
-              </div>
-              {studentNotifications.filter(n => !n.isRead).length > 0 && (
-                <span className="px-2 py-0.5 bg-emerald-600 text-white font-mono font-black text-[10px] rounded-full">
-                  {studentNotifications.filter(n => !n.isRead).length} New
-                </span>
-              )}
-            </div>
-
-            {studentNotifications.length === 0 ? (
-              <div className="text-center py-6 text-slate-400 text-xs font-bold bg-slate-50 rounded-2xl border border-slate-200">
-                No active coordinator alerts.
-              </div>
-            ) : (
-              <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1">
-                {studentNotifications.map((notif) => (
-                  <div 
-                    key={notif.id} 
-                    className={`p-3.5 rounded-xl border text-xs transition-all ${
-                      notif.isRead 
-                        ? 'bg-slate-50/50 border-slate-200 text-slate-500' 
-                        : 'bg-gradient-to-r from-emerald-50/40 to-white border-emerald-400/60 shadow-xs text-slate-900 font-bold'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-2 mb-1">
-                      <span className="font-black text-xs block text-slate-900">{notif.title}</span>
-                      {!notif.isRead && (
-                        <button 
-                          onClick={() => handleMarkAsRead(notif.id)}
-                          title="Mark as read"
-                          className="p-1 rounded-md bg-emerald-100 hover:bg-emerald-600 hover:text-white text-emerald-800 cursor-pointer transition-colors"
-                        >
-                          <Check className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-slate-600 text-[11px] leading-relaxed font-medium">{notif.message}</p>
-                    <span className="text-[9px] font-mono font-semibold text-slate-400 block mt-1.5 uppercase">
-                      {new Date(notif.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
           </motion.div>
 
         </div>
 
-      </div>
+      </motion.div>
 
     </div>
   );

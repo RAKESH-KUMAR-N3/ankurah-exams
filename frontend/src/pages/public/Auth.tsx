@@ -10,7 +10,7 @@ interface AuthProps {
   initialMode?: 'login' | 'register';
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:5000`;
 
 // Animated background blobs & particles
 const AnimatedBackground = () => (
@@ -172,19 +172,18 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
 
         {/* Top Branding Section with HIGHLY ELEVATED LOGO BADGE */}
         <div className="flex flex-col items-center pt-1 md:pt-0 pb-3 md:pb-1">
-          <Link to="/" className="group relative mb-4 md:mb-2.5 cursor-pointer flex flex-col items-center">
-            {/* Multi-layered glow behind logo */}
-            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-400/40 via-teal-400/50 to-emerald-400/40 blur-2xl rounded-full opacity-80 group-hover:opacity-100 transition-opacity animate-pulse"></div>
-            
-            {/* Elevated Illuminated Card Plate for Logo */}
-            <div className="relative z-10 bg-white/95 px-6 py-2.5 md:py-2 rounded-2xl shadow-[0_15px_35px_rgba(0,0,0,0.6)] border-2 border-emerald-400/50 transform group-hover:scale-105 transition-transform duration-300">
-              <img
-                src={logo}
-                alt="Ankurah Exams"
-                className="w-40 sm:w-48 md:w-36 object-contain drop-shadow-md"
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
-            </div>
+          <Link to="/" className="group relative mb-3 cursor-pointer flex flex-col items-center">
+            {/* Same approach as admin sidebar: soft white blur halo BEHIND logo, no box */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] w-3/4 h-16 bg-white/60 blur-[30px] rounded-full pointer-events-none"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-28 bg-emerald-300/15 rounded-full blur-2xl pointer-events-none animate-pulse"></div>
+
+            {/* Raw logo image — just like admin sidebar, NO wrapper box */}
+            <img
+              src={logo}
+              alt="Ankurah Exams"
+              className="w-52 sm:w-60 md:w-48 object-contain relative z-10 drop-shadow-[0_4px_18px_rgba(255,255,255,0.25)] transform group-hover:scale-105 transition-transform duration-300"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
           </Link>
 
           <AnimatePresence mode="wait">

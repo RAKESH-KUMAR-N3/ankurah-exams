@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
   fetchAdminDashboard, fetchStudentDashboard,
@@ -395,15 +395,27 @@ export default function App() {
     }
   };
 
+  const mainRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const pathParts = location.pathname.split('/');
   const activeTab = pathParts.length > 2 && pathParts[1] === 'dashboard'
     ? pathParts[2]
     : (currentUser?.role === 'admin' ? 'admin_dashboard' : 'dashboard');
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+  }, [location.pathname]);
+
   const handleTabChange = (tab: string) => {
     navigate(`/dashboard/${tab}`);
     setSidebarOpen(false);
+    window.scrollTo(0, 0);
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
   };
 
   // ─── Render active view ──────────────────────────────────────────────────────
@@ -448,13 +460,24 @@ export default function App() {
           />
         );
       case 'doubts':
-        return <StudentDoubts user={currentUser} />;
+        return (
+          <StudentDoubts 
+            user={currentUser} 
+            subjects={subjects}
+            chapters={chapters}
+            tests={tests}
+            attempts={attempts}
+          />
+        );
       case 'tests':
         return (
           <TestSection
             user={currentUser}
             tests={tests}
             attempts={attempts}
+            subjects={subjects}
+            chapters={chapters}
+            entranceExams={entranceExams}
             onTestSubmitted={() => currentUser && loadAllData(currentUser)}
           />
         );
@@ -477,6 +500,7 @@ export default function App() {
             studentTypes={studentTypes}
             allPlans={entranceExams}
             onNavigateToStore={() => handleTabChange('store')}
+            onSignOut={handleSignOut}
           />
         );
       case 'admin_dashboard':
@@ -587,12 +611,6 @@ export default function App() {
                 >
                   <TrendingUp className={`w-4 h-4 ${activeTab === 'analytics' ? 'text-emerald-600' : 'text-emerald-300'}`} /> Performance
                 </button>
-                <button
-                  onClick={() => handleTabChange('profile')}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${activeTab === 'profile' ? 'bg-white text-emerald-900 shadow-[0_4px_12px_rgba(16,185,129,0.15)]' : 'text-emerald-100/80 hover:text-white hover:bg-white/10'}`}
-                >
-                  <UserIcon className={`w-4 h-4 ${activeTab === 'profile' ? 'text-emerald-600' : 'text-emerald-300'}`} /> My Profile
-                </button>
               </>
             )}
 
@@ -621,62 +639,53 @@ export default function App() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 max-h-screen overflow-hidden">
-        <header className="bg-white border-b border-slate-200/80 px-6 py-4 flex items-center justify-between shrink-0 relative z-20 shadow-xs">
-          <div className="flex items-center gap-4">
+        <header className="bg-transparent border-b border-slate-200/60 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0 relative z-20">
+          <div className="flex items-center gap-3 sm:gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 text-slate-500 hover:text-slate-900 cursor-pointer"
+              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 bg-white/80 rounded-xl border border-slate-200 shadow-xs cursor-pointer active:scale-95"
+              title="Open Navigation Menu"
             >
-              <Menu className="w-5 h-5 text-slate-600" />
+              <Menu className="w-5 h-5 text-slate-700" />
             </button>
-            <div className="flex flex-col ml-2 lg:ml-0">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-500/20">
-                  <Shield className="w-4 h-4 text-white" />
-                </div>
-                <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-emerald-900 via-teal-800 to-emerald-700 tracking-tight">
-                  {isStudent ? 'Ankurah Portal' : 'Admin Panel'}
-                </h1>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 tracking-[0.15em] uppercase mt-1.5 ml-11">
-                {isStudent ? 'Empowering Your Success' : 'Master Administration Suite'}
-              </p>
+
+            {/* Desktop Welcome Title — Hidden on Mobile for clean responsive layout */}
+            <div className="hidden sm:flex items-center">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Welcome, <span className="text-emerald-700">{currentUser?.name}</span>
+              </h1>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            {isUserAdmin && <span className="px-3.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-full hidden sm:block">SYSTEM ADMIN</span>}
-            {isStudent && (
-              <div className="flex items-center gap-1.5 py-1.5 px-3.5 bg-emerald-50 text-emerald-800 text-xs font-bold rounded-lg border border-emerald-200 shadow-xs">
-                <Flame className="w-4 h-4 text-emerald-600 fill-emerald-50" />
-                Streak: {currentUser?.streak || 1} Days
-              </div>
+
+          <div className="flex items-center gap-3">
+            {isUserAdmin && (
+              <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-black rounded-lg border border-emerald-300">
+                SYSTEM ADMIN
+              </span>
             )}
-            <div className="flex items-center gap-3">
-              <div 
-                onClick={() => handleTabChange('profile')}
-                title="View My Profile Page"
-                className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                <div className="text-right hidden md:block">
-                  <span className="font-bold text-xs text-slate-900 block truncate leading-tight">{currentUser?.name}</span>
-                  <span className="text-[10px] text-slate-500 block capitalize">{currentUser?.role} Account</span>
-                </div>
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-xs">
-                  {currentUser?.name?.substring(0, 2)}
-                </div>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="ml-2 p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
+            
+            {/* User Profile Avatar Icon Button */}
+            <button
+              onClick={() => handleTabChange('profile')}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center shadow-md border-2 border-emerald-400/40 hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+              title="View My Profile"
+            >
+              <UserIcon className="w-5 h-5 text-white" />
+            </button>
+
+            {/* Logout Button (Side-by-Side with Profile Icon) */}
+            <button
+              onClick={handleSignOut}
+              className="px-3.5 py-2.5 sm:px-4 sm:py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all cursor-pointer shrink-0 flex items-center gap-1.5 active:scale-95"
+              title="Logout of Account"
+            >
+              <LogOut className="w-4 h-4 text-white" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </header>
 
-        <main className="flex-grow overflow-y-auto p-6 md:p-8 max-w-7xl w-full mx-auto geom-grid-pattern">
+        <main ref={mainRef} className="flex-grow overflow-y-auto p-6 md:p-8 max-w-7xl w-full mx-auto geom-grid-pattern">
           {renderActiveView()}
         </main>
 

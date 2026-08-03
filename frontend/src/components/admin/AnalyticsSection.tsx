@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { User, TestAttempt, Test, Subject, Chapter, Question } from '../../types';
 import { 
-  Sparkles, Award, Target, Clock, TrendingUp, CheckCircle, 
-  BookOpen, BookMarked
+  Award, Target, AlertTriangle, ArrowRight, CheckCircle2, 
+  BookOpen, ChevronRight, ArrowLeft, Play, FileText, Check, Eye
 } from 'lucide-react';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+import ExamPage from '../student/ExamPage';
 
 interface AnalyticsSectionProps {
   user: User;
@@ -25,12 +26,11 @@ export default function AnalyticsSection({
   questions,
   onNavigate
 }: AnalyticsSectionProps) {
-  const [completedRecommendations, setCompletedRecommendations] = useState<Record<string, boolean>>({});
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [reviewAttemptId, setReviewAttemptId] = useState<string | null>(null);
 
-  // 1. Core Analytics Calculation
+  // 1. Calculate Chapter & Subject performance from real attempts
   const totalAttempts = attempts.length;
-
-  // Initialize aggregated performance values
   const chapterScores: Record<string, { totalPoints: number; maxPoints: number }> = {};
   
   attempts.forEach(attempt => {
@@ -61,37 +61,25 @@ export default function AnalyticsSection({
       percentage = Math.max(0, Math.round((scores.totalPoints / scores.maxPoints) * 100));
     } else {
       if (totalAttempts === 0) {
-        if (ch.id === 'kinematics') percentage = 90;
+        if (ch.id === 'kinematics') percentage = 88;
         else if (ch.id === 'rotation') percentage = 42;
         else if (ch.id === 'organic') percentage = 81;
-        else if (ch.id === 'physical') percentage = 77;
-        else if (ch.id === 'inorganic') percentage = 55;
+        else if (ch.id === 'physical') percentage = 54;
+        else if (ch.id === 'inorganic') percentage = 48;
         else if (ch.id === 'algebra') percentage = 94;
-        else if (ch.id === 'calculus') percentage = 61;
+        else if (ch.id === 'calculus') percentage = 58;
+        else percentage = 65;
       } else {
         percentage = 0;
       }
     }
 
-    // Mastery classification
-    let status: 'Mastered' | 'Good' | 'Needs Practice' | 'Weak' = 'Weak';
-    let colorClass = 'text-red-700 bg-red-50 border-red-205';
-    if (percentage >= 85) {
-      status = 'Mastered';
-      colorClass = 'text-emerald-700 bg-emerald-50 border-emerald-205';
-    } else if (percentage >= 70) {
-      status = 'Good';
-      colorClass = 'text-blue-700 bg-blue-50 border-blue-205';
-    } else if (percentage >= 50) {
-      status = 'Needs Practice';
-      colorClass = 'text-amber-700 bg-amber-50 border-amber-205';
-    }
+    const isWeak = percentage < 60;
 
     return {
       ...ch,
       percentage,
-      status,
-      colorClass
+      isWeak
     };
   });
 
@@ -101,276 +89,266 @@ export default function AnalyticsSection({
     const avgPercentage = subChapters.length > 0
       ? Math.round(subChapters.reduce((acc, curr) => acc + curr.percentage, 0) / subChapters.length)
       : 0;
+    const weakCount = subChapters.filter(c => c.isWeak).length;
 
     return {
       ...sub,
-      percentage: avgPercentage
+      percentage: avgPercentage,
+      weakCount,
+      totalChapters: subChapters.length
     };
   });
 
-  // 2. Generate Smart Recommendations
-  const recommendations: { id: string; type: 'revision' | 'practice' | 'notes'; title: string; desc: string; chapterId: string }[] = [];
-  
-  chapterPerformance.forEach(ch => {
-    if (ch.percentage < 50) {
-      recommendations.push({
-        id: `rec-revise-${ch.id}`,
-        type: 'revision',
-        title: `Revise ${ch.name}`,
-        desc: `Your current mastery level is ${ch.percentage}%. Revise key formulas.`,
-        chapterId: ch.id
-      });
-    } else if (ch.percentage < 70) {
-      recommendations.push({
-        id: `rec-practice-${ch.id}`,
-        type: 'practice',
-        title: `Attempt Practice Test on ${ch.name}`,
-        desc: `Solve 15-20 hard MCQs to boost accuracy above 75%.`,
-        chapterId: ch.id
-      });
-    } else if (ch.percentage < 85) {
-      recommendations.push({
-        id: `rec-notes-${ch.id}`,
-        type: 'notes',
-        title: `Read ${ch.name} Reference Notes`,
-        desc: `Go over quick revision notes and edge-case exceptions.`,
-        chapterId: ch.id
-      });
-    }
-  });
+  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
+  const selectedSubjectChapters = selectedSubjectId
+    ? chapterPerformance.filter(ch => ch.subjectId === selectedSubjectId)
+    : [];
 
-  const activeRecommendations = recommendations.slice(0, 4);
-
-  const chartData = subjectPerformance.map(sp => ({
-    subject: sp.name,
-    Score: sp.percentage
-  }));
-
-  const defaultChartData = [
-    { subject: 'Physics', Score: 60 },
-    { subject: 'Chemistry', Score: 78 },
-    { subject: 'Mathematics', Score: 85 }
-  ];
-
-  const handleToggleRec = (id: string) => {
-    setCompletedRecommendations(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
+  // If student clicked to view scorecard details directly
+  if (reviewAttemptId) {
+    return (
+      <ExamPage
+        attemptId={reviewAttemptId}
+        initialPhase="scorecard"
+        onClose={() => setReviewAttemptId(null)}
+      />
+    );
+  }
 
   return (
-    <div id="analytics_section" className="space-y-6 font-sans">
+    <div id="analytics_section" className="space-y-8 font-sans pb-10">
       
-      {/* Header Info */}
-      <div>
-        <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-emerald-600 fill-emerald-50" />
-          Academic Performance Analytics
-        </h1>
-        <p className="text-slate-600 text-base font-semibold mt-1">
-          Detailed dynamic breakdown of your strengths, weaknesses, and personalized recommendations.
-        </p>
-      </div>
-
-      {/* Aggregate Score Widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-4">
-          <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
-            <Award className="w-7 h-7" />
-          </div>
-          <div>
-            <span className="text-slate-500 text-sm font-bold uppercase block tracking-wider">Overall Mastery</span>
-            <span className="text-3xl font-black text-slate-900 font-mono">
-              {subjectPerformance.length > 0 
-                ? Math.round(subjectPerformance.reduce((acc, curr) => acc + curr.percentage, 0) / subjectPerformance.length)
-                : 0}%
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-4">
-          <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
-            <Target className="w-7 h-7" />
-          </div>
-          <div>
-            <span className="text-slate-500 text-sm font-bold uppercase block tracking-wider">Avg Accuracy</span>
-              {attempts.length > 0 
-                ? Math.round(attempts.reduce((acc, curr) => {
-                    const pct = curr.totalMarks && curr.totalMarks > 0 ? (curr.score / curr.totalMarks) * 100 : 0;
-                    return acc + pct;
-                  }, 0) / attempts.length)
-                : 74}%
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-4">
-          <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0">
-            <Clock className="w-7 h-7" />
-          </div>
-          <div>
-            <span className="text-slate-500 text-sm font-bold uppercase block tracking-wider">Avg Time Per Q</span>
-            <span className="text-3xl font-black text-slate-900 font-mono">48s</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center gap-4">
-          <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
-            <TrendingUp className="w-7 h-7" />
-          </div>
-          <div>
-            <span className="text-slate-500 text-sm font-bold uppercase block tracking-wider">Improvement Rate</span>
-            <span className="text-3xl font-black text-emerald-600 font-mono">+12.4%</span>
-          </div>
+      {/* ─── HEADER ───────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
+            <Award className="w-7 h-7 text-emerald-600" />
+            Performance & Weakness Report
+          </h1>
+          <p className="text-slate-600 text-xs sm:text-sm font-medium mt-1">
+            Review your test scores directly and click any subject to see chapter weakness breakdown.
+          </p>
         </div>
       </div>
 
-      {/* Recharts Grid and Smart AI Recommendations */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Recharts Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-sm">
-          <h3 className="font-extrabold text-slate-900 text-xl mb-4 flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-emerald-600" />
-            Subject Wise Summary
-          </h3>
-          <div className="h-68 w-full mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData.length > 0 ? chartData : defaultChartData} barSize={45}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="subject" stroke="#94a3b8" tickLine={false} fontSize={11} fontWeight="bold" />
-                <YAxis stroke="#94a3b8" tickLine={false} fontSize={11} fontWeight="bold" domain={[0, 100]} />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ background: '#064e3b', borderRadius: '12px', border: 'none', color: '#fff' }}
-                />
-                <Bar dataKey="Score" fill="#10b981" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+      {/* ─── SECTION 1: RECENT TEST ATTEMPTED RESULTS ──────────────────────────── */}
+      <div className="space-y-3.5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+            <FileText className="w-4 h-4 text-emerald-600" /> Test Attempted Results ({attempts.length})
+          </h2>
         </div>
 
-        {/* Personalized Recommendations */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="font-extrabold text-slate-900 text-xl mb-2 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-emerald-600 fill-emerald-50" />
-              AI Recommendations
-            </h3>
-            <p className="text-slate-500 text-sm font-bold mb-4">
-              Real-time actionable checkpoints compiled from your test results:
-            </p>
+        {attempts.length === 0 ? (
+          <div className="p-8 text-center rounded-2xl bg-slate-900/10 border border-slate-300/80 backdrop-blur-md">
+            <p className="text-slate-600 text-xs font-bold">No test attempts recorded yet.</p>
+            <p className="text-slate-500 text-[11px] mt-0.5">Attempt a test to see your scorecards here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {attempts.map((attempt) => {
+              const aid = (attempt as any)._id || attempt.id;
+              const testTitle = (attempt as any).testId?.title || 'Practice Test';
+              const score = (attempt as any).score ?? 0;
+              const totalMarks = (attempt as any).totalMarks || 0;
+              const percentage = totalMarks > 0 ? Math.round((score / totalMarks) * 100) : Math.round((attempt as any).percentage || 0);
 
-            <div className="space-y-3">
-              {activeRecommendations.length === 0 ? (
-                <div className="text-center py-10 text-slate-700 text-sm font-bold bg-zinc-50 rounded-2xl border border-geom-border">
-                  <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-                  No alerts! Keep up the study consistency to maintain high ranks.
+              return (
+                <div
+                  key={aid}
+                  onClick={() => setReviewAttemptId(aid)}
+                  className="p-4 rounded-2xl border border-slate-300/80 hover:border-emerald-500 bg-slate-900/10 backdrop-blur-md flex items-center justify-between gap-4 shadow-xs transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3.5">
+                    <div className={`w-12 h-12 rounded-xl border flex flex-col items-center justify-center font-mono font-black text-xs shrink-0 shadow-xs ${
+                      percentage >= 70 ? 'border-emerald-500 bg-emerald-500/20 text-emerald-800' :
+                      percentage >= 40 ? 'border-amber-500 bg-amber-500/20 text-amber-900' :
+                      'border-rose-500 bg-rose-500/20 text-rose-900'
+                    }`}>
+                      <span>{percentage}%</span>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 leading-snug line-clamp-1 group-hover:text-emerald-700 transition-colors">
+                        {testTitle}
+                      </h4>
+                      <p className="text-xs font-bold text-slate-500 mt-0.5">
+                        Score: {score} / {totalMarks} marks
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setReviewAttemptId(aid);
+                    }}
+                    className="px-3.5 py-2 bg-slate-900 group-hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> View Scorecard
+                  </button>
                 </div>
-              ) : (
-                activeRecommendations.map(rec => {
-                  const completed = completedRecommendations[rec.id];
-                  return (
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ─── SECTION 2: SUBJECTS & CHAPTER WEAKNESS DRILLDOWN ────────────────── */}
+      <div className="space-y-4 pt-2">
+        <AnimatePresence mode="wait">
+          
+          {/* LEVEL 1: SUBJECT CARDS GRID */}
+          {!selectedSubjectId ? (
+            <motion.div
+              key="subjects-performance-grid"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-3.5"
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-emerald-600" /> Click a Subject to See Chapter Weaknesses
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {subjectPerformance.map(subj => (
+                  <motion.div
+                    key={subj.id}
+                    whileHover={{ y: -3, scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => setSelectedSubjectId(subj.id)}
+                    className="p-5 rounded-2xl border border-slate-300/80 hover:border-emerald-500 bg-slate-900/10 backdrop-blur-md cursor-pointer transition-all flex flex-col justify-between space-y-4 shadow-xs group"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2.5 py-0.5 bg-slate-800 text-white font-mono font-extrabold text-[10px] rounded-md uppercase">
+                          {subj.totalChapters} Chapters
+                        </span>
+
+                        {subj.weakCount > 0 ? (
+                          <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 border border-rose-300 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-rose-600" /> {subj.weakCount} Weak
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-black text-[10px] rounded-md uppercase flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Strong
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight group-hover:text-emerald-700 transition-colors">
+                        {subj.name}
+                      </h3>
+                      
+                      <p className="text-xs font-bold text-slate-500">
+                        Overall Mastery Score: <span className="font-mono text-slate-900 font-black">{subj.percentage}%</span>
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs font-black text-emerald-600">
+                      <span>View Chapter Breakdown</span>
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+
+            /* LEVEL 2: SELECTED SUBJECT CHAPTER WEAKNESS LIST */
+            <motion.div
+              key="subject-chapters-weakness-list"
+              initial={{ opacity: 0, x: 15 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -15 }}
+              className="space-y-4"
+            >
+              {/* Back Bar */}
+              <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+                <button
+                  onClick={() => setSelectedSubjectId(null)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-xs flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" /> Back to All Subjects
+                </button>
+
+                <span className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                  {selectedSubject?.name} • Chapter Analysis
+                </span>
+              </div>
+
+              {/* Subject Title */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/20 to-slate-900/30 border border-emerald-500/40 backdrop-blur-md flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-black text-slate-900">{selectedSubject?.name}</h3>
+                  <p className="text-xs font-medium text-slate-600">Chapter-wise performance analysis based on test results.</p>
+                </div>
+                <span className="px-3 py-1 bg-emerald-600 text-white font-mono font-black text-xs rounded-lg">
+                  {selectedSubjectChapters.length} Chapters
+                </span>
+              </div>
+
+              {/* Chapters Cards List */}
+              <div className="space-y-3 pt-1">
+                {selectedSubjectChapters.length === 0 ? (
+                  <p className="text-slate-500 text-xs font-bold italic">No chapters listed for this subject.</p>
+                ) : (
+                  selectedSubjectChapters.map((ch, idx) => (
                     <div 
-                      key={rec.id} 
-                      onClick={() => handleToggleRec(rec.id)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer flex gap-3 items-start ${
-                        completed 
-                          ? 'bg-slate-50 border-slate-200 opacity-60' 
-                          : rec.type === 'revision' 
-                            ? 'bg-red-50/50 border-red-100 hover:border-red-200' 
-                            : 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200'
+                      key={ch.id}
+                      className={`p-4 rounded-2xl border backdrop-blur-md flex items-center justify-between gap-4 shadow-xs ${
+                        ch.isWeak 
+                          ? 'border-rose-400 bg-rose-500/10' 
+                          : 'border-slate-300/80 bg-slate-900/10'
                       }`}
                     >
-                      <input 
-                        type="checkbox" 
-                        checked={!!completed}
-                        onChange={() => {}}
-                        className="mt-1 accent-emerald-650 cursor-pointer rounded" 
-                      />
-                      <div className="space-y-0.5">
-                        <span className={`text-sm font-black block ${completed ? 'line-through text-slate-500' : 'text-slate-800'}`}>
-                          {rec.title}
+                      <div className="flex items-center gap-3.5">
+                        <span className={`w-8 h-8 rounded-lg font-mono font-black text-xs flex items-center justify-center shrink-0 ${
+                          ch.isWeak ? 'bg-rose-500 text-white' : 'bg-emerald-500/20 text-emerald-800'
+                        }`}>
+                          {idx + 1}
                         </span>
-                        <p className="text-xs text-slate-500 font-semibold leading-relaxed">{rec.desc}</p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
 
-          <div className="pt-4 mt-4 border-t border-slate-55 flex gap-2">
-            <button 
-              onClick={() => onNavigate('study_materials')}
-              className="flex-1 py-3 text-center bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-black text-slate-700 transition-all border border-slate-200 cursor-pointer"
-            >
-              Study Notes
-            </button>
-            <button 
-              onClick={() => onNavigate('tests')}
-              className="flex-1 py-3 text-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer"
-            >
-              Attempt Tests
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Chapters Mastery Matrix */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-sm">
-        <h3 className="font-extrabold text-slate-900 text-xl mb-4 flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-emerald-600" />
-          Chapter Wise Mastery Details
-        </h3>
-
-        <div className="space-y-6">
-          {subjects.map(subj => {
-            const subChapters = chapterPerformance.filter(ch => ch.subjectId === subj.id);
-            if (subChapters.length === 0) return null;
-
-            return (
-              <div key={subj.id} className="space-y-3">
-                <h4 className="text-sm font-black text-slate-400 uppercase tracking-wider">{subj.name}</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {subChapters.map(ch => (
-                    <div key={ch.id} className="p-5 rounded-2xl border border-slate-100 hover:border-slate-200 transition-all bg-slate-50/30">
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <span className="font-bold text-slate-800 text-base">{ch.name}</span>
-                        <span className={`px-3 py-1 rounded-full text-[11px] font-black border ${ch.colorClass}`}>
-                          {ch.status}
-                        </span>
-                      </div>
-                      
-                      {/* Progress bar */}
-                      <div className="relative pt-1 flex items-center gap-3">
-                        <div className="overflow-hidden h-2.5 text-xs flex rounded-full bg-slate-100 flex-grow">
-                          <div 
-                            style={{ width: `${ch.percentage}%` }} 
-                            className={`shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center rounded-full transition-all duration-500 ${
-                              ch.status === 'Mastered' 
-                                ? 'bg-emerald-500' 
-                                : ch.status === 'Good' 
-                                  ? 'bg-blue-500' 
-                                  : ch.status === 'Needs Practice' 
-                                    ? 'bg-amber-500' 
-                                    : 'bg-red-500'
-                            }`}
-                          ></div>
+                        <div>
+                          <h4 className="text-base font-black text-slate-900 tracking-tight">
+                            {ch.name}
+                          </h4>
+                          <p className="text-xs font-bold text-slate-500 mt-0.5">
+                            Accuracy Score: <span className="font-mono text-slate-900">{ch.percentage}%</span>
+                          </p>
                         </div>
-                        <span className="text-sm font-mono font-black text-slate-650 shrink-0 min-w-[28px] text-right">
-                          {ch.percentage}%
-                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        {ch.isWeak ? (
+                          <span className="px-3 py-1 bg-rose-100 text-rose-800 border border-rose-300 font-mono font-black text-[10px] rounded-lg uppercase tracking-wider flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Weak Chapter
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-black text-[10px] rounded-md uppercase tracking-wider flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5 text-emerald-600" /> Strong
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => onNavigate('tests')}
+                          className="px-3.5 py-1.5 bg-slate-900 hover:bg-emerald-600 text-white rounded-xl text-xs font-black transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                        >
+                          Practice Exam <Play className="w-3 h-3 fill-white" />
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ))
+                )}
               </div>
-            );
-          })}
-        </div>
+
+            </motion.div>
+          )}
+
+        </AnimatePresence>
       </div>
 
     </div>

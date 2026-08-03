@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
 import heroImage from '../../assets/hero-image.png';
 import cardsBg from '../../assets/cards-bg.jpg';
+import mobileSplash from '../../assets/mobile-splash.png';
 
 const TYPE_PHRASES = [
   "Ace Your Next Exam.",
@@ -181,63 +182,94 @@ const smoothScroll = (id: string) => {
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
+const SubtleSplashAnimations = () => (
+  <div className="absolute inset-0 overflow-hidden pointer-events-none z-[5]">
+    <style>{`
+      @keyframes subtle-scan {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100vh); }
+      }
+      @keyframes subtle-float {
+        0% { transform: translateY(0) scale(1); opacity: 0.15; }
+        50% { transform: translateY(-60vh) scale(1.3); opacity: 0.5; }
+        100% { transform: translateY(-120vh) scale(1); opacity: 0.05; }
+      }
+      @keyframes subtle-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.25; }
+        50% { transform: scale(1.12); opacity: 0.45; }
+      }
+    `}</style>
+
+    {/* Gentle Pulsing Light Aura around the Center Logo Lens */}
+    <div className="absolute top-[46%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-emerald-400/25 rounded-full blur-3xl pointer-events-none" style={{ animation: 'subtle-pulse 4s ease-in-out infinite' }}></div>
+
+    {/* Translucent Scan Line Light Beams */}
+    <div className="absolute inset-0 flex justify-between px-10 opacity-15">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-full w-[1px] bg-emerald-300 relative overflow-hidden">
+          <div
+            className="absolute top-0 left-0 w-full h-40 bg-gradient-to-b from-transparent via-emerald-200 to-transparent opacity-70"
+            style={{
+              animation: `subtle-scan ${7 + i * 2}s linear infinite`,
+              animationDelay: `${i * 1.5}s`
+            }}
+          ></div>
+        </div>
+      ))}
+    </div>
+
+    {/* Floating Golden/Emerald Star Particles */}
+    {[...Array(16)].map((_, i) => {
+      const size = Math.random() * 4 + 2;
+      return (
+        <div
+          key={`sparkle-${i}`}
+          className="absolute rounded-full bg-emerald-200 shadow-[0_0_8px_#34d399]"
+          style={{
+            width: size,
+            height: size,
+            left: `${(i * 6.2) + Math.random() * 3}%`,
+            bottom: '-10%',
+            animation: `subtle-float ${11 + Math.random() * 8}s linear infinite`,
+            animationDelay: `${Math.random() * -10}s`
+          }}
+        />
+      );
+    })}
+  </div>
+);
+
 const MobileSplashScreen = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col justify-between items-center p-6 bg-gradient-to-br from-emerald-700 via-emerald-800 to-emerald-950 overflow-hidden font-sans select-none">
-      <BackgroundAnimations />
+    <div className="fixed inset-0 z-[100] flex flex-col justify-end items-center p-6 bg-slate-950 overflow-hidden font-sans select-none">
+      {/* Direct Mobile Splash Image */}
+      <img
+        src={mobileSplash}
+        alt="Ankurah Exams Mobile Splash"
+        className="absolute inset-0 w-full h-full object-cover z-0 pointer-events-none"
+      />
 
-      {/* Top Header / Badge */}
+      {/* Live Subtle Animations Overlay (Scanlines, Pulsing Lens Glow & Floating Particles) */}
+      <SubtleSplashAnimations />
+
+      {/* Bottom Section: Continue Button - Narrow Width & Placed Higher Up */}
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-        className="relative z-10 pt-6 flex flex-col items-center"
-      >
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/20 backdrop-blur-md rounded-xl text-emerald-200 text-xs font-bold border border-emerald-400/30 shadow-lg">
-          <Sparkles className="w-4 h-4 text-emerald-300 animate-pulse" />
-          <span className="tracking-wider uppercase">Welcome to Ankurah Exams</span>
-        </div>
-      </motion.div>
-
-      {/* Center Section: Big Logo with Multi-Layer Glow & Illuminated Badge */}
-      <div className="relative z-10 flex flex-col items-center justify-center my-auto w-full max-w-sm px-4">
-        {/* Multi-layered animated glow behind logo */}
-        <div className="absolute w-80 h-80 bg-gradient-to-r from-emerald-400/40 via-teal-300/50 to-emerald-400/40 rounded-full blur-3xl animate-pulse pointer-events-none"></div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.85, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.9, type: 'spring', stiffness: 120 }}
-          className="relative z-10 flex flex-col items-center text-center"
-        >
-          {/* Elevated Light Card Plate for Logo */}
-          <div className="bg-white/95 px-8 py-4.5 rounded-2xl shadow-[0_20px_45px_rgba(0,0,0,0.6)] border-2 border-emerald-400/50 backdrop-blur-md">
-            <img
-              src={logo}
-              alt="Ankurah Exams Logo"
-              className="w-56 sm:w-64 max-w-full object-contain drop-shadow-md"
-              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Bottom Section: Continue Button ONLY (rounded-xl, NOT rounded-full) */}
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 20, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
-        className="relative z-10 w-full max-w-xs pb-6 flex flex-col items-center"
+        className="relative z-10 w-full max-w-[180px] pb-20 sm:pb-24 flex flex-col items-center"
       >
-        <button
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => navigate('/login')}
-          className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-extrabold text-base py-4 px-8 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.4)] flex items-center justify-center gap-3 tracking-wider uppercase transition-all duration-300 active:scale-95 group cursor-pointer"
+          className="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.6)] shadow-emerald-950/50 flex items-center justify-center gap-2 tracking-wider uppercase transition-all duration-300 group cursor-pointer border border-white/60"
         >
           <span>Continue</span>
-          <ArrowRight className="w-5 h-5 text-emerald-700 group-hover:translate-x-1 transition-transform" />
-        </button>
+          <ArrowRight className="w-3.5 h-3.5 text-emerald-700 group-hover:translate-x-1 transition-transform animate-pulse" />
+        </motion.button>
       </motion.div>
     </div>
   );

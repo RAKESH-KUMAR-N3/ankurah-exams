@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { User, EntranceExam, CompetitiveExam } from '../../types';
 import { Settings, Save, CheckCircle2, User as UserIcon, BookOpen, Sparkles } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { getApiUrl } from '../../lib/api';
+
+const API_URL = getApiUrl();
 const getToken = () => localStorage.getItem('token');
 const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` });
 
