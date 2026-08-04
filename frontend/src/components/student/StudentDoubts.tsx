@@ -85,7 +85,11 @@ export default function StudentDoubts({
     }
 
     try {
-      await raiseDoubt({ content: fullContent, questionId: 'general' });
+      const payload: any = { content: fullContent };
+      if (testObj && (testObj as any)._id) payload.testId = (testObj as any)._id;
+      if (attemptObj && (attemptObj as any)._id) payload.testAttemptId = (attemptObj as any)._id;
+
+      await raiseDoubt(payload);
       setNewDoubt('');
       setSelectedSubjectId('');
       setSelectedChapterId('');

@@ -3,6 +3,7 @@ import asyncHandler from 'express-async-handler';
 import ApEntranceQuestion from '../models/ApEntranceQuestion';
 import TgEntranceQuestion from '../models/TgEntranceQuestion';
 import CompetitiveQuestionBySubject from '../models/CompetitiveQuestionBySubject';
+import Question from '../models/Question';
 import Subject from '../models/Subject';
 import CompetitiveSubject from '../models/CompetitiveSubject';
 import Chapter from '../models/Chapter';
@@ -67,7 +68,7 @@ export const createQuestion = asyncHandler(async (req: Request, res: Response) =
   res.status(201).json(createdQuestion);
 });
 
-// @desc    Get all Questions (queries 'apentrancequestions', 'tgentrancequestions', and 'competitivequestionsbysubjects')
+// @desc    Get all Questions (queries 'apentrancequestions', 'tgentrancequestions', 'competitivequestionsbysubjects', and 'questions')
 // @route   GET /api/questions
 // @access  Admin
 export const getQuestions = asyncHandler(async (req: Request, res: Response) => {
@@ -78,10 +79,12 @@ export const getQuestions = asyncHandler(async (req: Request, res: Response) => 
 
   const apRaw = await ApEntranceQuestion.find(filter).sort({ createdAt: -1 }).lean();
   const tgRaw = await TgEntranceQuestion.find(filter).sort({ createdAt: -1 }).lean();
+  const genRaw = await Question.find(filter).sort({ createdAt: -1 }).lean();
 
   const compFilter: any = {};
   if (req.query.subjectId) compFilter.subjectId = req.query.subjectId;
   if (req.query.difficulty) compFilter.difficulty = req.query.difficulty;
+  if (req.query.chapterId) compFilter.chapterId = req.query.chapterId;
   const compRaw = await CompetitiveQuestionBySubject.find(compFilter).sort({ createdAt: -1 }).lean();
 
   const apEnriched = await Promise.all(
@@ -100,17 +103,29 @@ export const getQuestions = asyncHandler(async (req: Request, res: Response) => 
     })
   );
 
-  const compEnriched = await Promise.all(
-    compRaw.map(async (q: any) => {
-      const sub = await CompetitiveSubject.findById(q.subjectId).lean();
-      return { ...q, subjectId: sub || { _id: q.subjectId, name: 'Subject' }, isCompetitive: true };
+  const genEnriched = await Promise.all(
+    genRaw.map(async (q: any) => {
+      let sub = await Subject.findById(q.subjectId).lean();
+      if (!sub) {
+        sub = (await CompetitiveSubject.findById(q.subjectId).lean()) as any;
+      }
+      const chap = q.chapterId ? await Chapter.findById(q.chapterId).lean() : null;
+      return { ...q, subjectId: sub || { _id: q.subjectId, name: 'Subject' }, chapterId: chap || undefined };
     })
   );
 
-  res.json([...apEnriched, ...tgEnriched, ...compEnriched]);
+  const compEnriched = await Promise.all(
+    compRaw.map(async (q: any) => {
+      const sub = await CompetitiveSubject.findById(q.subjectId).lean();
+      const chap = q.chapterId ? await Chapter.findById(q.chapterId).lean() : null;
+      return { ...q, subjectId: sub || { _id: q.subjectId, name: 'Subject' }, chapterId: chap || undefined, isCompetitive: true };
+    })
+  );
+
+  res.json([...apEnriched, ...tgEnriched, ...genEnriched, ...compEnriched]);
 });
 
-// @desc    Update a Question (checks all 3 collections)
+// @desc    Update a Question (checks all collections)
 // @route   PUT /api/questions/:id
 // @access  Admin
 export const updateQuestion = asyncHandler(async (req: Request, res: Response) => {
@@ -120,6 +135,21 @@ export const updateQuestion = asyncHandler(async (req: Request, res: Response) =
   if (difficulty) {
     const rawDiff = difficulty.toString().toLowerCase();
     cleanDifficulty = rawDiff.charAt(0).toUpperCase() + rawDiff.slice(1);
+  }
+
+  let genQ = await Question.findById(req.params.id);
+  if (genQ) {
+    if (subjectId !== undefined) genQ.subjectId = subjectId;
+    if (chapterId !== undefined) genQ.chapterId = (chapterId && mongoose.isValidObjectId(chapterId)) ? chapterId : undefined;
+    if (content !== undefined) genQ.content = content.trim();
+    if (options !== undefined) genQ.options = Array.isArray(options) ? options.map((o: string) => o.trim()) : options;
+    if (correctAnswer !== undefined) genQ.correctAnswer = correctAnswer.trim();
+    if (explanation !== undefined) genQ.explanation = explanation.trim();
+    if (cleanDifficulty !== undefined) genQ.difficulty = cleanDifficulty as any;
+
+    const updated = await genQ.save();
+    res.json(updated);
+    return;
   }
 
   let apQ = await ApEntranceQuestion.findById(req.params.id);
@@ -170,10 +200,17 @@ export const updateQuestion = asyncHandler(async (req: Request, res: Response) =
   throw new Error('Question not found');
 });
 
-// @desc    Delete a Question (checks all 3 collections)
+// @desc    Delete a Question (checks all collections)
 // @route   DELETE /api/questions/:id
 // @access  Admin
 export const deleteQuestion = asyncHandler(async (req: Request, res: Response) => {
+  let genQ = await Question.findById(req.params.id);
+  if (genQ) {
+    await Question.deleteOne({ _id: genQ._id });
+    res.json({ message: 'Question removed' });
+    return;
+  }
+
   let apQ = await ApEntranceQuestion.findById(req.params.id);
   if (apQ) {
     await ApEntranceQuestion.deleteOne({ _id: apQ._id });

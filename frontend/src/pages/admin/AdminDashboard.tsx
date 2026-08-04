@@ -8,6 +8,7 @@ import TestConfiguratorTab from '../../components/admin/tabs/TestConfiguratorTab
 import QuestionBankTab from '../../components/admin/tabs/QuestionBankTab';
 import TimetableTab from '../../components/admin/tabs/TimetableTab';
 import AnnouncementsTab from '../../components/admin/tabs/AnnouncementsTab';
+import DoubtsTab from '../../components/admin/tabs/DoubtsTab';
 
 interface AdminManagementProps {
   onRefresh: () => void;
@@ -30,6 +31,7 @@ export default function AdminManagement({ activeTab, onNavigate }: AdminManageme
         {activeTab === 'questions' && <QuestionBankTab />}
         {activeTab === 'timetables' && <TimetableTab />}
         {activeTab === 'announcements' && <AnnouncementsTab />}
+        {activeTab === 'doubts' && <DoubtsTab />}
       </div>
     </div>
   );

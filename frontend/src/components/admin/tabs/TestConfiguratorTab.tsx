@@ -48,6 +48,7 @@ export default function TestConfiguratorTab() {
   const onRefresh = refreshAdminData;
 
   const [testCategoryTab, setTestCategoryTab] = useState<'all' | 'entrance' | 'competitive'>('all');
+  const [formCategory, setFormCategory] = useState<'entrance' | 'competitive'>('entrance');
   const [editingTestId, setEditingTestId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +70,26 @@ export default function TestConfiguratorTab() {
   const [loadingCounts, setLoadingCounts] = useState<{ [subId: string]: boolean }>({});
 
   const allExams = [...(entranceExams || []), ...(competitiveExams || [])];
+
+  const availableFormCourses = React.useMemo(() => {
+    if (formCategory === 'competitive') {
+      return competitiveExams || [];
+    }
+    return entranceExams || [];
+  }, [formCategory, entranceExams, competitiveExams]);
+
+  const handleFormCategoryChange = (cat: 'entrance' | 'competitive') => {
+    setFormCategory(cat);
+    setForm(prev => ({
+      ...prev,
+      examIds: [],
+      studentTypeIds: [],
+      subjectId: '',
+      chapterId: ''
+    }));
+    setSelectedSubjectChapters({});
+    setExpandedSubjects([]);
+  };
 
   // Helper for competitive subject identification
   const competitiveExamIds = (competitiveExams || []).map((e: any) => e.id || e._id);
@@ -107,14 +128,18 @@ export default function TestConfiguratorTab() {
     const relatedPlans = (allPlans || []).filter((p: any) => (p.examId?._id || p.examId)?.toString() === examIdStr);
     const relatedPlanIds = relatedPlans.map((p: any) => (p._id || p.id).toString());
 
-    // 3. Match subjects
-    const matched = tabSubjects.filter(s => {
+    // 3. Match subjects from all subjects list
+    const matched = subjects.filter(s => {
       const sId = (s.id || (s as any)._id).toString();
       if (explicitSubjectIds.has(sId)) return true;
 
       const sExamIds = (s.examIds || []).map((id: any) => (id?._id || id?.id || id).toString());
       if (sExamIds.includes(examIdStr) || (s as any).examId?.toString() === examIdStr) return true;
       if (sExamIds.some((id: string) => relatedPlanIds.includes(id)) || relatedPlanIds.includes((s as any).examId?.toString())) return true;
+
+      // Category match fallback
+      if (formCategory === 'competitive' && isCompSubject(s)) return true;
+      if (formCategory === 'entrance' && !isCompSubject(s)) return true;
 
       // Name keyword fallback
       const examNameLower = (selectedExam.name || '').toLowerCase();
@@ -127,7 +152,7 @@ export default function TestConfiguratorTab() {
     });
 
     return matched;
-  }, [selectedExam, tabSubjects, allPlans]);
+  }, [selectedExam, subjects, allPlans, formCategory]);
 
   const tabSubjectIds = (tabSubjects || []).map((s: any) => (s.id || s._id).toString());
 
@@ -283,8 +308,8 @@ export default function TestConfiguratorTab() {
     // Auto expand all subjects for the chosen exam
     setTimeout(() => {
       const matchSubs = (exObj && Array.isArray(exObj.subjects) && exObj.subjects.length > 0)
-        ? tabSubjects.filter(s => exObj.subjects.some((sub: any) => (sub?._id || sub?.id || sub).toString() === (s.id || (s as any)._id).toString()))
-        : tabSubjects;
+        ? subjects.filter(s => exObj.subjects.some((sub: any) => (sub?._id || sub?.id || sub).toString() === (s.id || (s as any)._id).toString()))
+        : subjects.filter(s => formCategory === 'competitive' ? isCompSubject(s) : !isCompSubject(s));
       setExpandedSubjects(matchSubs.map(s => (s.id || (s as any)._id).toString()));
     }, 50);
   };
@@ -301,6 +326,7 @@ export default function TestConfiguratorTab() {
       : [];
     const isComp = competitiveExamIds.some((id: string) => tExams.includes(id));
     setTestCategoryTab(isComp ? 'competitive' : 'entrance');
+    setFormCategory(isComp ? 'competitive' : 'entrance');
 
     const studentTypeIds = Array.isArray((t as any).studentTypeIds)
       ? (t as any).studentTypeIds.map((s: any) => (s?._id || s?.id || s).toString())
@@ -626,6 +652,7 @@ export default function TestConfiguratorTab() {
             type="button"
             onClick={() => {
               handleCancelEdit();
+              setFormCategory(testCategoryTab === 'competitive' ? 'competitive' : 'entrance');
               setShowCreateModal(true);
             }}
             className={`px-4 py-2 font-black uppercase tracking-wider text-xs rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 transition-all shrink-0 w-full sm:w-auto ${
@@ -912,15 +939,51 @@ export default function TestConfiguratorTab() {
               <div className="lg:col-span-5 space-y-4 overflow-y-auto max-h-[calc(100vh-140px)] pr-2 no-scrollbar">
                 
                 {/* Target Course Selector */}
-                <div className={`p-4 rounded-xl border space-y-2 shadow-xs ${
+                <div className={`p-4 rounded-xl border space-y-3 shadow-xs ${
                   isEnterprise ? 'bg-white border-gray-200' : 'bg-slate-900/90 border-slate-800'
                 }`}>
                   <label className={`block text-xs font-mono font-black uppercase tracking-widest ${
                     isEnterprise ? 'text-[#166534] font-heading' : 'text-emerald-400'
                   }`}>
-                    1. SELECT TARGET COURSE / EXAM PLAN *
+                    1. SELECT CATEGORY & TARGET COURSE *
                   </label>
-                  {allExams && allExams.length > 0 ? (
+
+                  {/* Category Selection Switch */}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleFormCategoryChange('entrance')}
+                      className={`flex-1 py-2 px-3 rounded-xl border text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        formCategory === 'entrance'
+                          ? isEnterprise
+                            ? 'bg-[#166534] text-white border-[#166534] shadow-sm font-extrabold'
+                            : 'bg-emerald-500 text-black border-emerald-400 shadow-md font-extrabold'
+                          : isEnterprise
+                            ? 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      }`}
+                    >
+                      🎓 ENTRANCE ({entranceExams?.length || 0})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleFormCategoryChange('competitive')}
+                      className={`flex-1 py-2 px-3 rounded-xl border text-xs font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        formCategory === 'competitive'
+                          ? isEnterprise
+                            ? 'bg-cyan-700 text-white border-cyan-700 shadow-sm font-extrabold'
+                            : 'bg-cyan-500 text-black border-cyan-400 shadow-md font-extrabold'
+                          : isEnterprise
+                            ? 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                            : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                      }`}
+                    >
+                      🏆 COMPETITIVE ({competitiveExams?.length || 0})
+                    </button>
+                  </div>
+
+                  {/* Course Dropdown */}
+                  {availableFormCourses && availableFormCourses.length > 0 ? (
                     <select
                       value={form.examIds.length > 0 ? form.examIds[0] : ''}
                       onChange={(e) => handleExamChange(e.target.value)}
@@ -931,18 +994,20 @@ export default function TestConfiguratorTab() {
                       }`}
                       required
                     >
-                      <option value="">-- Select Target Course / Exam Plan * --</option>
-                      {allExams.map((ex: any) => {
+                      <option value="">-- Select {formCategory === 'competitive' ? 'Competitive' : 'Entrance'} Course / Plan * --</option>
+                      {availableFormCourses.map((ex: any) => {
                         const exId = (ex.id || ex._id).toString();
                         return (
                           <option key={exId} value={exId}>
-                            🎓 {ex.name}
+                            {formCategory === 'competitive' ? '🏆' : '🎓'} {ex.name}
                           </option>
                         );
                       })}
                     </select>
                   ) : (
-                    <p className={`text-xs font-bold ${isEnterprise ? 'text-gray-500' : 'text-slate-400'}`}>No active courses/plans found.</p>
+                    <p className={`text-xs font-bold ${isEnterprise ? 'text-gray-500' : 'text-slate-400'}`}>
+                      No active {formCategory} courses/plans found.
+                    </p>
                   )}
                 </div>
 

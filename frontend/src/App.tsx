@@ -114,15 +114,28 @@ const mapTest = (t: any): Test => ({
 
 // Map backend Timetable to frontend Timetable
 const mapTimetable = (t: any): Timetable => ({
-  id: t._id,
-  examId: t.examId?._id || t.examId || '',
-  studentType: t.studentTypeId || '',
-  studyPlan: 'yearly',
-  subjectId: t.subjectId?._id || t.subjectId || '',
-  chapterId: t.chapterId?._id || t.chapterId || '',
+  id: t._id || t.id,
+  _id: t._id || t.id,
+  courseId: t.courseId || (typeof t.examId === 'object' ? t.examId?._id || t.examId?.id : t.examId) || t.planId || '',
+  courseName: t.courseName || '',
+  weekTitle: t.weekTitle || `Week ${t.weekNumber || 1}`,
+  weekNumber: Number(t.weekNumber) || 1,
+  startDate: t.startDate || (t.date ? new Date(t.date).toISOString().split('T')[0] : ''),
+  endDate: t.endDate || (t.date ? new Date(t.date).toISOString().split('T')[0] : ''),
+  weeklyChapters: Array.isArray(t.weeklyChapters) ? t.weeklyChapters : [],
+  weekendExamId: t.weekendExamId || '',
+  weekendExamTitle: t.weekendExamTitle || '',
+  status: t.status || 'published',
+
+  planId: t.planId || (typeof t.examId === 'object' ? t.examId?._id || t.examId?.id : t.examId),
+  examId: typeof t.examId === 'object' ? t.examId?._id || t.examId?.id : t.examId,
+  studentType: t.studentType || (typeof t.studentTypeId === 'object' ? t.studentTypeId?._id || t.studentTypeId?.id : t.studentTypeId),
+  studyPlan: t.studyPlan || 'yearly',
+  subjectId: typeof t.subjectId === 'object' ? t.subjectId?._id || t.subjectId?.id : t.subjectId,
+  chapterId: typeof t.chapterId === 'object' ? t.chapterId?._id || t.chapterId?.id : t.chapterId,
   date: t.date ? new Date(t.date).toISOString().split('T')[0] : '',
-  title: t.studyTopic,
-  studyTopic: t.studyTopic,
+  title: t.studyTopic || t.title || '',
+  studyTopic: t.studyTopic || t.title || '',
   practiceMCQsCount: parseInt(t.practiceMCQs || '0', 10) || 0,
   revisionTopic: t.revision || '',
   assignment: t.assignment,
@@ -195,6 +208,7 @@ export default function App() {
     { id: 'admin_questions', label: 'Question Bank', icon: Database, color: 'text-emerald-300' },
     { id: 'admin_tests', label: 'Create Tests', icon: FileText, color: 'text-emerald-300' },
     { id: 'admin_timetables', label: 'Timetable', icon: Calendar, color: 'text-emerald-300' },
+    { id: 'admin_doubts', label: 'Student Doubts', icon: HelpCircle, color: 'text-emerald-300' },
   ], []);
 
   const [adminMenu, setAdminMenu] = useState(() => {
@@ -533,6 +547,7 @@ export default function App() {
       case 'admin_questions':
       case 'admin_timetables':
       case 'admin_tests':
+      case 'admin_doubts':
         if (currentUser.role !== 'admin') {
           return <div className="text-red-600 font-bold">Unauthorized. Access Restricted to Admin.</div>;
         }

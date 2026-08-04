@@ -68,8 +68,21 @@ export default function SyllabusSection({ user, subjects, chapters, tests }: Syl
     }
   };
 
-  const getChaptersForSubject = (subjectId: string) => chapters.filter(c => c.subjectId === subjectId);
-  const getTestsForChapter = (chapterId: string) => tests.filter(t => t.chapterId === chapterId);
+  const getChaptersForSubject = (subjectId: string) => {
+    if (!subjectId) return [];
+    return chapters.filter(c => {
+      const chSubId = typeof c.subjectId === 'object' ? (c.subjectId as any)?._id || (c.subjectId as any)?.id : c.subjectId;
+      return String(chSubId || '') === String(subjectId || '');
+    });
+  };
+
+  const getTestsForChapter = (chapterId: string) => {
+    if (!chapterId) return [];
+    return tests.filter(t => {
+      const tChapId = typeof t.chapterId === 'object' ? (t.chapterId as any)?._id || (t.chapterId as any)?.id : t.chapterId;
+      return String(tChapId || '') === String(chapterId || '');
+    });
+  };
 
   // Subject aesthetic themes helper
   const getSubjectTheme = (name: string, index: number) => {
@@ -132,10 +145,10 @@ export default function SyllabusSection({ user, subjects, chapters, tests }: Syl
     return fallbacks[index % fallbacks.length];
   };
 
-  const selectedSubject = subjects.find(s => s.id === selectedSubjectId);
+  const selectedSubject = subjects.find(s => String(s.id || (s as any)._id) === String(selectedSubjectId));
   const selectedSubjectChapters = selectedSubjectId ? getChaptersForSubject(selectedSubjectId) : [];
-  const selectedChapter = chapters.find(c => c.id === selectedChapterId);
-  const selectedChapterIndex = selectedSubjectChapters.findIndex(c => c.id === selectedChapterId);
+  const selectedChapter = chapters.find(c => String(c.id || (c as any)._id) === String(selectedChapterId));
+  const selectedChapterIndex = selectedSubjectChapters.findIndex(c => String(c.id || (c as any)._id) === String(selectedChapterId));
 
   return (
     <div className="space-y-6 font-sans pb-10">
@@ -178,21 +191,23 @@ export default function SyllabusSection({ user, subjects, chapters, tests }: Syl
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 {subjects.map((subject, idx) => {
+                  const subId = (subject.id || (subject as any)._id || '').toString();
                   const theme = getSubjectTheme(subject.name, idx);
                   const IconComp = theme.icon;
-                  const chapterList = getChaptersForSubject(subject.id);
+                  const chapterList = getChaptersForSubject(subId);
                   let totalTestsCount = 0;
                   chapterList.forEach(c => {
-                    totalTestsCount += getTestsForChapter(c.id).length;
+                    const cId = (c.id || (c as any)._id || '').toString();
+                    totalTestsCount += getTestsForChapter(cId).length;
                   });
 
                   return (
                     <motion.div
-                      key={subject.id}
+                      key={subId}
                       whileHover={{ y: -6, scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => {
-                        setSelectedSubjectId(subject.id);
+                        setSelectedSubjectId(subId);
                         setSelectedChapterId(null);
                         window.scrollTo(0, 0);
                         const mainEl = document.querySelector('main');

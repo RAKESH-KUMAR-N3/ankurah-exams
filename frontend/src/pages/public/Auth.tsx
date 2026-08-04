@@ -165,10 +165,10 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
   const iconClasses = "absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors duration-200";
 
   return (
-    <div className="min-h-screen md:h-screen relative flex flex-col justify-center items-center p-4 sm:p-6 md:p-6 md:overflow-hidden font-sans selection:bg-emerald-500/30 text-white bg-gradient-to-b from-emerald-950 via-slate-950 to-emerald-950">
+    <div className="min-h-screen relative flex flex-col justify-center items-center p-4 sm:p-6 md:p-6 font-sans selection:bg-emerald-500/30 text-white bg-gradient-to-b from-emerald-950 via-slate-950 to-emerald-950">
       <AnimatedBackground />
 
-      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col justify-between md:justify-center min-h-[85vh] md:min-h-0 py-2 md:py-0 md:gap-3">
+      <div className="relative z-10 w-full max-w-md mx-auto flex flex-col justify-center min-h-[85vh] md:min-h-0 py-4 md:py-6 gap-3">
 
         {/* Top Branding Section with HIGHLY ELEVATED LOGO BADGE */}
         <div className="flex flex-col items-center pt-1 md:pt-0 pb-3 md:pb-1">
@@ -337,12 +337,12 @@ export default function Auth({ onAuthSuccess, initialMode = 'login' }: AuthProps
               {view === 'register' ? (
                 <>
                   Already have an account?{' '}
-                  <button type="button" onClick={() => switchMode('login')} className="text-white font-black hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-4 ml-1">Sign In</button>
+                  <button type="button" onClick={() => switchMode('login')} className="text-emerald-400 font-black hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-4 ml-1 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]">Sign In</button>
                 </>
               ) : view === 'login' ? (
                 <>
                   Don't have an account?{' '}
-                  <button type="button" onClick={() => switchMode('register')} className="text-white font-black hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-4 ml-1">Register Free</button>
+                  <button type="button" onClick={() => switchMode('register')} className="text-emerald-400 font-black hover:text-emerald-300 transition-colors cursor-pointer underline underline-offset-4 ml-1 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]">Register Free</button>
                 </>
               ) : (
                 <button type="button" onClick={() => switchMode('login')} className="text-emerald-200 font-bold hover:text-white transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer">

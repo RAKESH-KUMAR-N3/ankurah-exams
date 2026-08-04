@@ -9,16 +9,18 @@ export const askDoubt = async (req: Request, res: Response): Promise<void> => {
     const { testId, testAttemptId, questionId, content } = req.body;
     const studentId = (req as any).user._id || (req as any).user.id;
 
-    if (!questionId || !content) {
-      res.status(400).json({ message: 'questionId and content are required' });
+    if (!content || !content.trim()) {
+      res.status(400).json({ message: 'content is required' });
       return;
     }
 
+    const isValidObjectId = (id: any) => id && typeof id === 'string' && id.match(/^[0-9a-fA-F]{24}$/);
+
     const newDoubt = new Doubt({
       studentId,
-      testId,
-      testAttemptId,
-      questionId,
+      testId: isValidObjectId(testId) ? testId : null,
+      testAttemptId: isValidObjectId(testAttemptId) ? testAttemptId : null,
+      questionId: isValidObjectId(questionId) ? questionId : null,
       content,
     });
 

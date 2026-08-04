@@ -126,7 +126,7 @@ export const fetchAttemptDetails = (attemptId: string) =>
 export const fetchLeaderboard = () => apiGet('/api/test-attempts/leaderboard');
 
 // ─── Doubts ───────────────────────────────────────────────────────────────────
-export const raiseDoubt = (payload: { testId?: string; testAttemptId?: string; questionId: string; content: string }) =>
+export const raiseDoubt = (payload: { testId?: string; testAttemptId?: string; questionId?: string; content: string }) =>
   apiPost('/api/doubts', payload);
 
 export const fetchMyDoubts = () => apiGet('/api/doubts/my');

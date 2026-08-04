@@ -8,6 +8,7 @@ import ApEntranceQuestion from '../models/ApEntranceQuestion';
 import TgEntranceQuestion from '../models/TgEntranceQuestion';
 import CompetitiveQuestionBySubject from '../models/CompetitiveQuestionBySubject';
 import Subject from '../models/Subject';
+import CompetitiveSubject from '../models/CompetitiveSubject';
 import { evaluateTestAttempt } from '../services/testEvaluationService';
 
 const normalizeFilter = (query: any) => {
@@ -40,12 +41,13 @@ const normalizeFilter = (query: any) => {
 
 const fetchRandomQs = async (query: any, size: number) => {
   const normalized = normalizeFilter(query);
-  const [ap, tg, comp] = await Promise.all([
+  const [ap, tg, comp, gen] = await Promise.all([
     ApEntranceQuestion.aggregate([{ $match: normalized }, { $sample: { size } }]),
     TgEntranceQuestion.aggregate([{ $match: normalized }, { $sample: { size } }]),
-    CompetitiveQuestionBySubject.aggregate([{ $match: normalized }, { $sample: { size } }])
+    CompetitiveQuestionBySubject.aggregate([{ $match: normalized }, { $sample: { size } }]),
+    Question.aggregate([{ $match: normalized }, { $sample: { size } }])
   ]);
-  return [...ap, ...tg, ...comp].sort(() => 0.5 - Math.random()).slice(0, size);
+  return [...ap, ...tg, ...comp, ...gen].sort(() => 0.5 - Math.random()).slice(0, size);
 };
 
 export const populateAttemptQuestions = async (attempt: any, selectFields: string) => {
@@ -71,7 +73,10 @@ export const populateAttemptQuestions = async (attempt: any, selectFields: strin
     .filter(id => id && mongoose.isValidObjectId(id));
   
   const subjects = subIds.length > 0
-    ? await Subject.find({ _id: { $in: subIds } }).select('name').lean()
+    ? await Promise.all([
+        Subject.find({ _id: { $in: subIds } }).select('name').lean(),
+        CompetitiveSubject.find({ _id: { $in: subIds } }).select('name').lean()
+      ]).then(([s1, s2]) => [...s1, ...s2])
     : [];
   const subMap = new Map(subjects.map((s: any) => [s._id.toString(), s]));
 

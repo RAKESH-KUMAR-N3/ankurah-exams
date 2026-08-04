@@ -2,8 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { User, Timetable, Subject, Chapter, Test } from '../../types';
 import { 
   Calendar, BookOpen, Clock, Award, ChevronDown, ChevronRight, 
-  Sparkles, CheckCircle2, Flame, Layers, ArrowRight, Shield, PlayCircle, History
+  Sparkles, CheckCircle2, Flame, Layers, ArrowRight, Shield, PlayCircle, History,
+  FileText, File, Image as ImageIcon, Paperclip, ExternalLink
 } from 'lucide-react';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 interface TimetableSectionProps {
   user: User;
@@ -56,8 +59,11 @@ export default function TimetableSection({
     return { currentWeek: active, previousWeeks: prev, upcomingWeeks: upcoming };
   }, [courseTimetables, todayStr]);
 
-  const toggleBacklogExpand = (id: string) => {
-    setExpandedBacklogs(prev => ({ ...prev, [id]: !prev[id] }));
+  // Track expanded weeks (timetableId -> boolean)
+  const [expandedWeeks, setExpandedWeeks] = useState<Record<string, boolean>>({});
+
+  const toggleWeekExpand = (id: string) => {
+    setExpandedWeeks(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   // Find linked test object for a timetable schedule
@@ -101,216 +107,187 @@ export default function TimetableSection({
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
-          
-          {/* ── 1. CURRENT ACTIVE WEEK SPOTLIGHT ── */}
-          {currentWeek && (
-            <div className="bg-slate-950 border-2 border-emerald-500/60 rounded-none shadow-2xl overflow-hidden relative">
-              <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-slate-950 p-4 border-b border-emerald-500/40 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 bg-emerald-500 text-black font-black text-xs uppercase tracking-wider rounded-none flex items-center gap-1.5 shadow-md">
-                    <Flame className="w-4 h-4 fill-black" /> CURRENT ACTIVE WEEK
-                  </span>
-                  <div>
-                    <h2 className="text-lg font-black text-white uppercase tracking-tight">
-                      {currentWeek.weekTitle || `Week ${currentWeek.weekNumber || 1}`}
-                    </h2>
-                    <span className="text-xs font-mono font-bold text-emerald-400">
-                      📅 {currentWeek.startDate} to {currentWeek.endDate}
-                    </span>
-                  </div>
-                </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <span className="text-xs font-mono font-black text-slate-400 uppercase tracking-widest">
+              Weekly Timetable Schedules ({courseTimetables.length})
+            </span>
+            <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase">
+              Click any week to view subject & chapter details
+            </span>
+          </div>
 
-                {currentWeek.courseName && (
-                  <span className="px-3 py-1 bg-slate-900 border border-slate-700 text-slate-300 font-mono font-bold text-xs rounded-none">
-                    {currentWeek.courseName}
-                  </span>
-                )}
-              </div>
+          {courseTimetables.map((t: Timetable) => {
+            const tId = t._id || t.id;
+            const isActive = currentWeek && (currentWeek._id || currentWeek.id) === tId;
+            // Active week default open unless toggled off
+            const isExpanded = expandedWeeks[tId] ?? isActive;
 
-              {/* Weekly Assigned Chapters Grid */}
-              <div className="p-5 space-y-4">
-                <h4 className="text-xs font-mono font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-emerald-400" /> WEEKLY SUBJECT STUDY CHAPTERS
-                </h4>
-
-                {Array.isArray(currentWeek.weeklyChapters) && currentWeek.weeklyChapters.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {currentWeek.weeklyChapters.map((wc, idx) => (
-                      <div key={idx} className="p-3.5 bg-slate-900 border border-slate-800 rounded-none space-y-1.5 hover:border-emerald-500/50 transition-colors">
-                        <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block">
-                          SUBJECT {idx + 1}
+            return (
+              <div 
+                key={tId}
+                className={`bg-slate-950 border transition-all rounded-none overflow-hidden ${
+                  isActive ? 'border-emerald-500/80 shadow-2xl ring-1 ring-emerald-500/50' : 'border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {/* Summary Header Bar */}
+                <div 
+                  onClick={() => toggleWeekExpand(tId)}
+                  className="p-4 bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer hover:bg-slate-800/80 transition-colors"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isActive && (
+                        <span className="px-2.5 py-0.5 bg-emerald-500 text-black font-black text-[10px] uppercase tracking-wider rounded-none flex items-center gap-1">
+                          <Flame className="w-3.5 h-3.5 fill-black" /> Current Active Week
                         </span>
-                        <h5 className="font-black text-white text-xs uppercase truncate">{wc.subjectName}</h5>
-                        <div className="pt-1.5 border-t border-slate-800">
-                          <span className="text-[9px] font-mono text-slate-400 block font-bold">ASSIGNED CHAPTER:</span>
-                          <p className="text-xs font-extrabold text-emerald-300 tracking-wide line-clamp-2">
-                            {wc.chapterName || 'General Chapter'}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400 text-xs italic">No subject chapters assigned for this week yet.</p>
-                )}
-
-                {/* SUNDAY WEEKEND EXAM BANNER */}
-                {currentWeek.weekendExamTitle ? (
-                  <div className="p-4 bg-amber-950/60 border border-amber-500/50 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-none bg-amber-500/20 border border-amber-400 text-amber-400 flex items-center justify-center shrink-0">
-                        <Award className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-wider block">
-                          SUNDAY WEEKEND EXAM
+                      )}
+                      <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-black uppercase rounded-none">
+                        {t.weekTitle || `Week ${t.weekNumber || 1}`}
+                      </span>
+                      {t.courseName && (
+                        <span className="px-2.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-mono font-black uppercase rounded-none">
+                          {t.courseName}
                         </span>
-                        <h4 className="text-sm font-black text-white uppercase">{currentWeek.weekendExamTitle}</h4>
-                        <p className="text-[11px] text-amber-200/80 font-bold">Cumulative exam covering all assigned chapters above.</p>
-                      </div>
+                      )}
+                      {t.weekendExamTitle && (
+                        <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-mono font-black uppercase flex items-center gap-1">
+                          <Award className="w-3 h-3" /> Weekend Exam
+                        </span>
+                      )}
                     </div>
 
+                    <div className="flex items-center gap-3 text-xs font-mono">
+                      <span className="font-bold text-slate-300">📅 {t.startDate} to {t.endDate}</span>
+                      <span className="text-slate-500">•</span>
+                      <span className="font-bold text-emerald-400">{t.weeklyChapters?.length || 0} Subjects Assigned</span>
+                    </div>
+
+                    {/* Quick Subject Summary Chips */}
+                    {Array.isArray(t.weeklyChapters) && t.weeklyChapters.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        {t.weeklyChapters.map((wc, idx) => (
+                          <span key={idx} className="px-2 py-0.5 bg-slate-950 border border-slate-800 text-[10px] font-bold text-slate-300 rounded-none">
+                            <span className="text-emerald-400">{wc.subjectName}:</span> {wc.chapterName || 'General'}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
                     <button
-                      onClick={() => {
-                        const linkedTest = getTimetableTest(currentWeek);
-                        if (linkedTest && onAttemptTest) {
-                          onAttemptTest(linkedTest);
-                        } else {
-                          alert(`Weekend Exam: ${currentWeek.weekendExamTitle}. Go to Exams & Mocks tab to attempt.`);
-                        }
-                      }}
-                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-400 shrink-0 shadow-lg active:scale-95"
+                      type="button"
+                      className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-mono font-black uppercase tracking-wider rounded-none flex items-center gap-1.5 transition-all"
                     >
-                      <PlayCircle className="w-4 h-4 stroke-[3]" /> Take Weekend Exam
+                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      {isExpanded ? 'Hide Details' : 'Open Study Roadmap'}
                     </button>
                   </div>
-                ) : (
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-none text-slate-400 text-xs font-mono font-bold flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-emerald-400" /> Study schedule active. Complete assigned chapters above before weekend.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── 2. PREVIOUS WEEKS & BACKLOGS (FOR LATE JOINERS) ── */}
-          {previousWeeks.length > 0 && (
-            <div className="bg-slate-950 border border-slate-800 rounded-none shadow-2xl p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-emerald-400" />
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                    Previous Weeks & Backlogs ({previousWeeks.length})
-                  </h3>
                 </div>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase">
-                  Late Joiner Access Allowed
-                </span>
-              </div>
 
-              <p className="text-slate-400 text-xs font-bold">
-                Joined late? You can access all previous weekly study roadmaps below and attempt past weekend exams anytime to complete your backlogs.
-              </p>
+                {/* Expanded Detailed View (Subject-wise, Chapter-wise, Topics & Attachments) */}
+                {isExpanded && (
+                  <div className="p-5 bg-slate-950 space-y-5 border-t border-slate-800">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                      <h4 className="text-xs font-mono font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                        <Layers className="w-4 h-4" /> WEEKLY SUBJECT STUDY CHAPTERS & TOPICS
+                      </h4>
+                    </div>
 
-              <div className="space-y-3">
-                {previousWeeks.map((pw: Timetable) => {
-                  const pwId = pw._id || pw.id;
-                  const isExpanded = expandedBacklogs[pwId] ?? false;
+                    {Array.isArray(t.weeklyChapters) && t.weeklyChapters.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {t.weeklyChapters.map((wc, idx) => (
+                          <div key={idx} className="p-4 bg-slate-900 border border-slate-800 rounded-none space-y-3 hover:border-emerald-500/50 transition-colors flex flex-col justify-between">
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                                  SUBJECT {idx + 1}
+                                </span>
+                                <span className="text-[10px] font-mono font-black text-white uppercase px-2 py-0.5 bg-slate-950 border border-slate-800">
+                                  {wc.subjectName}
+                                </span>
+                              </div>
 
-                  return (
-                    <div key={pwId} className="border border-slate-800 rounded-none bg-slate-900 overflow-hidden">
-                      <div 
-                        onClick={() => toggleBacklogExpand(pwId)}
-                        className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-slate-800/80 transition-colors"
-                      >
+                              <div>
+                                <span className="text-[9px] font-mono text-slate-400 block font-bold">ASSIGNED CHAPTER:</span>
+                                <p className="text-sm font-black text-white tracking-wide">
+                                  {wc.chapterName || 'General Chapter'}
+                                </p>
+                              </div>
+
+                              {wc.topicsText && (
+                                <div className="pt-2 border-t border-slate-800/80">
+                                  <span className="text-[9px] font-mono text-emerald-400 font-bold uppercase flex items-center gap-1 mb-1">
+                                    <FileText className="w-3.5 h-3.5" /> Preparation Topics / Notes:
+                                  </span>
+                                  <p className="text-xs text-slate-300 font-medium whitespace-pre-line leading-relaxed bg-slate-950 p-2.5 border border-slate-800">
+                                    {wc.topicsText}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {wc.attachmentUrl && (
+                              <div className="pt-2 border-t border-slate-800">
+                                <a
+                                  href={wc.attachmentUrl.startsWith('http') ? wc.attachmentUrl : `${API_URL}${wc.attachmentUrl}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="w-full py-2 bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/40 text-indigo-300 text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                                >
+                                  {wc.attachmentType === 'pdf' ? (
+                                    <File className="w-3.5 h-3.5 text-rose-400" />
+                                  ) : (
+                                    <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                                  )}
+                                  View Attached {wc.attachmentType === 'pdf' ? 'PDF Study Material' : 'Image Material'} <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 text-xs italic">No subject chapters assigned for this week yet.</p>
+                    )}
+
+                    {/* SUNDAY WEEKEND EXAM BANNER */}
+                    {t.weekendExamTitle && (
+                      <div className="p-4 bg-amber-950/60 border border-amber-500/50 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4">
                         <div className="flex items-center gap-3">
-                          {isExpanded ? <ChevronDown className="w-4 h-4 text-emerald-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                          <div className="w-10 h-10 rounded-none bg-amber-500/20 border border-amber-400 text-amber-400 flex items-center justify-center shrink-0">
+                            <Award className="w-6 h-6" />
+                          </div>
                           <div>
-                            <h4 className="text-xs font-black text-white uppercase">{pw.weekTitle || `Week ${pw.weekNumber || 1}`}</h4>
-                            <span className="text-[10px] font-mono text-slate-400 font-bold block">
-                              📅 {pw.startDate} to {pw.endDate}
+                            <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-wider block">
+                              SUNDAY WEEKEND EXAM
                             </span>
+                            <h4 className="text-sm font-black text-white uppercase">{t.weekendExamTitle}</h4>
+                            <p className="text-[11px] text-amber-200/80 font-bold">Cumulative exam covering all assigned chapters above.</p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          {pw.weekendExamTitle && (
-                            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-mono font-black uppercase">
-                              Exam Included
-                            </span>
-                          )}
-                          <span className="text-xs font-mono font-bold text-emerald-400">
-                            {isExpanded ? 'Hide Details' : 'View Backlog'}
-                          </span>
-                        </div>
+                        <button
+                          onClick={() => {
+                            const linkedTest = getTimetableTest(t);
+                            if (linkedTest && onAttemptTest) {
+                              onAttemptTest(linkedTest);
+                            } else {
+                              alert(`Weekend Exam: ${t.weekendExamTitle}. Go to Exams & Mocks tab to attempt.`);
+                            }
+                          }}
+                          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border border-amber-400 shrink-0 shadow-lg active:scale-95"
+                        >
+                          <PlayCircle className="w-4 h-4 stroke-[3]" /> Take Weekend Exam
+                        </button>
                       </div>
-
-                      {/* Expanded Backlog Content */}
-                      {isExpanded && (
-                        <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-3">
-                          <span className="text-[10px] font-mono font-black text-slate-400 uppercase block">
-                            ASSIGNED CHAPTERS IN THIS WEEK:
-                          </span>
-                          {Array.isArray(pw.weeklyChapters) && pw.weeklyChapters.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {pw.weeklyChapters.map((wc, idx) => (
-                                <div key={idx} className="p-2.5 bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
-                                  <span className="font-black text-emerald-400 uppercase text-[11px]">{wc.subjectName}:</span>
-                                  <span className="font-bold text-white text-[11px] truncate max-w-[200px]">{wc.chapterName}</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-slate-400 italic">No chapters listed.</p>
-                          )}
-
-                          {pw.weekendExamTitle && (
-                            <div className="pt-2 flex items-center justify-between bg-slate-900 p-3 border border-amber-500/30">
-                              <span className="text-xs font-bold text-amber-300 uppercase">🏆 {pw.weekendExamTitle}</span>
-                              <button
-                                onClick={() => {
-                                  const linkedTest = getTimetableTest(pw);
-                                  if (linkedTest && onAttemptTest) {
-                                    onAttemptTest(linkedTest);
-                                  } else {
-                                    alert(`Past Exam: ${pw.weekendExamTitle}. Go to Exams & Mocks tab to attempt.`);
-                                  }
-                                }}
-                                className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black text-xs font-black uppercase tracking-wider cursor-pointer border border-amber-400"
-                              >
-                                Practice Past Test
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* ── 3. UPCOMING WEEKS PREVIEW ── */}
-          {upcomingWeeks.length > 0 && (
-            <div className="bg-slate-950 border border-slate-800 rounded-none p-5 space-y-3">
-              <h3 className="text-xs font-mono font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-400" /> UPCOMING WEEKS PREVIEW ({upcomingWeeks.length})
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {upcomingWeeks.map((uw: Timetable) => (
-                  <div key={uw._id || uw.id} className="p-3 bg-slate-900 border border-slate-800 opacity-70">
-                    <h4 className="text-xs font-black text-white uppercase">{uw.weekTitle || `Week ${uw.weekNumber || 1}`}</h4>
-                    <span className="text-[10px] font-mono text-slate-400 block font-bold">
-                      Starts: {uw.startDate}
-                    </span>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
-
+            );
+          })}
         </div>
       )}
     </div>

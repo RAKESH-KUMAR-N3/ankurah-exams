@@ -5,6 +5,9 @@ const weeklyChapterSchema = new mongoose.Schema({
   subjectName: { type: String, required: true },
   chapterId: { type: String, default: '' },
   chapterName: { type: String, default: '' },
+  topicsText: { type: String, default: '' },
+  attachmentUrl: { type: String, default: '' },
+  attachmentType: { type: String, enum: ['image', 'pdf', 'none'], default: 'none' },
 }, { _id: false });
 
 const timetableSchema = new mongoose.Schema(

@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Trash2, Calendar, BookOpen, Clock, CheckCircle2, AlertCircle, 
-  Sparkles, Layers, PlusCircle, Edit2, Shield, Eye, Award, Check, X, RefreshCw, ChevronRight, Filter
+  Sparkles, Layers, PlusCircle, Edit2, Shield, Eye, Award, Check, X, RefreshCw, ChevronRight, Filter,
+  FileText, Image as ImageIcon, Paperclip, File, Upload, Loader2
 } from 'lucide-react';
 import { Timetable, Subject, Chapter, Test } from '../../../types';
 import { useAdminContext } from '../../../context/AdminContext';
@@ -18,8 +19,15 @@ export default function TimetableTab() {
 
   // Deduplicate and extract unique real courses created by Admin - sorted Alphabetically A to Z
   const plansList = useMemo(() => {
-    const rawPlans = [...allPlans, ...entranceExams, ...competitiveExams];
-    const map = new Map<string, { id: string; name: string; subjects: any[]; examId?: string; allIds: string[] }>();
+    const rawPlans = [
+      ...entranceExams.map((e: any) => ({ ...e, category: 'entrance' })),
+      ...competitiveExams.map((e: any) => ({ ...e, category: 'competitive' })),
+      ...allPlans.map((p: any) => ({ 
+        ...p, 
+        category: p.type === 'competitive' || /sbi|po|clat|nda|bank|ssc|rrb|cat|upsc|gate|group|constable|si/i.test(p.name || '') ? 'competitive' : 'entrance' 
+      }))
+    ];
+    const map = new Map<string, { id: string; name: string; subjects: any[]; examId?: string; allIds: string[]; category: 'entrance' | 'competitive' }>();
     
     rawPlans.forEach((p: any) => {
       const cleanName = (p.name || '').replace(/\s*Plan\s*$/i, '').trim();
@@ -28,6 +36,7 @@ export default function TimetableTab() {
       const pId = String(p.id || p._id || '');
       const pExamId = p.examId ? String(typeof p.examId === 'object' ? p.examId._id || p.examId.id : p.examId) : '';
       const pSubs = Array.isArray(p.subjects) ? p.subjects : [];
+      const cat = p.category || 'entrance';
 
       if (!map.has(key)) {
         const idList = [pId];
@@ -37,7 +46,8 @@ export default function TimetableTab() {
           name: cleanName,
           subjects: pSubs,
           examId: pExamId,
-          allIds: idList
+          allIds: idList,
+          category: cat
         });
       } else {
         const existing = map.get(key)!;
@@ -60,9 +70,15 @@ export default function TimetableTab() {
 
   // Form State
   const [editingTimetableId, setEditingTimetableId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'entrance' | 'competitive'>('entrance');
   const [selectedCourseId, setSelectedCourseId] = useState<string>('');
   const [weekTitle, setWeekTitle] = useState<string>('Week 1');
   const [weekNumber, setWeekNumber] = useState<number>(1);
+
+  // Filter plans list by selected category
+  const filteredCategoryCourses = useMemo(() => {
+    return plansList.filter(p => p.category === selectedCategory);
+  }, [plansList, selectedCategory]);
 
   // Default Date range: Today to +6 days
   const todayStr = new Date().toISOString().split('T')[0];
@@ -72,6 +88,12 @@ export default function TimetableTab() {
 
   // Subject -> Assigned Chapter mapping (subjectId -> chapterId)
   const [assignedChapterMap, setAssignedChapterMap] = useState<Record<string, string>>({});
+  // Subject -> Preparation Topics mapping (subjectId -> string)
+  const [assignedTopicsMap, setAssignedTopicsMap] = useState<Record<string, string>>({});
+  // Subject -> Attachment mapping (subjectId -> { url: string, type: 'image' | 'pdf' | 'none' })
+  const [assignedAttachmentMap, setAssignedAttachmentMap] = useState<Record<string, { url: string; type: 'image' | 'pdf' | 'none' }>>({});
+  const [uploadingSubjectId, setUploadingSubjectId] = useState<string | null>(null);
+
   const [selectedWeekendExamId, setSelectedWeekendExamId] = useState<string>('');
 
   // Right-side History Filter
@@ -88,6 +110,39 @@ export default function TimetableTab() {
     setErrorMsg(msg);
     setSuccessMsg(null);
     setTimeout(() => setErrorMsg(null), 5000);
+  };
+
+  // Upload file for a specific subject
+  const handleFileUpload = async (subjectId: string, file: File) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    setUploadingSubjectId(subjectId);
+    try {
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+      const fileUrl = await res.text();
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const isPdf = ext === 'pdf';
+      const isImg = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+      const attachmentType: 'image' | 'pdf' | 'none' = isPdf ? 'pdf' : isImg ? 'image' : 'none';
+
+      setAssignedAttachmentMap(prev => ({
+        ...prev,
+        [subjectId]: { url: fileUrl, type: attachmentType }
+      }));
+      showSuccess(`File uploaded for subject successfully.`);
+    } catch (err: any) {
+      showError(err.message || 'Failed to upload file.');
+    } finally {
+      setUploadingSubjectId(null);
+    }
   };
 
   // Subjects belonging STRICTLY to the selected course as configured in Courses/Plans
@@ -142,10 +197,20 @@ export default function TimetableTab() {
     });
   };
 
+  const handleSelectCategory = (cat: 'entrance' | 'competitive') => {
+    setSelectedCategory(cat);
+    setSelectedCourseId('');
+    setAssignedChapterMap({});
+    setAssignedTopicsMap({});
+    setAssignedAttachmentMap({});
+  };
+
   const handleSelectCourse = (cId: string) => {
     setSelectedCourseId(cId);
     setEditingTimetableId(null);
     setAssignedChapterMap({});
+    setAssignedTopicsMap({});
+    setAssignedAttachmentMap({});
 
     // Auto calculate next week number for this course
     if (cId) {
@@ -159,34 +224,58 @@ export default function TimetableTab() {
   // Reset form
   const resetForm = () => {
     setEditingTimetableId(null);
+    setSelectedCategory('entrance');
     setSelectedCourseId('');
     setWeekTitle('Week 1');
     setWeekNumber(1);
     setStartDate(todayStr);
     setEndDate(defaultEndStr);
     setAssignedChapterMap({});
+    setAssignedTopicsMap({});
+    setAssignedAttachmentMap({});
     setSelectedWeekendExamId('');
+    setIsModalOpen(false);
   };
 
   // Edit an existing timetable schedule
   const handleEditTimetable = (t: Timetable) => {
+    const targetCId = t.courseId || t.planId || t.examId || '';
+    const matchedCourse = plansList.find(p => p.id === targetCId || (p.allIds && p.allIds.includes(targetCId)));
+    if (matchedCourse && matchedCourse.category) {
+      setSelectedCategory(matchedCourse.category);
+    }
+
     setEditingTimetableId(t._id || t.id);
-    setSelectedCourseId(t.courseId || t.planId || t.examId || '');
+    setSelectedCourseId(targetCId);
     setWeekTitle(t.weekTitle || `Week ${t.weekNumber || 1}`);
     setWeekNumber(t.weekNumber || 1);
     setStartDate(t.startDate || todayStr);
     setEndDate(t.endDate || defaultEndStr);
     setSelectedWeekendExamId(t.weekendExamId || '');
 
-    const map: Record<string, string> = {};
+    const cMap: Record<string, string> = {};
+    const tMap: Record<string, string> = {};
+    const aMap: Record<string, { url: string; type: 'image' | 'pdf' | 'none' }> = {};
+
     if (Array.isArray(t.weeklyChapters)) {
       t.weeklyChapters.forEach(wc => {
         if (wc.subjectId && wc.chapterId) {
-          map[wc.subjectId] = wc.chapterId;
+          cMap[wc.subjectId] = wc.chapterId;
+        }
+        if (wc.subjectId && wc.topicsText) {
+          tMap[wc.subjectId] = wc.topicsText;
+        }
+        if (wc.subjectId && wc.attachmentUrl) {
+          aMap[wc.subjectId] = {
+            url: wc.attachmentUrl,
+            type: wc.attachmentType || 'none'
+          };
         }
       });
     }
-    setAssignedChapterMap(map);
+    setAssignedChapterMap(cMap);
+    setAssignedTopicsMap(tMap);
+    setAssignedAttachmentMap(aMap);
   };
 
   // Save/Publish Timetable Schedule
@@ -208,11 +297,17 @@ export default function TimetableTab() {
         const subId = String(sub.id || sub._id);
         const chId = assignedChapterMap[subId] || '';
         const chapObj = chapters.find((c: any) => String(c.id || c._id) === chId);
+        const topicsText = assignedTopicsMap[subId] || '';
+        const attach = assignedAttachmentMap[subId] || { url: '', type: 'none' };
+
         return {
           subjectId: subId,
           subjectName: sub.name,
           chapterId: chId,
-          chapterName: chapObj ? (chapObj.name || (chapObj as any).title) : ''
+          chapterName: chapObj ? (chapObj.name || (chapObj as any).title) : '',
+          topicsText,
+          attachmentUrl: attach.url || '',
+          attachmentType: attach.type || 'none'
         };
       })
       .filter(wc => wc.chapterId && wc.chapterId.trim() !== '');
@@ -291,24 +386,51 @@ export default function TimetableTab() {
       .sort((a: any, b: any) => (a.weekNumber || 1) - (b.weekNumber || 1));
   }, [timetables, historyCourseFilter]);
 
+  // Modal & Expand State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  const toggleExpandCard = (id: string) => {
+    setExpandedCardId(prev => prev === id ? null : id);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (t: Timetable) => {
+    handleEditTimetable(t);
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="space-y-6 font-sans">
-      {/* ── HEADER TITLE ── */}
+      {/* ── HEADER TITLE & ACTIONS ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800">
         <div>
           <h2 className="text-xl font-black text-white tracking-tight uppercase flex items-center gap-2">
             <Calendar className="w-6 h-6 text-emerald-400" /> Academic Timetable Management
           </h2>
           <p className="text-slate-400 text-xs font-bold mt-1">
-            Create course-wise weekly study roadmaps & weekend exam schedules for students.
+            Create and manage course-wise weekly study roadmaps & weekend exam schedules.
           </p>
         </div>
-        <button
-          onClick={refreshAdminData}
-          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer rounded-none self-start md:self-auto"
-        >
-          <RefreshCw className="w-4 h-4 text-emerald-400" /> Refresh Data
-        </button>
+
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <button
+            onClick={openCreateModal}
+            className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer border border-emerald-400 shadow-lg active:scale-95"
+          >
+            <PlusCircle className="w-4 h-4 stroke-[3]" /> Add New Timetable
+          </button>
+          <button
+            onClick={refreshAdminData}
+            className="px-3.5 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer rounded-none"
+          >
+            <RefreshCw className="w-4 h-4 text-emerald-400" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── ALERTS ── */}
@@ -325,197 +447,24 @@ export default function TimetableTab() {
         </div>
       )}
 
-      {/* ── MAIN WORKSPACE GRID: CREATE FORM (LEFT) vs PUBLISHED HISTORY (RIGHT) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* ── LEFT PANEL: TIMETABLE FORM (7 COLS) ── */}
-        <div className="lg:col-span-7 bg-slate-950 border border-slate-800 rounded-none shadow-2xl p-5 space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-emerald-400" />
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                {editingTimetableId ? 'Edit Weekly Schedule' : 'Create Weekly Schedule'}
-              </h3>
-            </div>
-            {editingTimetableId && (
-              <button
-                onClick={resetForm}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-none text-[10px] font-black uppercase tracking-wider flex items-center gap-1 cursor-pointer"
-              >
-                <X className="w-3 h-3" /> Cancel Edit
-              </button>
-            )}
+      {/* ── FILTER & PUBLISHED TIMETABLES LIST VIEW ── */}
+      <div className="bg-slate-950 border border-slate-800 rounded-none shadow-2xl p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">
+              Published Weekly Timetables ({filteredTimetablesHistory.length})
+            </h3>
           </div>
 
-          <form onSubmit={handleSubmitTimetable} className="space-y-4">
-            
-            {/* 1. SELECT TARGET COURSE */}
-            <div>
-              <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1.5">
-                1. SELECT TARGET COURSE / PLAN <span className="text-rose-400">*</span>
-              </label>
-              <select
-                value={selectedCourseId}
-                onChange={(e) => handleSelectCourse(e.target.value)}
-                required
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-black text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
-              >
-                <option value="">-- Choose Target Course ({plansList.length} Courses) --</option>
-                {plansList.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 2. WEEK DETAILS & DATE RANGE */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
-                  WEEK TITLE
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Week 1"
-                  value={weekTitle}
-                  onChange={(e) => setWeekTitle(e.target.value)}
-                  required
-                  className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
-                  START DATE
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  required
-                  className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
-                  END DATE
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
-                  className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
-                />
-              </div>
-            </div>
-
-            {/* 3. ASSIGN CHAPTERS PER SUBJECT (DYNAMIC) */}
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <label className="text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5" /> 3. ASSIGN WEEKLY CHAPTERS FOR EACH SUBJECT
-                </label>
-                <span className="text-[10px] font-mono text-slate-400 font-bold">
-                  {courseSubjects.length} Subjects
-                </span>
-              </div>
-
-              {!selectedCourseId ? (
-                <div className="p-6 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs font-bold">
-                  👈 Select a Course above to assign its subjects & chapters.
-                </div>
-              ) : courseSubjects.length === 0 ? (
-                <div className="p-6 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs font-bold">
-                  No subjects found for this course. Please assign subjects to this course in Subjects & Chapters tab.
-                </div>
-              ) : (
-                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
-                  {courseSubjects.map((sub: any) => {
-                    const subId = String(sub.id || sub._id);
-                    const subChapters = getSubjectChaptersSorted(subId);
-                    const currentAssignedChap = assignedChapterMap[subId] || '';
-
-                    return (
-                      <div key={subId} className="p-2.5 bg-slate-900 border border-slate-800 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="min-w-0 sm:w-2/5">
-                          <span className="text-[9px] font-mono font-bold text-emerald-400 uppercase block">SUBJECT</span>
-                          <span className="text-xs font-black text-white truncate block uppercase">{sub.name}</span>
-                        </div>
-
-                        <div className="sm:w-3/5">
-                          <select
-                            value={currentAssignedChap}
-                            onChange={(e) => setAssignedChapterMap({ ...assignedChapterMap, [subId]: e.target.value })}
-                            className="w-full p-2 bg-slate-950 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
-                          >
-                            <option value="">-- Choose Chapter ({subChapters.length} Chapters) --</option>
-                            {subChapters.map((ch: any) => (
-                              <option key={ch.id || ch._id} value={ch.id || ch._id}>
-                                {ch.name || (ch as any).title}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* 4. LINK SUNDAY WEEKEND EXAM */}
-            <div className="pt-2">
-              <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-amber-400" /> 4. LINK SUNDAY WEEKEND EXAM (OPTIONAL)
-              </label>
-              <select
-                value={selectedWeekendExamId}
-                onChange={(e) => setSelectedWeekendExamId(e.target.value)}
-                className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-amber-400"
-              >
-                <option value="">-- No Exam Linked (Study Schedule Only) --</option>
-                {tests.map((t: any) => (
-                  <option key={t.id || t._id} value={t.id || t._id}>
-                    🏆 {t.title || t.name} ({t.testType || 'Exam'})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* SUBMIT BUTTON */}
-            <button
-              type="submit"
-              disabled={loading || !selectedCourseId}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black text-xs font-black uppercase tracking-wider shadow-lg transition-all border border-emerald-400 cursor-pointer flex items-center justify-center gap-2 mt-4"
-            >
-              <PlusCircle className="w-4 h-4 stroke-[3]" />
-              {editingTimetableId ? 'Update Weekly Schedule' : 'Publish Weekly Schedule'}
-            </button>
-
-          </form>
-        </div>
-
-        {/* ── RIGHT PANEL: PUBLISHED SCHEDULES HISTORY (5 COLS) ── */}
-        <div className="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-none shadow-2xl p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-emerald-400" />
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">
-                Published Schedules ({filteredTimetablesHistory.length})
-              </h3>
-            </div>
-          </div>
-
-          {/* Filter History by Course */}
-          <div>
-            <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
-              FILTER HISTORY BY COURSE
-            </label>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">
+              Filter Course:
+            </span>
             <select
               value={historyCourseFilter}
               onChange={(e) => setHistoryCourseFilter(e.target.value)}
-              className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
+              className="p-2 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400 min-w-[200px]"
             >
               <option value="all">All Published Courses ({timetables.length})</option>
               {plansList.map(p => (
@@ -523,84 +472,438 @@ export default function TimetableTab() {
               ))}
             </select>
           </div>
-
-          {/* History List */}
-          {filteredTimetablesHistory.length === 0 ? (
-            <div className="p-8 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs italic">
-              No published timetables found for the selected course filter.
-            </div>
-          ) : (
-            <div className="space-y-3.5 max-h-[500px] overflow-y-auto pr-1">
-              {filteredTimetablesHistory.map((t: Timetable) => {
-                const tId = t._id || t.id;
-                const isEditing = editingTimetableId === tId;
-
-                return (
-                  <div 
-                    key={tId} 
-                    className={`p-3.5 bg-slate-900 border transition-all ${
-                      isEditing ? 'border-emerald-400 ring-1 ring-emerald-400' : 'border-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-800">
-                      <div>
-                        <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[9px] font-mono font-black uppercase rounded-none inline-block mb-1">
-                          {t.weekTitle || `Week ${t.weekNumber || 1}`}
-                        </span>
-                        <h4 className="text-xs font-black text-white uppercase">{t.courseName || 'Course Timetable'}</h4>
-                        <span className="text-[10px] font-mono font-bold text-slate-400 block">
-                          📅 {t.startDate} to {t.endDate}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleEditTimetable(t)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-none cursor-pointer border border-slate-700"
-                          title="Edit Schedule"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTimetable(tId)}
-                          className="p-1.5 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-none cursor-pointer border border-slate-700"
-                          title="Delete Schedule"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Assigned Chapters List */}
-                    <div className="pt-2 space-y-1">
-                      <span className="text-[9px] font-mono font-black text-slate-400 uppercase block mb-1">ASSIGNED CHAPTERS:</span>
-                      {Array.isArray(t.weeklyChapters) && t.weeklyChapters.length > 0 ? (
-                        t.weeklyChapters.map((wc, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-[11px] bg-slate-950 px-2 py-1 border border-slate-800/80">
-                            <span className="font-bold text-emerald-400 uppercase text-[10px]">{wc.subjectName}:</span>
-                            <span className="font-bold text-white text-[10px] truncate max-w-[180px]">{wc.chapterName || 'General'}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-[10px] text-slate-400 italic">No chapter details specified.</p>
-                      )}
-                    </div>
-
-                    {/* Linked Weekend Exam */}
-                    {t.weekendExamTitle && (
-                      <div className="mt-2 p-1.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold flex items-center gap-1.5">
-                        <Award className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                        <span className="truncate">Weekend Exam: {t.weekendExamTitle}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
 
+        {/* Timetables Grid/List */}
+        {filteredTimetablesHistory.length === 0 ? (
+          <div className="p-12 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs font-bold space-y-3">
+            <Calendar className="w-10 h-10 text-slate-600 mx-auto" />
+            <p>No published timetables found for the selected course filter.</p>
+            <button
+              onClick={openCreateModal}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" /> Create First Timetable
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredTimetablesHistory.map((t: Timetable) => {
+              const tId = t._id || t.id;
+              const isExpanded = expandedCardId === tId;
+
+              return (
+                <div 
+                  key={tId} 
+                  className="bg-slate-900 border border-slate-800 rounded-none overflow-hidden hover:border-slate-700 transition-colors"
+                >
+                  {/* Summary Bar */}
+                  <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border-b border-slate-800">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-black uppercase rounded-none">
+                          {t.weekTitle || `Week ${t.weekNumber || 1}`}
+                        </span>
+                        {t.courseName && (
+                          <span className="px-2.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-mono font-black uppercase rounded-none">
+                            {t.courseName}
+                          </span>
+                        )}
+                        {t.weekendExamTitle && (
+                          <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[9px] font-mono font-black uppercase flex items-center gap-1">
+                            <Award className="w-3 h-3" /> Weekend Exam Included
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-mono font-bold text-slate-400 block pt-0.5">
+                        📅 Schedule Duration: {t.startDate} to {t.endDate} • {t.weeklyChapters?.length || 0} Assigned Subjects
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => toggleExpandCard(tId)}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 text-xs font-mono font-black uppercase tracking-wider rounded-none cursor-pointer border border-slate-700 flex items-center gap-1"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        {isExpanded ? 'Hide Details' : 'View Full Details'}
+                      </button>
+                      <button
+                        onClick={() => openEditModal(t)}
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-none cursor-pointer border border-slate-700"
+                        title="Edit Schedule"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTimetable(tId)}
+                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-rose-400 rounded-none cursor-pointer border border-slate-700"
+                        title="Delete Schedule"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Full Details View */}
+                  {isExpanded && (
+                    <div className="p-5 bg-slate-950 space-y-4 border-t border-slate-800">
+                      <h4 className="text-xs font-mono font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                        <Layers className="w-4 h-4" /> SUBJECT-WISE & CHAPTER-WISE PREPARATION DETAILS
+                      </h4>
+
+                      {Array.isArray(t.weeklyChapters) && t.weeklyChapters.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {t.weeklyChapters.map((wc, idx) => (
+                            <div key={idx} className="p-4 bg-slate-900 border border-slate-800 rounded-none space-y-2">
+                              <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                                <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase">
+                                  SUBJECT {idx + 1}
+                                </span>
+                                <span className="text-[10px] font-mono font-black text-white uppercase px-2 py-0.5 bg-slate-950 border border-slate-800">
+                                  {wc.subjectName}
+                                </span>
+                              </div>
+
+                              <div>
+                                <span className="text-[9px] font-mono text-slate-400 block font-bold">ASSIGNED CHAPTER:</span>
+                                <p className="text-sm font-black text-white tracking-wide">
+                                  {wc.chapterName || 'General Chapter'}
+                                </p>
+                              </div>
+
+                              {wc.topicsText && (
+                                <div className="pt-2 border-t border-slate-800">
+                                  <span className="text-[9px] font-mono text-emerald-400 font-bold uppercase flex items-center gap-1 mb-1">
+                                    <FileText className="w-3 h-3" /> Topics to Prepare:
+                                  </span>
+                                  <p className="text-xs text-slate-300 font-medium whitespace-pre-line bg-slate-950 p-2 border border-slate-800 leading-relaxed">
+                                    {wc.topicsText}
+                                  </p>
+                                </div>
+                              )}
+
+                              {wc.attachmentUrl && (
+                                <div className="pt-2 border-t border-slate-800">
+                                  <a
+                                    href={wc.attachmentUrl.startsWith('http') ? wc.attachmentUrl : `${API_URL}${wc.attachmentUrl}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full py-1.5 bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-500/40 text-indigo-300 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
+                                  >
+                                    {wc.attachmentType === 'pdf' ? (
+                                      <File className="w-3.5 h-3.5 text-rose-400" />
+                                    ) : (
+                                      <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                                    )}
+                                    View Attached {wc.attachmentType === 'pdf' ? 'PDF Material' : 'Image Material'}
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No subject details specified.</p>
+                      )}
+
+                      {/* Linked Weekend Exam */}
+                      {t.weekendExamTitle && (
+                        <div className="p-3 bg-amber-950/40 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Award className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span>Linked Sunday Weekend Exam: <strong>{t.weekendExamTitle}</strong></span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {/* ── CREATE / EDIT TIMETABLE MODAL ── */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-slate-950 border border-slate-800 rounded-none shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-5 my-8">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-black text-white uppercase tracking-wider">
+                  {editingTimetableId ? 'Edit Weekly Schedule' : 'Create Weekly Timetable'}
+                </h3>
+              </div>
+              <button
+                onClick={resetForm}
+                className="p-1 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitTimetable} className="space-y-4">
+              
+              {/* 1. SELECT COURSE CATEGORY & TARGET COURSE */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                    1A. COURSE CATEGORY <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => handleSelectCategory(e.target.value as 'entrance' | 'competitive')}
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-black text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
+                  >
+                    <option value="entrance">🎓 Entrance Exams</option>
+                    <option value="competitive">🏆 Competitive Exams</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                    1B. TARGET COURSE / PLAN <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={selectedCourseId}
+                    onChange={(e) => handleSelectCourse(e.target.value)}
+                    required
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-black text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
+                  >
+                    <option value="">-- Choose Course ({filteredCategoryCourses.length} Available) --</option>
+                    {filteredCategoryCourses.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* 2. WEEK DETAILS & DATE RANGE */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
+                    WEEK TITLE
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Week 1"
+                    value={weekTitle}
+                    onChange={(e) => setWeekTitle(e.target.value)}
+                    required
+                    className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
+                    START DATE
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    required
+                    className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1">
+                    END DATE
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    required
+                    className="w-full p-2 bg-slate-900 border border-slate-700 rounded-none text-xs font-bold text-white focus:outline-none focus:border-emerald-400"
+                  />
+                </div>
+              </div>
+
+              {/* 3. ASSIGN CHAPTERS PER SUBJECT (DYNAMIC) */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <label className="text-[10px] font-mono font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5" /> 3. ASSIGN WEEKLY CHAPTERS FOR EACH SUBJECT
+                  </label>
+                  <span className="text-[10px] font-mono text-slate-400 font-bold">
+                    {courseSubjects.length} Subjects Available
+                  </span>
+                </div>
+
+                {!selectedCourseId ? (
+                  <div className="p-6 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs font-bold">
+                    👈 Select a Course above to assign its subjects & chapters.
+                  </div>
+                ) : courseSubjects.length === 0 ? (
+                  <div className="p-6 text-center bg-slate-900 border border-dashed border-slate-800 rounded-none text-slate-400 text-xs font-bold">
+                    No subjects found for this course. Please assign subjects to this course in Subjects & Chapters tab.
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                    {courseSubjects.map((sub: any) => {
+                      const subId = String(sub.id || sub._id);
+                      const subChapters = getSubjectChaptersSorted(subId);
+                      const currentAssignedChap = assignedChapterMap[subId] || '';
+                      const currentTopics = assignedTopicsMap[subId] || '';
+                      const currentAttachment = assignedAttachmentMap[subId] || { url: '', type: 'none' };
+                      const isUploading = uploadingSubjectId === subId;
+
+                      return (
+                        <div key={subId} className="p-3 bg-slate-900 border border-slate-800 rounded-none space-y-2.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="min-w-0 sm:w-2/5">
+                              <span className="text-[9px] font-mono font-bold text-emerald-400 uppercase block">SUBJECT</span>
+                              <span className="text-xs font-black text-white truncate block uppercase">{sub.name}</span>
+                            </div>
+
+                            <div className="sm:w-3/5">
+                              <select
+                                value={currentAssignedChap}
+                                onChange={(e) => setAssignedChapterMap({ ...assignedChapterMap, [subId]: e.target.value })}
+                                className="w-full p-2 bg-slate-950 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-emerald-400"
+                              >
+                                <option value="">-- Skip / No Chapter This Week --</option>
+                                {subChapters.map((ch: any) => (
+                                  <option key={ch.id || ch._id} value={ch.id || ch._id}>
+                                    {ch.name || (ch as any).title}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Optional Preparation Topics & Upload Material (shown if chapter is selected) */}
+                          {currentAssignedChap && (
+                            <div className="pt-2 border-t border-slate-800/80 space-y-2 text-xs">
+                              <div>
+                                <label className="block text-[9px] font-mono font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                                  <FileText className="w-3 h-3 text-emerald-400" /> Preparation Topics / Notes (Manual Text)
+                                </label>
+                                <textarea
+                                  rows={2}
+                                  placeholder="e.g. Prepare Newton's Laws, Solve Exercise 1-10..."
+                                  value={currentTopics}
+                                  onChange={(e) => setAssignedTopicsMap({ ...assignedTopicsMap, [subId]: e.target.value })}
+                                  className="w-full p-2 bg-slate-950 border border-slate-800 text-white rounded-none text-xs font-medium focus:outline-none focus:border-emerald-400"
+                                />
+                              </div>
+
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <label className="text-[9px] font-mono font-bold text-slate-400 uppercase flex items-center gap-1">
+                                    <Paperclip className="w-3 h-3 text-indigo-400" /> Upload Image / PDF
+                                  </label>
+                                  <label className="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-indigo-300 text-[10px] font-black uppercase tracking-wider cursor-pointer flex items-center gap-1">
+                                    {isUploading ? (
+                                      <>
+                                        <Loader2 className="w-3 h-3 animate-spin text-indigo-400" /> Uploading...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Upload className="w-3 h-3 text-indigo-400" /> Choose File
+                                      </>
+                                    )}
+                                    <input
+                                      type="file"
+                                      accept="image/*,.pdf"
+                                      className="hidden"
+                                      disabled={isUploading}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleFileUpload(subId, file);
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+
+                                {currentAttachment.url && (
+                                  <div className="flex items-center gap-2 bg-slate-950 px-2 py-1 border border-slate-800">
+                                    <span className="text-[10px] font-mono text-indigo-300 flex items-center gap-1">
+                                      {currentAttachment.type === 'pdf' ? (
+                                        <File className="w-3 h-3 text-rose-400" />
+                                      ) : (
+                                        <ImageIcon className="w-3 h-3 text-emerald-400" />
+                                      )}
+                                      Attached Material
+                                    </span>
+                                    <a
+                                      href={currentAttachment.url.startsWith('http') ? currentAttachment.url : `${API_URL}${currentAttachment.url}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[9px] text-emerald-400 underline font-bold"
+                                    >
+                                      View
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => setAssignedAttachmentMap({
+                                        ...assignedAttachmentMap,
+                                        [subId]: { url: '', type: 'none' }
+                                      })}
+                                      className="text-rose-400 hover:text-rose-300 text-[10px] font-black"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* 4. LINK SUNDAY WEEKEND EXAM */}
+              <div className="pt-2">
+                <label className="block text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                  <Award className="w-3.5 h-3.5 text-amber-400" /> 4. LINK SUNDAY WEEKEND EXAM (OPTIONAL)
+                </label>
+                <select
+                  value={selectedWeekendExamId}
+                  onChange={(e) => setSelectedWeekendExamId(e.target.value)}
+                  className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-bold text-xs cursor-pointer focus:outline-none focus:border-amber-400"
+                >
+                  <option value="">-- No Exam Linked (Study Schedule Only) --</option>
+                  {tests.map((t: any) => (
+                    <option key={t.id || t._id} value={t.id || t._id}>
+                      🏆 {t.title || t.name} ({t.testType || 'Exam'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SUBMIT BUTTON */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-black uppercase cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading || !selectedCourseId}
+                  className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black text-xs font-black uppercase tracking-wider shadow-lg transition-all border border-emerald-400 cursor-pointer flex items-center gap-2"
+                >
+                  <PlusCircle className="w-4 h-4 stroke-[3]" />
+                  {editingTimetableId ? 'Update Weekly Schedule' : 'Publish Weekly Schedule'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

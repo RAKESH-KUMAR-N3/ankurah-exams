@@ -109,6 +109,9 @@ export interface TimetableWeeklyChapter {
   subjectName: string;
   chapterId: string;
   chapterName: string;
+  topicsText?: string;
+  attachmentUrl?: string;
+  attachmentType?: 'image' | 'pdf' | 'none';
 }
 
 export interface Timetable {

@@ -103,7 +103,10 @@ export const createChapter = asyncHandler(async (req: Request, res: Response): P
 // @route   GET /api/chapters
 // @access  Admin
 export const getChapters = asyncHandler(async (req: Request, res: Response) => {
-  const chapters = await Chapter.find({}).populate('subjectId');
+  const chapters = await Chapter.find({}).lean();
+  // Return raw subjectId (string) — do NOT populate, because subjectId can belong
+  // to either 'subjects' OR 'competitivesubjects' collection. populate() only
+  // looks in 'Subject', causing CompetitiveSubject IDs to silently return null.
   res.json(chapters);
 });
 

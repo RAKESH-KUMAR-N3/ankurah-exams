@@ -109,7 +109,19 @@ export default function SubjectsAndChaptersTab() {
     })
     .sort((a: any, b: any) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
-  // Combine & deduplicate the 6 Real Courses created by Admin
+  // Entrance-only courses list
+  const entranceCoursesList = entranceExams.map((p: any) => ({
+    id: p.id || p._id,
+    name: (p.name || '').replace(/\s*Plan\s*$/i, '').trim()
+  })).filter((p: any) => p.name);
+
+  // Competitive-only courses list
+  const competitiveCoursesList = competitiveExams.map((p: any) => ({
+    id: p.id || p._id,
+    name: (p.name || '').replace(/\s*Plan\s*$/i, '').trim()
+  })).filter((p: any) => p.name);
+
+  // Combined (used for main filters etc)
   const rawPlans = [...allPlans, ...entranceExams, ...competitiveExams];
   const uniquePlansMap = new Map<string, { id: string; name: string }>();
   rawPlans.forEach((p: any) => {
@@ -125,6 +137,8 @@ export default function SubjectsAndChaptersTab() {
   });
   const coursesList = Array.from(uniquePlansMap.values());
 
+
+
   // --- MODALS STATE ---
   // Subject Modal (Multi-field / Bulk paste)
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
@@ -135,6 +149,9 @@ export default function SubjectsAndChaptersTab() {
   const [targetExamForSubject, setTargetExamForSubject] = useState<string>('');
   const [subjectCategory, setSubjectCategory] = useState<'entrance' | 'competitive'>('entrance');
   const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+
+  // Filtered courses for subject modal based on selected category
+  const modalCoursesList = subjectCategory === 'entrance' ? entranceCoursesList : competitiveCoursesList;
 
   // Chapter Modal (Multi-Nested / Single / Bulk)
   const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
@@ -811,23 +828,36 @@ export default function SubjectsAndChaptersTab() {
             }
 
             // Group subjects by assigned course
+            // Build a comprehensive ID→name lookup across ALL source arrays to avoid deduplication ID mismatches
+            const allSourceExams = [...allPlans, ...entranceExams, ...competitiveExams];
+            const examIdToName = new Map<string, string>();
+            allSourceExams.forEach((e: any) => {
+              const id = e.id || e._id;
+              const name = (e.name || '').replace(/\s*Plan\s*$/i, '').trim();
+              if (id && name) examIdToName.set(String(id), name);
+            });
+
             const groupedMap = new Map<string, { courseName: string; subjects: Subject[] }>();
 
             filteredSubjects.forEach((subject: Subject) => {
               const sExamId = (subject as any).examId;
-              const assignedExamId = subject.examIds?.[0] || (sExamId ? (typeof sExamId === 'object' ? sExamId._id || sExamId.id : sExamId) : '');
-              const targetCourse = coursesList.find(c => c.id === assignedExamId);
-
-              let cName = targetCourse?.name;
-              if (!cName) {
-                const match = subject.name.match(/\(([^)]+)\)/);
-                if (match) {
-                  const tag = match[1].toUpperCase();
-                  if (tag === 'NEET') cName = 'NEET 2026 (BI.P.C)';
-                  else if (tag === 'AP') cName = 'AP-EAPCET (BI.P.C)';
-                  else cName = tag;
-                }
+              // Check all examIds, not just the first one
+              const examIdsList: string[] = [];
+              if (Array.isArray(subject.examIds) && subject.examIds.length > 0) {
+                subject.examIds.forEach(id => examIdsList.push(typeof id === 'object' ? (id as any)._id || (id as any).id : id));
               }
+              if (sExamId) {
+                const raw = typeof sExamId === 'object' ? sExamId._id || sExamId.id : sExamId;
+                if (raw && !examIdsList.includes(raw)) examIdsList.push(raw);
+              }
+
+              // Find course name from ANY matching ID across all sources
+              let cName: string | undefined;
+              for (const id of examIdsList) {
+                const found = examIdToName.get(String(id));
+                if (found) { cName = found; break; }
+              }
+
               if (!cName) cName = 'GENERAL / UNASSIGNED COURSES';
 
               const key = cName.toUpperCase();
@@ -843,36 +873,39 @@ export default function SubjectsAndChaptersTab() {
                   const isCollapsed = collapsedCourses[group.courseName] ?? (groupIdx > 0);
 
                   return (
-                    <div key={group.courseName} className="rounded-xl border border-slate-800 bg-slate-950/80 overflow-hidden shadow-xl">
+                    <div
+                        key={group.courseName}
+                        className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm"
+                      >
                       {/* ACCORDION COURSE HEADER */}
                       <div
                         onClick={() => setCollapsedCourses(prev => ({ ...prev, [group.courseName]: !isCollapsed }))}
-                        className="p-3 sm:p-4 bg-emerald-950/40 hover:bg-emerald-950/60 border-b border-slate-800/80 flex items-center justify-between cursor-pointer transition-all select-none"
+                        className="px-5 py-4 bg-white border-b border-slate-100 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors select-none"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                          <div className="p-1.5 sm:p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
-                            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          <div className="w-1 h-10 rounded-full bg-emerald-500 shrink-0" />
+                          <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-100 shrink-0">
+                            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h2 className="text-xs sm:text-base font-black text-white uppercase tracking-wider truncate">
+                            <div className="flex items-center gap-2.5 flex-wrap">
+                              <h2 className="text-sm sm:text-base font-black text-slate-800 uppercase tracking-wide truncate">
                                 {group.courseName}
                               </h2>
-                              <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono font-bold text-[10px] sm:text-xs rounded-md">
+                              <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-700 font-bold text-[11px] rounded-full border border-emerald-200">
                                 {group.subjects.length} Subjects
                               </span>
                             </div>
-                            <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 mt-0.5 hidden sm:block">
+                            <p className="text-[11px] font-medium text-slate-400 mt-0.5 hidden sm:block">
                               Manage all subjects and chapters by course.
                             </p>
                           </div>
                         </div>
-
                         <div className="flex items-center gap-2 text-slate-400 shrink-0">
                           {isCollapsed ? (
-                            <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                            <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5" />
                           ) : (
-                            <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                            <ChevronUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
                           )}
                         </div>
                       </div>
@@ -884,15 +917,15 @@ export default function SubjectsAndChaptersTab() {
                           <div className="hidden sm:block overflow-x-auto">
                             <table className="w-full text-left border-collapse text-xs">
                               <thead>
-                                <tr className="border-b border-slate-800 text-slate-400 font-mono font-bold uppercase tracking-wider text-[11px] bg-slate-900/60">
-                                  <th className="py-3.5 px-5">Subject</th>
-                                  <th className="py-3.5 px-4 text-center">Chapters</th>
-                                  <th className="py-3.5 px-4 text-center">Topics</th>
-                                  <th className="py-3.5 px-4 text-center">Questions</th>
-                                  <th className="py-3.5 px-5 text-right">Action</th>
+                                <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[11px] bg-slate-50">
+                                  <th className="py-3 px-5 text-slate-500">Subject</th>
+                                  <th className="py-3 px-4 text-center text-slate-500">Chapters</th>
+                                  <th className="py-3 px-4 text-center text-slate-500">Topics</th>
+                                  <th className="py-3 px-4 text-center text-slate-500">Questions</th>
+                                  <th className="py-3 px-5 text-right text-slate-500">Action</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-800/60 font-semibold text-slate-200">
+                              <tbody className="divide-y divide-slate-100">
                                 {group.subjects.map((subject: Subject) => {
                                   const subId = subject.id || (subject as any)._id;
                                   const subjectChapters = chapters.filter((c: any) => {
@@ -919,44 +952,50 @@ export default function SubjectsAndChaptersTab() {
                                   const meta = getSubjectMeta(subject.name);
 
                                   return (
-                                    <tr key={subId} className="hover:bg-slate-900/60 transition-colors group">
+                                    <tr key={subId} className="hover:bg-emerald-50/60 transition-colors group bg-white">
                                       <td className="py-3.5 px-5">
                                         <div className="flex items-center gap-3">
-                                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white border ${meta.badgeBg} shrink-0`}>
+                                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${meta.badgeBg} shrink-0`}>
                                             {meta.icon}
                                           </div>
-                                          <span className="font-extrabold text-sm text-white tracking-wide group-hover:text-emerald-400 transition-colors">
+                                          <span className="font-bold text-sm text-slate-800 group-hover:text-emerald-700 transition-colors">
                                             {subject.name}
                                           </span>
                                         </div>
                                       </td>
-                                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-300 text-xs">
-                                        {subjectChapters.length}
+                                      <td className="py-3.5 px-4 text-center">
+                                        <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-bold text-xs border border-blue-100">
+                                          {subjectChapters.length}
+                                        </span>
                                       </td>
-                                      <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-300 text-xs">
-                                        {topicsCount || 10}
+                                      <td className="py-3.5 px-4 text-center">
+                                        <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 font-bold text-xs border border-violet-100">
+                                          {topicsCount || 10}
+                                        </span>
                                       </td>
-                                      <td className="py-3.5 px-4 text-center font-mono font-bold text-emerald-400 text-xs">
-                                        {subQuestionsCount ? subQuestionsCount.toLocaleString() : (subjectChapters.length * 105).toLocaleString()}
+                                      <td className="py-3.5 px-4 text-center">
+                                        <span className="inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-100">
+                                          {subQuestionsCount ? subQuestionsCount.toLocaleString() : (subjectChapters.length * 105).toLocaleString()}
+                                        </span>
                                       </td>
                                       <td className="py-3.5 px-5 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                           <button
-                                            onClick={() => setActiveSubject(subject)}
-                                            className="px-3.5 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border border-emerald-500/30 rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                                            onClick={() => { refreshAdminData(); setActiveSubject(subject); }}
+                                            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-500 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-sm"
                                           >
                                             Open <ArrowRight className="w-3 h-3 stroke-[2.5]" />
                                           </button>
                                           <button
                                             onClick={(e) => handleOpenEditSubject(e, subject)}
-                                            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                                            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                                             title="Edit Subject"
                                           >
                                             <Edit2 className="w-3.5 h-3.5" />
                                           </button>
                                           <button
                                             onClick={(e) => handleDeleteSubject(e, subject.id, subject.name)}
-                                            className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                                            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                                             title="Delete Subject"
                                           >
                                             <Trash2 className="w-3.5 h-3.5" />
@@ -1013,7 +1052,7 @@ export default function SubjectsAndChaptersTab() {
 
                                   <div className="flex items-center gap-1 shrink-0">
                                     <button
-                                      onClick={() => setActiveSubject(subject)}
+                                      onClick={() => { refreshAdminData(); setActiveSubject(subject); }}
                                       className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-black border border-emerald-500/30 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-0.5 cursor-pointer"
                                     >
                                       Open <ArrowRight className="w-2.5 h-2.5 stroke-[2.5]" />
@@ -1160,25 +1199,25 @@ export default function SubjectsAndChaptersTab() {
               }
 
               return (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {currentChapters.map((chapter: Chapter, idx: number) => {
                     const isChExpanded = expandedChapterIds.includes(chapter.id);
                     const topicsList = chapterTopicsMap[chapter.id] || [];
 
                     return (
-                      <div key={chapter.id} className="p-4 bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-none flex flex-col gap-3 transition-all">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div key={chapter.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                        <div className="px-4 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                           
                           <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleExpandChapter(chapter.id)}>
-                            <span className="w-7 h-7 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-black text-xs shrink-0">
+                            <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-black text-xs shrink-0">
                               #{idx + 1}
                             </span>
                             <div>
-                              <span className="font-black text-base text-white uppercase tracking-wider hover:text-emerald-300 block">
+                              <span className="font-black text-sm text-slate-800 uppercase tracking-wide hover:text-emerald-700 block transition-colors">
                                 {chapter.name}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">
-                                {topicsList.length} TOPICS INCLUDED
+                              <span className="text-[11px] text-slate-400 font-semibold">
+                                {topicsList.length} Topics included
                               </span>
                             </div>
                           </div>
@@ -1187,21 +1226,21 @@ export default function SubjectsAndChaptersTab() {
                           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                             <button
                               onClick={() => handleOpenAddTopic(chapter)}
-                              className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 rounded-none text-xs font-black uppercase tracking-wider border border-cyan-500/40 transition-all cursor-pointer flex items-center gap-1.5"
+                              className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide border border-sky-500 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                             >
-                              <Plus className="w-3.5 h-3.5" /> + TOPIC (MANUAL)
+                              <Plus className="w-3.5 h-3.5" /> + Topic (Manual)
                             </button>
 
                             <button
                               onClick={() => handleOpenPdfUploadForTopics(chapter)}
-                              className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-none text-xs font-black uppercase tracking-wider border border-emerald-500/40 transition-all cursor-pointer flex items-center gap-1.5"
+                              className="px-3 py-1.5 bg-violet-500 hover:bg-violet-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide border border-violet-500 transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                             >
-                              <FileUp className="w-3.5 h-3.5" /> 📄 UPLOAD PDF (TOPICS)
+                              <FileUp className="w-3.5 h-3.5" /> Upload PDF
                             </button>
 
                             <button
                               onClick={() => handleDeleteChapter(chapter.id, chapter.name)}
-                              className="text-slate-500 hover:text-rose-400 p-1.5 cursor-pointer border border-transparent hover:border-rose-900"
+                              className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 cursor-pointer transition-colors"
                               title="Delete Chapter"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1209,9 +1248,9 @@ export default function SubjectsAndChaptersTab() {
 
                             <button
                               onClick={() => toggleExpandChapter(chapter.id)}
-                              className="p-1.5 bg-slate-950 text-slate-400 hover:text-white border border-slate-800 cursor-pointer"
+                              className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 border border-slate-200 cursor-pointer transition-colors"
                             >
-                              <ChevronDown className={`w-4 h-4 transition-transform ${isChExpanded ? 'rotate-180' : ''}`} />
+                              <ChevronDown className={`w-4 h-4 transition-transform ${isChExpanded ? 'rotate-180 text-emerald-600' : ''}`} />
                             </button>
                           </div>
 
@@ -1219,35 +1258,35 @@ export default function SubjectsAndChaptersTab() {
 
                         {/* TOPICS ACCORDION CONTENT */}
                         {isChExpanded && (
-                          <div className="pt-3 border-t border-slate-800 space-y-3 pl-2 sm:pl-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs font-black text-slate-400 uppercase tracking-widest gap-2">
-                              <span>TOPICS UNDER "{chapter.name}" ({topicsList.length})</span>
+                          <div className="px-4 pb-4 pt-3 border-t border-slate-100 space-y-3 bg-slate-50">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs font-bold text-slate-500 uppercase tracking-wide gap-2">
+                              <span>Topics under "{chapter.name}" ({topicsList.length})</span>
                               <div className="flex gap-3">
                                 <button 
                                   onClick={() => handleOpenAddTopic(chapter)}
-                                  className="text-cyan-400 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                                  className="text-sky-600 hover:text-sky-700 hover:underline flex items-center gap-1 cursor-pointer font-bold"
                                 >
-                                  <Plus className="w-3.5 h-3.5" /> MANUAL ADD
+                                  <Plus className="w-3.5 h-3.5" /> Manual Add
                                 </button>
                                 <button 
                                   onClick={() => handleOpenPdfUploadForTopics(chapter)}
-                                  className="text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+                                  className="text-violet-600 hover:text-violet-700 hover:underline flex items-center gap-1 cursor-pointer font-bold"
                                 >
-                                  <FileUp className="w-3.5 h-3.5" /> PDF UPLOAD
+                                  <FileUp className="w-3.5 h-3.5" /> PDF Upload
                                 </button>
                               </div>
                             </div>
 
                             {topicsList.length === 0 ? (
-                              <div className="text-xs text-slate-500 font-bold uppercase tracking-wider py-2 bg-slate-950 p-3 border border-slate-800">
-                                No topics added yet to this chapter. Click <strong className="text-cyan-400">+ TOPIC</strong> or <strong className="text-emerald-400">UPLOAD PDF</strong> to add topics!
+                              <div className="text-xs text-slate-400 font-medium py-3 px-4 bg-white rounded-lg border border-slate-200 border-dashed text-center">
+                                No topics yet. Click <strong className="text-sky-600">Manual Add</strong> or <strong className="text-violet-600">PDF Upload</strong> to add topics.
                               </div>
                             ) : (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                 {topicsList.map((topic: TopicItem, tIdx: number) => (
-                                  <div 
+                                    <div 
                                     key={topic._id || topic.id}
-                                    className="p-2.5 rounded-none bg-slate-950 border border-slate-800 flex justify-between items-center text-xs font-bold text-slate-200 hover:border-slate-700"
+                                    className="p-2.5 rounded-lg bg-white border border-slate-200 flex justify-between items-center text-xs font-semibold text-slate-700 hover:border-slate-300 hover:shadow-sm transition-all"
                                   >
                                     <span className="flex items-center gap-2 truncate pr-2">
                                       <span className="text-[10px] font-black text-cyan-400 shrink-0">#{tIdx + 1}</span>
@@ -1448,29 +1487,13 @@ export default function SubjectsAndChaptersTab() {
 
             <form onSubmit={handleSaveSubject} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* STEP 1: Exam Category — shown FIRST */}
                 <div>
-                  <label className="block text-emerald-400 font-black uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Shield className="w-4 h-4" /> TARGET COURSE (SELECT COURSE)
-                  </label>
-                  <select
-                    value={targetExamForSubject}
-                    onChange={(e) => setTargetExamForSubject(e.target.value)}
-                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-black text-xs uppercase tracking-wider focus:outline-none focus:border-emerald-400 cursor-pointer"
-                    required
-                  >
-                    <option value="">-- Choose Target Course --</option>
-                    {coursesList.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-black uppercase tracking-wider mb-1.5">Exam Category</label>
+                  <label className="block text-slate-300 font-black uppercase tracking-wider mb-1.5">Step 1 — Exam Category</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setSubjectCategory('entrance')}
+                      onClick={() => { setSubjectCategory('entrance'); setTargetExamForSubject(''); }}
                       className={`py-2 px-3 font-black text-xs uppercase tracking-wider cursor-pointer border flex items-center justify-center gap-1.5 rounded-none ${
                         subjectCategory === 'entrance'
                           ? 'bg-emerald-500 text-black border-emerald-400 shadow-md'
@@ -1482,7 +1505,7 @@ export default function SubjectsAndChaptersTab() {
 
                     <button
                       type="button"
-                      onClick={() => setSubjectCategory('competitive')}
+                      onClick={() => { setSubjectCategory('competitive'); setTargetExamForSubject(''); }}
                       className={`py-2 px-3 font-black text-xs uppercase tracking-wider cursor-pointer border flex items-center justify-center gap-1.5 rounded-none ${
                         subjectCategory === 'competitive'
                           ? 'bg-cyan-500 text-black border-cyan-400 shadow-md'
@@ -1492,6 +1515,28 @@ export default function SubjectsAndChaptersTab() {
                       <Award className="w-4 h-4" /> COMPETITIVE
                     </button>
                   </div>
+                </div>
+
+                {/* STEP 2: Filtered Course Dropdown — shown SECOND */}
+                <div>
+                  <label className="block text-emerald-400 font-black uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <Shield className="w-4 h-4" /> Step 2 — Target Course
+                  </label>
+                  <select
+                    value={targetExamForSubject}
+                    onChange={(e) => setTargetExamForSubject(e.target.value)}
+                    className="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-none text-white font-black text-xs uppercase tracking-wider focus:outline-none focus:border-emerald-400 cursor-pointer"
+                    required
+                  >
+                    <option value="">-- Choose {subjectCategory === 'entrance' ? 'Entrance' : 'Competitive'} Course --</option>
+                    {modalCoursesList.length === 0 ? (
+                      <option disabled value="">No {subjectCategory} courses found</option>
+                    ) : (
+                      modalCoursesList.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))
+                    )}
+                  </select>
                 </div>
               </div>
 
